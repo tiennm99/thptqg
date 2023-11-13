@@ -14,14 +14,14 @@ import lombok.Data;
 @Data
 public class Student {
   @Id
-  @Column(name = "SOBAODANH")
-  private int soBaoDanh;
+  @Column(name = "SO_BAO_DANH")
+  private String soBaoDanh;
 
   @Column(name = "HO_TEN")
   private String hoTen;
 
   @Column(name = "NGAY_SINH")
-  @Temporal(TemporalType.TIMESTAMP)
+  @Temporal(TemporalType.DATE)
   private Date ngaySinh;
 
   @Column(name = "TOAN")
