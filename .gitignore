@@ -44,3 +44,13 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+### Node ###
+node_modules/
+
+### Generated database ###
+web/public/thptqg2017.db
+web/public/thptqg2017.db.gz
+
+### Build output ###
+web/dist/
