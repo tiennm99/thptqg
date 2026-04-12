@@ -1,10 +1,13 @@
-const XLSX = require("xlsx");
-const Database = require("better-sqlite3");
-const fs = require("fs");
-const path = require("path");
+import XLSX from "xlsx";
+import Database from "better-sqlite3";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
-const RAW_DIR = path.join(__dirname, "..", "src", "main", "resources", "raw");
-const DB_PATH = path.join(__dirname, "..", "web", "public", "thptqg2017.db");
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const RAW_DIR = path.join(__dirname, "..", "data", "raw");
+const DB_PATH = path.join(__dirname, "..", "public", "thptqg2017.db");
 
 // Score patterns matching the Java Converter.java regex
 const SCORE_PATTERNS = {
@@ -34,7 +37,7 @@ function collectExcelFiles() {
   }
 
   // Update files second (will overwrite via INSERT OR REPLACE)
-  const updateDir = path.join(RAW_DIR, "(update)");
+  const updateDir = path.join(RAW_DIR, "update");
   if (fs.existsSync(updateDir)) {
     for (const f of fs.readdirSync(updateDir)) {
       const full = path.join(updateDir, f);
