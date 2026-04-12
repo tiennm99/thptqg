@@ -19,38 +19,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          lfs: true
 
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            web/package-lock.json
 
-      - name: Install root dependencies
+      - name: Install dependencies
         run: npm ci
 
       - name: Build database
         run: npm run build:db
 
       - name: Compress database
-        run: gzip -k -9 web/public/thptqg2017.db
-
-      - name: Install web dependencies
-        run: cd web && npm ci
+        run: gzip -k -9 public/thptqg2017.db
 
       - name: Build site
-        run: cd web && npx vite build
+        run: npm run build
 
       - name: Remove uncompressed db from dist
-        run: rm -f web/dist/thptqg2017.db
+        run: rm -f dist/thptqg2017.db
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: web/dist
+          path: dist
 
   deploy:
     needs: build

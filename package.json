@@ -1,28 +1,37 @@
 {
   "name": "thptqg2017",
+  "private": true,
   "version": "1.0.0",
-  "description": "Database điểm thi THPT QG 2017",
-  "main": "index.js",
+  "type": "module",
+  "description": "Tra cứu điểm thi THPT QG 2017",
   "scripts": {
     "build:db": "node scripts/build-database.js",
-    "dev": "npm run dev --prefix web",
-    "build": "npm run build --prefix web",
-    "preview": "npm run preview --prefix web"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint ."
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/tiennm99/thptqg2017.git"
   },
-  "keywords": [],
-  "author": "",
   "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/tiennm99/thptqg2017/issues"
+  "dependencies": {
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "sql.js": "^1.14.1"
   },
-  "homepage": "https://github.com/tiennm99/thptqg2017#readme",
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
     "better-sqlite3": "^12.8.0",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.4.0",
+    "vite": "^8.0.4",
     "xlsx": "^0.18.5"
   }
 }
