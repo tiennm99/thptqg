@@ -19,12 +19,17 @@ function detectMode(raw) {
     : { mode: "name-short", hint: `Cần ít nhất ${MIN_NAME_CHARS} ký tự` };
 }
 
-export function SearchForm({ onSearch, onClear, disabled }) {
-  const [query, setQuery] = useState("");
+export function SearchForm({ value = "", onSearch, onClear, disabled }) {
+  const [query, setQuery] = useState(value);
   const inputRef = useRef(null);
   const timerRef = useRef(null);
   const { mode, hint } = detectMode(query);
   const canSearch = mode === "sbd" || mode === "name";
+
+  // Sync from external value (deep-link URL, clear button in parent)
+  useEffect(() => {
+    setQuery(value);
+  }, [value]);
 
   // Debounced live search
   useEffect(() => {
@@ -33,9 +38,12 @@ export function SearchForm({ onSearch, onClear, disabled }) {
       if (mode === "empty") onClear?.();
       return;
     }
+    // Skip if the query already matches external value (prevents loop when
+    // value flows in from URL hydration)
+    if (query.trim() === value.trim() && query.trim() !== "") return;
     timerRef.current = setTimeout(() => onSearch(query.trim()), DEBOUNCE_MS);
     return () => clearTimeout(timerRef.current);
-  }, [query, canSearch, mode, onSearch, onClear]);
+  }, [query, canSearch, mode, onSearch, onClear, value]);
 
   function handleSubmit(e) {
     e.preventDefault();

@@ -67,11 +67,14 @@ body { margin: 0; background: var(--bg); color: var(--text); }
   border-radius: var(--radius-sm);
 }
 
+body, .app {
+  font-family: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
 .app {
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem 1rem;
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   color: var(--text);
 }
 
@@ -129,18 +132,34 @@ header h1 {
   margin: 0 auto;
 }
 
+.preset-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.preset-group {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  align-items: start;
+  gap: 0.75rem;
+}
+
 .preset-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-  align-items: center;
+  gap: 0.4rem;
 }
 
 .preset-label {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 600;
   color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   white-space: nowrap;
+  padding-top: 0.3rem;
 }
 
 .preset-btn {
@@ -348,6 +367,13 @@ header h1 {
   color: var(--text-muted);
 }
 
+.loading-note {
+  margin: 0.5rem auto 0;
+  max-width: 480px;
+  font-size: 0.85rem;
+  color: var(--text-subtle);
+}
+
 .progress-bar {
   width: 300px;
   height: 8px;
@@ -410,12 +436,12 @@ tbody tr:hover { background: var(--surface-alt); }
   font-weight: 500;
 }
 
-/* Score tier color coding — used on both table cells and detail tiles */
-.score-cell.tier-poor        { color: var(--score-poor-ink); }
-.score-cell.tier-weak        { color: var(--score-weak-ink); }
-.score-cell.tier-fair        { color: var(--score-fair-ink); }
-.score-cell.tier-good        { color: var(--score-good-ink); font-weight: 600; }
-.score-cell.tier-excellent   { color: var(--score-excellent-ink); font-weight: 700; }
+/* Score tier color coding — mirror the detail-tile palette for scanability */
+.score-cell.tier-poor      { color: var(--score-poor-ink);      background: var(--score-poor-bg); }
+.score-cell.tier-weak      { color: var(--score-weak-ink);      background: var(--score-weak-bg); }
+.score-cell.tier-fair      { color: var(--score-fair-ink);      background: var(--score-fair-bg); }
+.score-cell.tier-good      { color: var(--score-good-ink);      background: var(--score-good-bg); font-weight: 600; }
+.score-cell.tier-excellent { color: var(--score-excellent-ink); background: var(--score-excellent-bg); font-weight: 700; }
 
 /* Messages */
 .no-results,
@@ -465,9 +491,17 @@ footer {
 }
 
 .detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
   padding-bottom: 1rem;
   margin-bottom: 1.25rem;
   border-bottom: 1px solid var(--border);
+}
+
+.detail-actions {
+  flex-shrink: 0;
 }
 
 .detail-identity h2 {
@@ -534,7 +568,8 @@ footer {
   color: var(--text);
   margin: 0 0 0.75rem;
   display: flex;
-  align-items: baseline;
+  align-items: center;
+  justify-content: space-between;
   gap: 0.5rem;
   flex-wrap: wrap;
 }
@@ -543,6 +578,39 @@ footer {
   font-size: 0.8rem;
   font-weight: 400;
   color: var(--text-subtle);
+}
+
+/* Tier legend — co-locates color/symbol/range/label */
+.tier-legend {
+  list-style: none;
+  margin: 0 0 0 auto;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  font-weight: 400;
+  font-size: 0.75rem;
+}
+
+.tier-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+}
+
+.tier-legend-item.tier-poor      { background: var(--score-poor-bg);      color: var(--score-poor-ink);      border-color: var(--score-poor-accent); }
+.tier-legend-item.tier-weak      { background: var(--score-weak-bg);      color: var(--score-weak-ink);      border-color: var(--score-weak-accent); }
+.tier-legend-item.tier-fair      { background: var(--score-fair-bg);      color: var(--score-fair-ink);      border-color: var(--score-fair-accent); }
+.tier-legend-item.tier-good      { background: var(--score-good-bg);      color: var(--score-good-ink);      border-color: var(--score-good-accent); }
+.tier-legend-item.tier-excellent { background: var(--score-excellent-bg); color: var(--score-excellent-ink); border-color: var(--score-excellent-accent); }
+
+.tier-legend .tier-range {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
 }
 
 /* Subject tile grid */
@@ -676,7 +744,8 @@ footer {
   .search-input-row { flex-direction: column; }
   .search-input-row .primary-btn { width: 100%; }
   table { font-size: 0.8rem; }
-  .preset-list { flex-direction: column; align-items: flex-start; }
+  .preset-group { grid-template-columns: 1fr; gap: 0.35rem; }
+  .detail-header { flex-direction: column; }
   .detail-card { padding: 1.1rem; }
   .detail-identity h2 { font-size: 1.25rem; }
   .block-row {

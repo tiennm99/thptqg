@@ -29,18 +29,56 @@ function fmt(n) {
   return n === null || n === undefined ? "—" : Number(n).toFixed(2);
 }
 
+// Visible tier legend — keeps symbol + range + label co-located so users
+// don't have to hover tiles to decode colors.
+const TIER_LEGEND = [
+  { key: "poor",      symbol: "▽", range: "< 5",   label: "Chưa đạt" },
+  { key: "weak",      symbol: "○", range: "5-6.5", label: "Trung bình" },
+  { key: "fair",      symbol: "◆", range: "6.5-8", label: "Khá" },
+  { key: "good",      symbol: "★", range: "8-9",   label: "Giỏi" },
+  { key: "excellent", symbol: "✦", range: "≥ 9",   label: "Xuất sắc" },
+];
+
 export function StudentDetail({ student }) {
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState(null);  // null | 'sbd' | 'share' | 'url'
   const blocks = computeBlocks(student);
   const subjects = SUBJECT_ORDER
     .filter((k) => student[k] !== null && student[k] !== undefined)
     .map((k) => ({ key: k, label: SUBJECT_LABELS[k], score: student[k] }));
 
+  function flash(kind) {
+    setCopied(kind);
+    setTimeout(() => setCopied(null), 1500);
+  }
+
   function copySbd() {
-    navigator.clipboard.writeText(student.so_bao_danh).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
+    navigator.clipboard.writeText(student.so_bao_danh).then(() => flash("sbd"));
+  }
+
+  // Formatted summary suitable for pasting into Zalo / Messenger:
+  //   Nguyễn Văn A (SBD 49008235)
+  //   Toán 8.50 · Ngữ văn 7.25 · ...
+  //   Khối A: 22.75
+  //   Xem tại: https://...?q=49008235
+  function shareSummary() {
+    const lines = [];
+    lines.push(`${student.ho_ten} (SBD ${student.so_bao_danh})`);
+    lines.push(subjects.map((s) => `${s.label} ${fmt(s.score)}`).join(" · "));
+    if (blocks.length > 0) {
+      lines.push(
+        blocks.slice(0, 3).map((b) => `Khối ${b.code} ${b.total.toFixed(2)}`).join(" · "),
+      );
+    }
+    lines.push(
+      `${window.location.origin}${window.location.pathname}?q=${student.so_bao_danh}`,
+    );
+    const text = lines.join("\n");
+
+    if (navigator.share) {
+      navigator.share({ text }).catch(() => {});
+      return;
+    }
+    navigator.clipboard.writeText(text).then(() => flash("share"));
   }
 
   return (
@@ -59,7 +97,7 @@ export function StudentDetail({ student }) {
                   onClick={copySbd}
                   aria-label="Sao chép số báo danh"
                 >
-                  {copied ? "✓ Đã chép" : "Chép"}
+                  {copied === "sbd" ? "✓ Đã chép" : "Chép"}
                 </button>
               </dd>
             </div>
@@ -71,10 +109,31 @@ export function StudentDetail({ student }) {
             )}
           </dl>
         </div>
+        <div className="detail-actions">
+          <button
+            type="button"
+            className="primary-btn"
+            onClick={shareSummary}
+            aria-label="Chia sẻ bảng điểm"
+          >
+            {copied === "share" ? "✓ Đã chép" : "Chia sẻ"}
+          </button>
+        </div>
       </header>
 
       <section aria-labelledby="subjects-heading">
-        <h3 id="subjects-heading" className="section-title">Điểm môn thi</h3>
+        <h3 id="subjects-heading" className="section-title">
+          Điểm môn thi
+          <ul className="tier-legend" role="list" aria-label="Chú thích mức điểm">
+            {TIER_LEGEND.map((t) => (
+              <li key={t.key} className={`tier-legend-item tier-${t.key}`}>
+                <span aria-hidden="true">{t.symbol}</span>
+                <span className="tier-range">{t.range}</span>
+                <span className="tier-name">{t.label}</span>
+              </li>
+            ))}
+          </ul>
+        </h3>
         <ul className="score-grid" role="list">
           {subjects.map((s) => {
             const tier = scoreTier(s.score);
