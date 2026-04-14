@@ -43,13 +43,13 @@ WHERE so_bao_danh LIKE '49%' AND toan IS NOT NULL
 ORDER BY toan DESC LIMIT 10`,
       },
       {
-        label: "Top 100 khối A - Long An",
+        label: "Top 10 khối A - Long An",
         sql: `SELECT so_bao_danh, ho_ten, toan, vat_ly, hoa_hoc,
   ROUND(toan + vat_ly + hoa_hoc, 2) AS tong_khoi_a
 FROM student
 WHERE so_bao_danh LIKE '49%'
   AND toan IS NOT NULL AND vat_ly IS NOT NULL AND hoa_hoc IS NOT NULL
-ORDER BY tong_khoi_a DESC LIMIT 100`,
+ORDER BY tong_khoi_a DESC LIMIT 10`,
       },
     ],
   },
