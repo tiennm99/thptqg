@@ -39,4 +39,4 @@ React 19 · Vite · sql.js (WASM) · better-sqlite3 (build-time only) · GitHub 
 - [System architecture](./docs/system-architecture.md)
 - [Deployment guide](./docs/deployment-guide.md)
 
-**Source**: Collected from news sites at the time · Data is for reference only.
+**Source**: Originally published at <https://dtntbacgiang.edu.vn/tin-tuc/tin-tuc-su-kien/cong-bo-diem-thi-thptqg-2016-toan-bo-120-cum-thi-da-co-diem.html> (currently inaccessible). Data is for reference only.

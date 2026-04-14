@@ -27,6 +27,8 @@ Provide a public lookup tool for Vietnam's 2016 National High School Graduation 
 
 Excel files (`.xlsx`/`.xls`) collected from newspapers and exam clusters in 2016, stored in `data/`. One file per cluster, with several different column layouts (see `scripts/build-database.js`).
 
+Original aggregator link: <https://dtntbacgiang.edu.vn/tin-tuc/tin-tuc-su-kien/cong-bo-diem-thi-thptqg-2016-toan-bo-120-cum-thi-da-co-diem.html> — no longer accessible, so the raw Excel files are mirrored in this repo under `data/`.
+
 ## Status
 
 Stable. Data is frozen. Recent work focuses on UX polish (dark mode, accessibility, diacritics-insensitive search).
