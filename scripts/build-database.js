@@ -37,14 +37,13 @@ function toAscii(str) {
     .toLowerCase();
 }
 
-// Collect all .xlsx files directly under data/
+// Collect all .xls and .xlsx files directly under data/
 function collectExcelFiles() {
   const files = [];
   for (const f of fs.readdirSync(RAW_DIR)) {
     const full = path.join(RAW_DIR, f);
-    if (fs.statSync(full).isFile() && f.endsWith(".xlsx")) {
-      files.push(full);
-    }
+    if (!fs.statSync(full).isFile()) continue;
+    if (f.endsWith(".xls") || f.endsWith(".xlsx")) files.push(full);
   }
   return files;
 }
@@ -127,22 +126,30 @@ function main() {
 
       try {
         const wb = XLSX.readFile(file);
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+        // Iterate ALL sheets — .xls files over 65,536 rows (Hà Nội, HCM) split
+        // into continuation sheets that we must not miss.
+        const allRows = [];
+        for (const sheetName of wb.SheetNames) {
+          const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {
+            header: 1,
+          });
+          for (let i = 0; i < rows.length; i++) {
+            // Skip header row on every sheet (continuation sheets may repeat it,
+            // or start directly with data — isHeaderRow handles both)
+            if (i === 0 && isHeaderRow(rows[i])) continue;
+            allRows.push(rows[i]);
+          }
+        }
 
-        for (let i = 0; i < rows.length; i++) {
-          const row = rows[i];
-
-          // Skip header rows
-          if (i === 0 && isHeaderRow(row)) continue;
-
+        for (let i = 0; i < allRows.length; i++) {
+          const row = allRows[i];
           try {
-            const hoTen = String(row[0] || "").trim();
-            const ngaySinh = String(row[1] || "").trim();
-            const soBaoDanh = String(row[2] || "").trim();
-            const diemThi = String(row[3] || "");
+            const hoTen = String(row?.[0] || "").trim();
+            const ngaySinh = String(row?.[1] || "").trim();
+            const soBaoDanh = String(row?.[2] || "").trim();
+            const diemThi = String(row?.[3] || "");
 
-            // Validate: soBaoDanh should be numeric-like
+            // Skip truly empty rows (common tail padding in .xls)
             if (!soBaoDanh || !hoTen) continue;
 
             const scores = parseScores(diemThi);
