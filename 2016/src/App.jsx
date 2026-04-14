@@ -93,16 +93,16 @@ function App() {
       <header>
         <h1>Tra cứu điểm thi THPT Quốc gia 2016</h1>
         <p className="subtitle">
-          Dữ liệu 877.461 thí sinh toàn quốc · Hỗ trợ truy vấn SQL tùy chỉnh
+          <span className="pill">877.461 thí sinh</span>
+          Dữ liệu toàn quốc · Hỗ trợ truy vấn SQL tùy chỉnh
         </p>
       </header>
 
       <main>
         {loading && (
-          <div className="loading">
+          <div className="loading" role="status" aria-live="polite">
             <p>
-              Đang tải cơ sở dữ liệu...{" "}
-              {progress > 0 ? `${progress}%` : ""}
+              Đang tải cơ sở dữ liệu{progress > 0 ? ` · ${progress}%` : "..."}
             </p>
             <div className="progress-bar">
               <div
@@ -115,15 +115,19 @@ function App() {
 
         {error && <p className="error">Lỗi: {error}</p>}
 
-        <div className="tabs">
+        <div className="tabs" role="tablist">
           <button
-            className={`tab ${activeTab === "search" ? "active" : ""}`}
+            role="tab"
+            aria-selected={activeTab === "search"}
+            className="tab"
             onClick={() => setActiveTab("search")}
           >
             Tra cứu
           </button>
           <button
-            className={`tab ${activeTab === "sql" ? "active" : ""}`}
+            role="tab"
+            aria-selected={activeTab === "sql"}
+            className="tab"
             onClick={() => setActiveTab("sql")}
           >
             Truy vấn SQL

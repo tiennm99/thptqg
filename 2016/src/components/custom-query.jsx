@@ -172,7 +172,8 @@ export function CustomQuery({ db, disabled }) {
         />
         <div className="query-actions">
           <button type="submit" disabled={disabled || !sql.trim()}>
-            Thực thi (Ctrl+Enter)
+            Thực thi <span className="kbd">Ctrl</span>+
+            <span className="kbd">Enter</span>
           </button>
           {execTime !== null && (
             <span className="exec-time">

@@ -18,6 +18,14 @@ function formatScore(val) {
   return Number(val).toFixed(2);
 }
 
+function scoreClass(val) {
+  if (val === null || val === undefined) return "score-cell score-empty";
+  const num = Number(val);
+  if (num >= 8) return "score-cell score-high";
+  if (num < 4) return "score-cell score-low";
+  return "score-cell";
+}
+
 export function ScoreTable({ results }) {
   if (!results) return null;
   if (results.length === 0) {
@@ -25,38 +33,42 @@ export function ScoreTable({ results }) {
   }
 
   return (
-    <div className="table-wrapper">
+    <>
       <p className="result-count">Tìm thấy {results.length} kết quả</p>
-      <table>
-        <thead>
-          <tr>
-            <th>SBD</th>
-            <th>Họ tên</th>
-            <th>Ngày sinh</th>
-            <th>Cụm thi</th>
-            <th>GT</th>
-            {SUBJECT_COLUMNS.map((col) => (
-              <th key={col.key}>{col.label}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {results.map((row) => (
-            <tr key={row.so_bao_danh}>
-              <td>{row.so_bao_danh}</td>
-              <td className="name-cell">{row.ho_ten}</td>
-              <td>{row.ngay_sinh || "—"}</td>
-              <td className="cumthi-cell">{row.ten_cum_thi || "—"}</td>
-              <td>{row.gioi_tinh || "—"}</td>
+      <div className="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>SBD</th>
+              <th>Họ tên</th>
+              <th>Ngày sinh</th>
+              <th>Cụm thi</th>
+              <th>GT</th>
               {SUBJECT_COLUMNS.map((col) => (
-                <td key={col.key} className="score-cell">
-                  {formatScore(row[col.key])}
-                </td>
+                <th key={col.key}>{col.label}</th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {results.map((row) => (
+              <tr key={row.so_bao_danh}>
+                <td className="sbd-cell">{row.so_bao_danh}</td>
+                <td className="name-cell">{row.ho_ten}</td>
+                <td>{row.ngay_sinh || "—"}</td>
+                <td className="cumthi-cell" title={row.ten_cum_thi || ""}>
+                  {row.ten_cum_thi || "—"}
+                </td>
+                <td>{row.gioi_tinh || "—"}</td>
+                {SUBJECT_COLUMNS.map((col) => (
+                  <td key={col.key} className={scoreClass(row[col.key])}>
+                    {formatScore(row[col.key])}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
