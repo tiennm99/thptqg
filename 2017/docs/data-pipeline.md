@@ -2,9 +2,12 @@
 
 From raw Excel files to a compressed SQLite file the browser can load.
 
-## Canonical source
+## Canonical source (data/)
 
-63 Excel files from baotintuc.vn CDN. Re-download anytime:
+63 Excel files from baotintuc.vn CDN. Source article:
+`https://baotintuc.vn/tuyen-sinh/tra-cuu-diem-thi-thpt-2017-cua-63-tinh-thanh-pho-tren-baotintucvn-20170706073512672.htm`
+
+Re-download anytime:
 
 ```bash
 node scripts/crawl-baotintuc.js
@@ -12,7 +15,13 @@ node scripts/crawl-baotintuc.js
 
 Idempotent — skips files already present. Saves to `data/<ascii-kebab-province>.xls`.
 
-Source article URL: `https://baotintuc.vn/tuyen-sinh/tra-cuu-diem-thi-thpt-2017-cua-63-tinh-thanh-pho-tren-baotintucvn-20170706073512672.htm`
+## Reference sources (data-old/, data-old2/)
+
+Both were collected from Vietnamese news sites around the time of the 2017 exam.
+Specific publisher URLs were not recorded and cannot be recovered, so these
+datasets are **not reproducible** — the files committed in git are the only
+copy. They are kept for historical comparison and to expose the deploy matrix;
+the main deployment always uses the reproducible `data/` source.
 
 ## Source Excel shape
 
