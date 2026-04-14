@@ -1,4 +1,4 @@
-# Tra cứu điểm thi THPT Quốc gia 2017
+# Vietnam THPT 2017 Score Lookup
 
 Static React + SQLite site for looking up Vietnamese high school graduation exam scores (2017). The full database (~861k students, 63 provinces) ships to the browser as a compressed SQLite file and queries run client-side via `sql.js` — no backend.
 
@@ -16,8 +16,8 @@ Three deployments, one per dataset:
 
 - Diacritics-insensitive name search (`"nguyen"` matches `"Nguyễn"`)
 - Live debounced search with URL deep-link (`?q=49008235`)
-- Single-result detail card with per-subject TFT rarity-tiered scores (6 tiers, ≤1 → 9-10) and all 49 admission blocks (khối A00 – D15)
-- Share button: copies formatted summary + URL for Zalo/Messenger
+- Single-result detail card with per-subject TFT rarity-tiered scores (6 tiers, ≤1 → 9-10) and all 49 admission blocks (A00 – D15)
+- Share button: copies a formatted summary plus deep-link URL
 - SQL query tab with grouped presets (rankings, Long An filters, statistics, schema)
 - Light + dark mode (follows OS preference)
 - Keyboard shortcut `/` to focus search
@@ -77,7 +77,7 @@ npm run dev          # http://localhost:5173
 │   ├── App.css
 │   ├── components/{search-form, score-table, student-detail, custom-query}.jsx
 │   ├── hooks/use-sqlite.js
-│   └── lib/admission-blocks.js   # 49 khối definitions + score-tier helper
+│   └── lib/admission-blocks.js   # 49 admission-block definitions + score-tier helper
 ├── docs/              # see docs/README.md
 ├── index.html
 ├── vite.config.js

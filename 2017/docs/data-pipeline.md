@@ -23,19 +23,32 @@ Every file is a single sheet (for `data-old/`) or up to 3 sheets (for `data/` .x
 | 0 | HO_TEN     | full name in Vietnamese |
 | 1 | NGAY_SINH  | `dd/mm/yyyy` |
 | 2 | SOBAODANH  | 8-digit string, first 2 digits = province |
-| 3 | DIEM_THI   | concatenated Vietnamese score string, e.g. `"Toán: 6.80 Ngữ văn: 5.25 … Tiếng Anh: 5.80"` |
+| 3 | DIEM_THI   | concatenated per-subject score string in the source language, e.g. `"Toan: 6.80 Van: 5.25 ... English: 5.80"` |
 
 Some files lack a header row. `isHeaderRow()` in `build-lib.js` detects and skips.
 
 ## Score text parsing
 
-`SCORE_PATTERNS` in `build-lib.js` defines one regex per subject:
+`SCORE_PATTERNS` in `build-lib.js` defines one regex per subject. The patterns must match the exact subject labels the source files use (Vietnamese).
 
-```js
-{ toan: /Toán:\s*(\d+(?:\.\d+)?)/, ngu_van: /Ngữ văn:…/, … }
-```
+Subjects supported (DB column / label in source text):
 
-Subjects supported: Toán, Ngữ văn, Vật lí, Hóa học, Sinh học, KHTN, Lịch sử, Địa lí, GDCD, KHXH, Tiếng Anh, Tiếng Pháp, Tiếng Nga, Tiếng Trung.
+| Column | Source label | English |
+|---|---|---|
+| toan        | Toán        | Math |
+| ngu_van     | Ngữ văn     | Literature |
+| vat_ly      | Vật lí      | Physics |
+| hoa_hoc     | Hóa học     | Chemistry |
+| sinh_hoc    | Sinh học    | Biology |
+| khtn        | KHTN        | Natural Sciences combined |
+| lich_su     | Lịch sử     | History |
+| dia_ly      | Địa lí      | Geography |
+| gdcd        | GDCD        | Civic Education |
+| khxh        | KHXH        | Social Sciences combined |
+| tieng_anh   | Tiếng Anh   | English |
+| tieng_phap  | Tiếng Pháp  | French |
+| tieng_nga   | Tiếng Nga   | Russian |
+| tieng_trung | Tiếng Trung | Chinese |
 
 Missing-in-string → `NULL` in DB (student didn't take that subject).
 
@@ -51,7 +64,7 @@ One shared lib + three thin parsers, not one parser with flags. Each dataset's q
 
 ## Overflow-sheet gotcha
 
-The old `.xls` binary format caps at 65,536 rows per sheet. Hà Nội and HCM exceed that in the baotintuc export, so Excel auto-splits the overflow into `Sheet2`. **Only reading `Sheet1` silently drops 13,720 students** (Hà Nội +7,275, HCM +6,445).
+The old `.xls` binary format caps at 65,536 rows per sheet. Hanoi and Ho Chi Minh City exceed that in the baotintuc export, so Excel auto-splits the overflow into `Sheet2`. **Only reading `Sheet1` silently drops 13,720 students** (Hanoi +7,275, HCM +6,445).
 
 The audit `node scripts/audit-row-counts.js` catches this by comparing source-row-count (across all sheets) to DB-row-count.
 

@@ -58,32 +58,32 @@ Each dataset had a different quirk. Rather than one mega-parser with mode flags,
 
 | Dataset | Quirk | Mitigation |
 |---|---|---|
-| data/ (baotintuc .xls) | Hà Nội + HCM overflow past the 65,536 row-per-sheet .xls limit | Iterate all `wb.SheetNames` |
+| data/ (baotintuc .xls) | Hanoi + HCM overflow past the 65,536 row-per-sheet .xls limit | Iterate all `wb.SheetNames` |
 | data-old/ (xlsx) | Single-sheet always; one bogus header row (`SOBAODANH`/`HO_TEN`) leaked into an earlier DB | Strict numeric-SBD guard rejects the leak |
 | data-old2/ (xlsx) | HCM overflow + many blank trailing rows | Multi-sheet walk + blank-row pre-filter |
 
 Shared concerns (regex, schema, `toAscii`, header detection) live in `scripts/build-lib.js`.
 
-## Admission blocks (khối thi)
+## Admission blocks
 
-`src/lib/admission-blocks.js` lists all 49 official 2017 blocks computable from our schema (A00–A11, B00–B08, C00–C20, D01–D15). Each entry is `{ code, subjects: [3 keys], label }`.
+Vietnamese universities admit students based on 3-subject combinations called "admission blocks" (khối thi). `src/lib/admission-blocks.js` lists all 49 official 2017 blocks computable from our schema (A00–A11, B00–B08, C00–C20, D01–D15). Each entry is `{ code, subjects: [3 keys], label }`.
 
 `computeBlocks(student)` returns only blocks where the student has all 3 subject scores, sorted by total desc. Used by the student detail card.
 
-The SQL preset "Top 10 điểm khối cao nhất – Long An" materialises all 49 blocks as a `UNION ALL` CTE, picks each student's best via `ROW_NUMBER() OVER (PARTITION BY so_bao_danh ORDER BY s DESC, k)`, then ranks across students.
+The SQL preset "Top 10 best-block in Long An" materialises all 49 blocks as a `UNION ALL` CTE, picks each student's best block via `ROW_NUMBER() OVER (PARTITION BY so_bao_danh ORDER BY s DESC, k)`, then ranks across students.
 
 ## Score tiers (UI coding)
 
 6-level TFT rarity ladder (white → green → blue → purple → gold → prismatic). Defined in `scoreTier()` in `src/lib/admission-blocks.js`.
 
-| Tier | Range | Label |
-|---|---|---|
-| common    | ≤ 1   | Điểm liệt |
-| uncommon  | < 5   | Chưa đạt |
-| rare      | 5–6.5 | Trung bình |
-| epic      | 6.5–8 | Khá |
-| legendary | 8–9   | Giỏi |
-| prismatic | 9–10  | Xuất sắc |
+| Tier | Range | UI label (Vietnamese) | English |
+|---|---|---|---|
+| common    | ≤ 1   | Điểm liệt  | Disqualifying |
+| uncommon  | < 5   | Chưa đạt   | Below passing |
+| rare      | 5–6.5 | Trung bình | Average |
+| epic      | 6.5–8 | Khá        | Good |
+| legendary | 8–9   | Giỏi       | Very good |
+| prismatic | 9–10  | Xuất sắc   | Excellent |
 
 Color + icon + text label — never color-only.
 
