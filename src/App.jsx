@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useSqlite } from "./hooks/use-sqlite";
 import { SearchForm } from "./components/search-form";
 import { ScoreTable } from "./components/score-table";
+import { StudentDetail } from "./components/student-detail";
 import { CustomQuery } from "./components/custom-query";
 import "./App.css";
 
@@ -129,13 +130,21 @@ function App() {
 
         {activeTab === "search" && (
           <>
-            <SearchForm onSearch={handleSearch} disabled={loading || !!error} />
+            <SearchForm
+              onSearch={handleSearch}
+              onClear={() => setResults(null)}
+              disabled={loading || !!error}
+            />
 
             {searchError && (
               <p className="error">Lỗi truy vấn: {searchError}</p>
             )}
 
-            <ScoreTable results={results} />
+            {results && results.length === 1 ? (
+              <StudentDetail student={results[0]} />
+            ) : (
+              <ScoreTable results={results} />
+            )}
 
             {results && results.length >= MAX_RESULTS && (
               <p className="warning">

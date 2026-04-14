@@ -1,3 +1,5 @@
+import { scoreTier } from "../lib/admission-blocks";
+
 const SUBJECT_COLUMNS = [
   { key: "toan", label: "Toán" },
   { key: "ngu_van", label: "Ngữ văn" },
@@ -51,11 +53,19 @@ export function ScoreTable({ results }) {
               <td>{row.so_bao_danh}</td>
               <td className="name-cell">{row.ho_ten}</td>
               <td>{row.ngay_sinh || "—"}</td>
-              {visibleColumns.map((col) => (
-                <td key={col.key} className="score-cell">
-                  {formatScore(row[col.key])}
-                </td>
-              ))}
+              {visibleColumns.map((col) => {
+                const tier = scoreTier(row[col.key]);
+                const cls = tier ? `score-cell tier-${tier.key}` : "score-cell";
+                return (
+                  <td
+                    key={col.key}
+                    className={cls}
+                    title={tier ? tier.label : undefined}
+                  >
+                    {formatScore(row[col.key])}
+                  </td>
+                );
+              })}
             </tr>
           ))}
         </tbody>
