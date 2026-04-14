@@ -26,12 +26,15 @@ export function computeBlocks(student) {
   return out.sort((a, b) => b.total - a.total);
 }
 
-// Score tier: used for color + icon coding (meaning never conveyed by color alone)
+// Score tier: TFT rarity-style ladder. 6 stops match the Vietnamese exam
+// reality (≤1 is "điểm liệt" — automatic fail regardless of other scores).
+// Color is paired with a unicode symbol so meaning is never color-only.
 export function scoreTier(score) {
   if (score === null || score === undefined) return null;
-  if (score < 5) return { key: "poor",      symbol: "▽", label: "Chưa đạt" };
-  if (score < 6.5) return { key: "weak",     symbol: "○", label: "Trung bình" };
-  if (score < 8) return { key: "fair",       symbol: "◆", label: "Khá" };
-  if (score < 9) return { key: "good",       symbol: "★", label: "Giỏi" };
-  return { key: "excellent",                  symbol: "✦", label: "Xuất sắc" };
+  if (score <= 1) return { key: "common",      symbol: "·", label: "Điểm liệt" };
+  if (score < 5)  return { key: "uncommon",    symbol: "○", label: "Chưa đạt" };
+  if (score < 6.5) return { key: "rare",       symbol: "◆", label: "Trung bình" };
+  if (score < 8)  return { key: "epic",        symbol: "★", label: "Khá" };
+  if (score < 9)  return { key: "legendary",   symbol: "✦", label: "Giỏi" };
+  return { key: "prismatic",                    symbol: "❖", label: "Xuất sắc" };
 }

@@ -32,11 +32,12 @@ function fmt(n) {
 // Visible tier legend — keeps symbol + range + label co-located so users
 // don't have to hover tiles to decode colors.
 const TIER_LEGEND = [
-  { key: "poor",      symbol: "▽", range: "< 5",   label: "Chưa đạt" },
-  { key: "weak",      symbol: "○", range: "5-6.5", label: "Trung bình" },
-  { key: "fair",      symbol: "◆", range: "6.5-8", label: "Khá" },
-  { key: "good",      symbol: "★", range: "8-9",   label: "Giỏi" },
-  { key: "excellent", symbol: "✦", range: "≥ 9",   label: "Xuất sắc" },
+  { key: "common",    symbol: "·", range: "≤ 1",   label: "Điểm liệt" },
+  { key: "uncommon",  symbol: "○", range: "< 5",   label: "Chưa đạt" },
+  { key: "rare",      symbol: "◆", range: "5-6.5", label: "Trung bình" },
+  { key: "epic",      symbol: "★", range: "6.5-8", label: "Khá" },
+  { key: "legendary", symbol: "✦", range: "8-9",   label: "Giỏi" },
+  { key: "prismatic", symbol: "❖", range: "9-10",  label: "Xuất sắc" },
 ];
 
 export function StudentDetail({ student }) {
