@@ -57,7 +57,7 @@ ORDER BY tong_khoi_a DESC LIMIT 10`,
         // UNION ALL; ROW_NUMBER picks each student's #1 block; the outer
         // SELECT ranks across students. Result includes the winning block
         // code so the user sees which combination produced the score.
-        label: "Top 100 điểm khối cao nhất - Long An",
+        label: "Top 10 điểm khối cao nhất - Long An",
         sql: `WITH per_block AS (
   SELECT so_bao_danh, ho_ten, ngay_sinh, 'A00' k, toan+vat_ly+hoa_hoc s FROM student WHERE so_bao_danh LIKE '49%'
   UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'A01', toan+vat_ly+tieng_anh   FROM student WHERE so_bao_danh LIKE '49%'
@@ -115,7 +115,7 @@ ranked AS (
 )
 SELECT so_bao_danh, ho_ten, ngay_sinh, k AS khoi, ROUND(s, 2) AS diem
 FROM ranked WHERE rn = 1
-ORDER BY diem DESC LIMIT 100`,
+ORDER BY diem DESC LIMIT 10`,
       },
     ],
   },
