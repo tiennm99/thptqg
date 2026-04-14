@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 const DEBOUNCE_MS = 300;
 const MIN_SBD_DIGITS = 3;
 const MIN_NAME_CHARS = 2;
+const EXAMPLES = ["49008235", "Nguyễn Minh Tiến"];
 
 // Detect input mode for dynamic hint shown under the field
 function detectMode(raw) {
@@ -92,6 +93,26 @@ export function SearchForm({ onSearch, onClear, disabled }) {
       </div>
       <p id="search-hint" className={`search-hint mode-${mode}`} aria-live="polite">
         {hint}
+        {mode === "empty" && (
+          <>
+            {" · VD: "}
+            {EXAMPLES.map((ex, i) => (
+              <span key={ex}>
+                <button
+                  type="button"
+                  className="example-btn"
+                  onClick={() => {
+                    setQuery(ex);
+                    inputRef.current?.focus();
+                  }}
+                >
+                  {ex}
+                </button>
+                {i < EXAMPLES.length - 1 ? " hoặc " : ""}
+              </span>
+            ))}
+          </>
+        )}
       </p>
     </form>
   );
