@@ -6,8 +6,14 @@
   "description": "Tra cứu điểm thi THPT QG 2017",
   "scripts": {
     "build:db": "node scripts/build-database.js",
+    "build:db:old": "node scripts/build-database-old.js",
+    "build:db:old2": "node scripts/build-database-old2.js",
+    "build:db:all": "npm run build:db && npm run build:db:old && npm run build:db:old2",
     "dev": "vite",
     "build": "vite build",
+    "build:old": "node -e \"process.env.VARIANT='old';require('child_process').spawnSync('npx',['vite','build'],{stdio:'inherit',shell:true,env:process.env})\"",
+    "build:old2": "node -e \"process.env.VARIANT='old2';require('child_process').spawnSync('npx',['vite','build'],{stdio:'inherit',shell:true,env:process.env})\"",
+    "build:all": "npm run build && npm run build:old && npm run build:old2",
     "preview": "vite preview",
     "lint": "eslint ."
   },

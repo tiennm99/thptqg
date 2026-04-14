@@ -12,9 +12,13 @@
 ### Node ###
 node_modules/
 
-### Generated database ###
+### Generated databases (all 3 variants) ###
 public/thptqg2017.db
 public/thptqg2017.db.gz
+public-old/thptqg2017.db
+public-old/thptqg2017.db.gz
+public-old2/thptqg2017.db
+public-old2/thptqg2017.db.gz
 
 ### Build output ###
 dist/
