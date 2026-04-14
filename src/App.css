@@ -322,6 +322,25 @@ header h1 {
   color: var(--score-weak-accent);
 }
 
+.example-btn {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  background: var(--surface-alt);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.example-btn:hover {
+  background: var(--primary);
+  color: var(--primary-ink);
+  border-color: var(--primary);
+}
+
 /* Loading */
 .loading {
   text-align: center;
