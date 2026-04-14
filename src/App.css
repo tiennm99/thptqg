@@ -21,6 +21,132 @@ header h1 {
   font-size: 0.95rem;
 }
 
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 0;
+  max-width: 600px;
+  margin: 0 auto 1.5rem;
+  border-bottom: 2px solid #ddd;
+}
+
+.tab {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  color: #666;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.tab:hover {
+  color: #4361ee;
+}
+
+.tab.active {
+  color: #4361ee;
+  border-bottom-color: #4361ee;
+  font-weight: 600;
+}
+
+/* Custom query */
+.custom-query {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.preset-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  align-items: center;
+}
+
+.preset-label {
+  font-size: 0.85rem;
+  color: #666;
+  white-space: nowrap;
+}
+
+.preset-btn {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  background: #f0f0f5;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.preset-btn:hover:not(:disabled) {
+  background: #e8e8f0;
+  border-color: #4361ee;
+}
+
+.preset-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.query-form {
+  margin-bottom: 1rem;
+}
+
+.query-form textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", monospace;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  outline: none;
+  resize: vertical;
+  min-height: 120px;
+  transition: border-color 0.2s;
+  tab-size: 2;
+}
+
+.query-form textarea:focus {
+  border-color: #4361ee;
+}
+
+.query-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.query-actions button {
+  padding: 0.6rem 1.5rem;
+  font-size: 0.95rem;
+  background: #4361ee;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.query-actions button:hover:not(:disabled) {
+  background: #3a56d4;
+}
+
+.query-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.exec-time {
+  font-size: 0.85rem;
+  color: #666;
+}
+
 /* Search form */
 .search-form {
   display: flex;
@@ -180,5 +306,10 @@ footer {
 
   table {
     font-size: 0.8rem;
+  }
+
+  .preset-list {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

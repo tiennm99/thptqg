@@ -10,6 +10,9 @@ const SUBJECT_COLUMNS = [
   { key: "gdcd", label: "GDCD" },
   { key: "khxh", label: "KHXH" },
   { key: "tieng_anh", label: "Tiếng Anh" },
+  { key: "tieng_phap", label: "Tiếng Pháp" },
+  { key: "tieng_nga", label: "Tiếng Nga" },
+  { key: "tieng_trung", label: "Tiếng Trung" },
 ];
 
 function formatScore(val) {
@@ -23,6 +26,11 @@ export function ScoreTable({ results }) {
     return <p className="no-results">Không tìm thấy kết quả.</p>;
   }
 
+  // Hide columns where every row in the result set is null (e.g. unused foreign langs)
+  const visibleColumns = SUBJECT_COLUMNS.filter((col) =>
+    results.some((row) => row[col.key] !== null && row[col.key] !== undefined),
+  );
+
   return (
     <div className="table-wrapper">
       <p className="result-count">Tìm thấy {results.length} kết quả</p>
@@ -32,7 +40,7 @@ export function ScoreTable({ results }) {
             <th>SBD</th>
             <th>Họ tên</th>
             <th>Ngày sinh</th>
-            {SUBJECT_COLUMNS.map((col) => (
+            {visibleColumns.map((col) => (
               <th key={col.key}>{col.label}</th>
             ))}
           </tr>
@@ -43,7 +51,7 @@ export function ScoreTable({ results }) {
               <td>{row.so_bao_danh}</td>
               <td className="name-cell">{row.ho_ten}</td>
               <td>{row.ngay_sinh || "—"}</td>
-              {SUBJECT_COLUMNS.map((col) => (
+              {visibleColumns.map((col) => (
                 <td key={col.key} className="score-cell">
                   {formatScore(row[col.key])}
                 </td>

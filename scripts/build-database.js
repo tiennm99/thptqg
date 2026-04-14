@@ -9,20 +9,33 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RAW_DIR = path.join(__dirname, "..", "data", "raw");
 const DB_PATH = path.join(__dirname, "..", "public", "thptqg2017.db");
 
-// Score patterns matching the Java Converter.java regex
+// Score patterns. Note: source data uses both "X.YZ" and "X" forms; allow optional decimal.
+const NUM = "(\\d+(?:\\.\\d+)?)";
 const SCORE_PATTERNS = {
-  toan: /Toán:\s*(\d*\.\d*)/,
-  ngu_van: /Ngữ văn:\s*(\d*\.\d*)/,
-  vat_ly: /Vật lí:\s*(\d*\.\d*)/,
-  hoa_hoc: /Hóa học:\s*(\d*\.\d*)/,
-  sinh_hoc: /Sinh học:\s*(\d*\.\d*)/,
-  khtn: /KHTN:\s*(\d*\.\d*)/,
-  lich_su: /Lịch sử:\s*(\d*\.\d*)/,
-  dia_ly: /Địa lí:\s*(\d*\.\d*)/,
-  gdcd: /GDCD:\s*(\d*\.\d*)/,
-  khxh: /KHXH:\s*(\d*\.\d*)/,
-  tieng_anh: /Tiếng Anh:\s*(\d*\.\d*)/,
+  toan: new RegExp("Toán:\\s*" + NUM),
+  ngu_van: new RegExp("Ngữ văn:\\s*" + NUM),
+  vat_ly: new RegExp("Vật lí:\\s*" + NUM),
+  hoa_hoc: new RegExp("Hóa học:\\s*" + NUM),
+  sinh_hoc: new RegExp("Sinh học:\\s*" + NUM),
+  khtn: new RegExp("KHTN:\\s*" + NUM),
+  lich_su: new RegExp("Lịch sử:\\s*" + NUM),
+  dia_ly: new RegExp("Địa lí:\\s*" + NUM),
+  gdcd: new RegExp("GDCD:\\s*" + NUM),
+  khxh: new RegExp("KHXH:\\s*" + NUM),
+  tieng_anh: new RegExp("Tiếng Anh:\\s*" + NUM),
+  tieng_phap: new RegExp("Tiếng Pháp:\\s*" + NUM),
+  tieng_nga: new RegExp("Tiếng Nga:\\s*" + NUM),
+  tieng_trung: new RegExp("Tiếng Trung:\\s*" + NUM),
 };
+
+// Strip Vietnamese diacritics for ASCII-insensitive search
+function toAscii(str) {
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/gi, "d")
+    .toLowerCase();
+}
 
 // Collect all .xlsx files: raw/ first, then raw/(update)/ to overwrite
 function collectExcelFiles() {
@@ -81,33 +94,43 @@ function main() {
   // Create table
   db.exec(`
     CREATE TABLE student (
-      so_bao_danh TEXT PRIMARY KEY,
-      ho_ten      TEXT NOT NULL,
-      ngay_sinh   TEXT,
-      toan        REAL,
-      ngu_van     REAL,
-      vat_ly      REAL,
-      hoa_hoc     REAL,
-      sinh_hoc    REAL,
-      khtn        REAL,
-      lich_su     REAL,
-      dia_ly      REAL,
-      gdcd        REAL,
-      khxh        REAL,
-      tieng_anh   REAL
+      so_bao_danh   TEXT PRIMARY KEY,
+      ho_ten        TEXT NOT NULL,
+      ho_ten_ascii  TEXT NOT NULL,
+      ngay_sinh     TEXT,
+      toan          REAL,
+      ngu_van       REAL,
+      vat_ly        REAL,
+      hoa_hoc       REAL,
+      sinh_hoc      REAL,
+      khtn          REAL,
+      lich_su       REAL,
+      dia_ly        REAL,
+      gdcd          REAL,
+      khxh          REAL,
+      tieng_anh     REAL,
+      tieng_phap    REAL,
+      tieng_nga     REAL,
+      tieng_trung   REAL
     );
     CREATE INDEX idx_ho_ten ON student(ho_ten);
+    CREATE INDEX idx_ho_ten_ascii ON student(ho_ten_ascii);
   `);
 
   const insert = db.prepare(`
     INSERT OR REPLACE INTO student
-      (so_bao_danh, ho_ten, ngay_sinh, toan, ngu_van, vat_ly, hoa_hoc, sinh_hoc, khtn, lich_su, dia_ly, gdcd, khxh, tieng_anh)
+      (so_bao_danh, ho_ten, ho_ten_ascii, ngay_sinh,
+       toan, ngu_van, vat_ly, hoa_hoc, sinh_hoc, khtn,
+       lich_su, dia_ly, gdcd, khxh,
+       tieng_anh, tieng_phap, tieng_nga, tieng_trung)
     VALUES
-      (@so_bao_danh, @ho_ten, @ngay_sinh, @toan, @ngu_van, @vat_ly, @hoa_hoc, @sinh_hoc, @khtn, @lich_su, @dia_ly, @gdcd, @khxh, @tieng_anh)
+      (@so_bao_danh, @ho_ten, @ho_ten_ascii, @ngay_sinh,
+       @toan, @ngu_van, @vat_ly, @hoa_hoc, @sinh_hoc, @khtn,
+       @lich_su, @dia_ly, @gdcd, @khxh,
+       @tieng_anh, @tieng_phap, @tieng_nga, @tieng_trung)
   `);
 
   const files = collectExcelFiles();
-  let totalRows = 0;
   let errorCount = 0;
 
   // Wrap all inserts in a single transaction for speed
@@ -141,6 +164,7 @@ function main() {
             insert.run({
               so_bao_danh: soBaoDanh,
               ho_ten: hoTen,
+              ho_ten_ascii: toAscii(hoTen),
               ngay_sinh: ngaySinh || null,
               toan: scores.toan ?? null,
               ngu_van: scores.ngu_van ?? null,
@@ -153,17 +177,22 @@ function main() {
               gdcd: scores.gdcd ?? null,
               khxh: scores.khxh ?? null,
               tieng_anh: scores.tieng_anh ?? null,
+              tieng_phap: scores.tieng_phap ?? null,
+              tieng_nga: scores.tieng_nga ?? null,
+              tieng_trung: scores.tieng_trung ?? null,
             });
             fileRows++;
           } catch (err) {
             errorCount++;
+            if (errorCount <= 5) {
+              console.warn(`  [warn] ${basename} row ${i}: ${err.message}`);
+            }
           }
         }
       } catch (err) {
         console.error(`Failed to read ${basename}: ${err.message}`);
       }
 
-      totalRows += fileRows;
       console.log(`  ${basename}: ${fileRows} rows`);
     }
   });
