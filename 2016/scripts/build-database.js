@@ -5,7 +5,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ASSETS_DIR = path.join(__dirname, "..", "assets");
+const DATA_DIR = path.join(__dirname, "..", "data");
 const DB_PATH = path.join(__dirname, "..", "public", "thptqg2016.db");
 
 // Score patterns for the DIEM_THI string format
@@ -194,9 +194,9 @@ function main() {
   `);
 
   // Collect all Excel files (.xlsx and .xls)
-  const files = fs.readdirSync(ASSETS_DIR)
+  const files = fs.readdirSync(DATA_DIR)
     .filter((f) => f.endsWith(".xlsx") || f.endsWith(".xls"))
-    .map((f) => path.join(ASSETS_DIR, f));
+    .map((f) => path.join(DATA_DIR, f));
 
   let totalRows = 0;
   let errorCount = 0;
