@@ -52,71 +52,70 @@ WHERE so_bao_danh LIKE '49%'
 ORDER BY tong_khoi_a DESC LIMIT 10`,
       },
       {
-        // Per-student MAX across 49 official 2017 blocks (A00-A11, B00-B08,
-        // C00-C20, D01-D15) restricted to subjects in our DB. SQLite's
-        // MAX(x,y,...) scalar returns NULL if ANY arg is NULL (not just all),
-        // so every block is wrapped in COALESCE(..., -1). NULLIF(..., -1)
-        // then restores NULL for students whose data yields no valid block.
+        // Top 100 Long An students by their best of 49 official 2017
+        // admission blocks. Each (student, block) pair is materialised via
+        // UNION ALL; ROW_NUMBER picks each student's #1 block; the outer
+        // SELECT ranks across students. Result includes the winning block
+        // code so the user sees which combination produced the score.
         label: "Top 100 điểm khối cao nhất - Long An",
-        sql: `SELECT
-  so_bao_danh,
-  ho_ten,
-  ngay_sinh,
-  ROUND(NULLIF(MAX(
-    COALESCE(toan+vat_ly+hoa_hoc, -1),        -- A00
-    COALESCE(toan+vat_ly+tieng_anh, -1),      -- A01
-    COALESCE(toan+vat_ly+sinh_hoc, -1),       -- A02
-    COALESCE(toan+vat_ly+lich_su, -1),        -- A03
-    COALESCE(toan+vat_ly+dia_ly, -1),         -- A04
-    COALESCE(toan+hoa_hoc+lich_su, -1),       -- A05
-    COALESCE(toan+hoa_hoc+dia_ly, -1),        -- A06
-    COALESCE(toan+lich_su+dia_ly, -1),        -- A07
-    COALESCE(toan+lich_su+gdcd, -1),          -- A08
-    COALESCE(toan+dia_ly+gdcd, -1),           -- A09
-    COALESCE(toan+vat_ly+gdcd, -1),           -- A10
-    COALESCE(toan+hoa_hoc+gdcd, -1),          -- A11
-    COALESCE(toan+hoa_hoc+sinh_hoc, -1),      -- B00
-    COALESCE(toan+sinh_hoc+lich_su, -1),      -- B01
-    COALESCE(toan+sinh_hoc+dia_ly, -1),       -- B02
-    COALESCE(toan+sinh_hoc+ngu_van, -1),      -- B03
-    COALESCE(toan+sinh_hoc+gdcd, -1),         -- B04
-    COALESCE(toan+sinh_hoc+tieng_anh, -1),    -- B08
-    COALESCE(ngu_van+lich_su+dia_ly, -1),     -- C00
-    COALESCE(ngu_van+toan+vat_ly, -1),        -- C01
-    COALESCE(ngu_van+toan+hoa_hoc, -1),       -- C02
-    COALESCE(ngu_van+toan+lich_su, -1),       -- C03
-    COALESCE(ngu_van+toan+dia_ly, -1),        -- C04
-    COALESCE(ngu_van+vat_ly+hoa_hoc, -1),     -- C05
-    COALESCE(ngu_van+vat_ly+sinh_hoc, -1),    -- C06
-    COALESCE(ngu_van+vat_ly+lich_su, -1),     -- C07
-    COALESCE(ngu_van+hoa_hoc+sinh_hoc, -1),   -- C08
-    COALESCE(ngu_van+vat_ly+dia_ly, -1),      -- C09
-    COALESCE(ngu_van+hoa_hoc+lich_su, -1),    -- C10
-    COALESCE(ngu_van+sinh_hoc+lich_su, -1),   -- C12
-    COALESCE(ngu_van+sinh_hoc+dia_ly, -1),    -- C13
-    COALESCE(ngu_van+toan+gdcd, -1),          -- C14
-    COALESCE(ngu_van+vat_ly+gdcd, -1),        -- C16
-    COALESCE(ngu_van+hoa_hoc+gdcd, -1),       -- C17
-    COALESCE(ngu_van+lich_su+gdcd, -1),       -- C19
-    COALESCE(ngu_van+dia_ly+gdcd, -1),        -- C20
-    COALESCE(toan+ngu_van+tieng_anh, -1),     -- D01
-    COALESCE(toan+ngu_van+tieng_nga, -1),     -- D02
-    COALESCE(toan+ngu_van+tieng_phap, -1),    -- D03
-    COALESCE(toan+ngu_van+tieng_trung, -1),   -- D04
-    COALESCE(toan+hoa_hoc+tieng_anh, -1),     -- D07
-    COALESCE(toan+sinh_hoc+tieng_anh, -1),    -- D08
-    COALESCE(toan+lich_su+tieng_anh, -1),     -- D09
-    COALESCE(toan+dia_ly+tieng_anh, -1),      -- D10
-    COALESCE(ngu_van+vat_ly+tieng_anh, -1),   -- D11
-    COALESCE(ngu_van+hoa_hoc+tieng_anh, -1),  -- D12
-    COALESCE(ngu_van+sinh_hoc+tieng_anh, -1), -- D13
-    COALESCE(ngu_van+lich_su+tieng_anh, -1),  -- D14
-    COALESCE(ngu_van+dia_ly+tieng_anh, -1)    -- D15
-  ), -1), 2) AS diem_khoi_cao_nhat
-FROM student
-WHERE so_bao_danh LIKE '49%'
-ORDER BY diem_khoi_cao_nhat IS NULL, diem_khoi_cao_nhat DESC
-LIMIT 100`,
+        sql: `WITH per_block AS (
+  SELECT so_bao_danh, ho_ten, ngay_sinh, 'A00' k, toan+vat_ly+hoa_hoc s FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'A01', toan+vat_ly+tieng_anh   FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'A02', toan+vat_ly+sinh_hoc    FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'A03', toan+vat_ly+lich_su     FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'A04', toan+vat_ly+dia_ly      FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'A05', toan+hoa_hoc+lich_su    FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'A06', toan+hoa_hoc+dia_ly     FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'A07', toan+lich_su+dia_ly     FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'A08', toan+lich_su+gdcd       FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'A09', toan+dia_ly+gdcd        FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'A10', toan+vat_ly+gdcd        FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'A11', toan+hoa_hoc+gdcd       FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'B00', toan+hoa_hoc+sinh_hoc   FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'B01', toan+sinh_hoc+lich_su   FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'B02', toan+sinh_hoc+dia_ly    FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'B03', toan+sinh_hoc+ngu_van   FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'B04', toan+sinh_hoc+gdcd      FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'B08', toan+sinh_hoc+tieng_anh FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'C00', ngu_van+lich_su+dia_ly  FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'C01', ngu_van+toan+vat_ly     FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'C02', ngu_van+toan+hoa_hoc    FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'C03', ngu_van+toan+lich_su    FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'C04', ngu_van+toan+dia_ly     FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'C05', ngu_van+vat_ly+hoa_hoc  FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'C06', ngu_van+vat_ly+sinh_hoc FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'C07', ngu_van+vat_ly+lich_su  FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'C08', ngu_van+hoa_hoc+sinh_hoc FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'C09', ngu_van+vat_ly+dia_ly   FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'C10', ngu_van+hoa_hoc+lich_su FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'C12', ngu_van+sinh_hoc+lich_su FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'C13', ngu_van+sinh_hoc+dia_ly FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'C14', ngu_van+toan+gdcd       FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'C16', ngu_van+vat_ly+gdcd     FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'C17', ngu_van+hoa_hoc+gdcd    FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'C19', ngu_van+lich_su+gdcd    FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'C20', ngu_van+dia_ly+gdcd     FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'D01', toan+ngu_van+tieng_anh  FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'D02', toan+ngu_van+tieng_nga  FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'D03', toan+ngu_van+tieng_phap FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'D04', toan+ngu_van+tieng_trung FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'D07', toan+hoa_hoc+tieng_anh  FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'D08', toan+sinh_hoc+tieng_anh FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'D09', toan+lich_su+tieng_anh  FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'D10', toan+dia_ly+tieng_anh   FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'D11', ngu_van+vat_ly+tieng_anh FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'D12', ngu_van+hoa_hoc+tieng_anh FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'D13', ngu_van+sinh_hoc+tieng_anh FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'D14', ngu_van+lich_su+tieng_anh FROM student WHERE so_bao_danh LIKE '49%'
+  UNION ALL SELECT so_bao_danh, ho_ten, ngay_sinh, 'D15', ngu_van+dia_ly+tieng_anh FROM student WHERE so_bao_danh LIKE '49%'
+),
+ranked AS (
+  SELECT *, ROW_NUMBER() OVER (PARTITION BY so_bao_danh ORDER BY s DESC, k) rn
+  FROM per_block WHERE s IS NOT NULL
+)
+SELECT so_bao_danh, ho_ten, ngay_sinh, k AS khoi, ROUND(s, 2) AS diem
+FROM ranked WHERE rn = 1
+ORDER BY diem DESC LIMIT 100`,
       },
     ],
   },
