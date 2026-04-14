@@ -17,12 +17,17 @@
   --shadow-sm: 0 1px 2px rgba(15, 20, 40, 0.05);
   --shadow-md: 0 6px 20px rgba(15, 20, 40, 0.08);
 
-  /* Score tier colors (AA-contrast against tier-tinted surfaces) */
-  --score-poor-bg: #fdecea;   --score-poor-ink: #a51f1f;   --score-poor-accent: #d33030;
-  --score-weak-bg: #fff4e0;   --score-weak-ink: #8a5500;   --score-weak-accent: #e08a00;
-  --score-fair-bg: #e8f0fe;   --score-fair-ink: #1f4abf;   --score-fair-accent: #3b73e8;
-  --score-good-bg: #e6f6ec;   --score-good-ink: #196a36;   --score-good-accent: #2e9e55;
-  --score-excellent-bg: #fff6d6; --score-excellent-ink: #7a5100; --score-excellent-accent: #d4a015;
+  /* Score tier palette — TFT rarity ladder (white → green → blue → purple → gold → prismatic).
+     Pairs picked for AA contrast (≥4.5:1) of ink against bg. */
+  --tier-common-bg:    #f3f4f6;  --tier-common-ink:    #4a5163;  --tier-common-accent:    #b5b9c5;
+  --tier-uncommon-bg:  #e6f6ec;  --tier-uncommon-ink:  #196a36;  --tier-uncommon-accent:  #2e9e55;
+  --tier-rare-bg:      #e8f0fe;  --tier-rare-ink:      #1f4abf;  --tier-rare-accent:      #3b73e8;
+  --tier-epic-bg:      #f1e6fc;  --tier-epic-ink:      #6420b8;  --tier-epic-accent:      #9b59e8;
+  --tier-legendary-bg: #fff4cc;  --tier-legendary-ink: #6b4500;  --tier-legendary-accent: #d4a015;
+  /* Prismatic uses a soft gradient — text stays on a near-white backstop strip for legibility */
+  --tier-prismatic-bg: linear-gradient(135deg, #ffd7f0 0%, #d7e1ff 33%, #d7ffe8 66%, #fff3c8 100%);
+  --tier-prismatic-ink: #1a1a2e;
+  --tier-prismatic-accent: #b455e8;
 
   --error-bg: #fdecea;
   --error-ink: #a51f1f;
@@ -47,11 +52,14 @@
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
     --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.55);
 
-    --score-poor-bg: #3a1717;   --score-poor-ink: #ff9b9b;   --score-poor-accent: #ff6b6b;
-    --score-weak-bg: #3a2a0d;   --score-weak-ink: #ffc980;   --score-weak-accent: #ffb347;
-    --score-fair-bg: #14244a;   --score-fair-ink: #a9c0ff;   --score-fair-accent: #7a96ff;
-    --score-good-bg: #0f2e1b;   --score-good-ink: #9ee3b5;   --score-good-accent: #55c47a;
-    --score-excellent-bg: #332a0a; --score-excellent-ink: #ffd76a; --score-excellent-accent: #f0bd3b;
+    --tier-common-bg:    #242838;  --tier-common-ink:    #c5cad8;  --tier-common-accent:    #4a5163;
+    --tier-uncommon-bg:  #0f2e1b;  --tier-uncommon-ink:  #9ee3b5;  --tier-uncommon-accent:  #55c47a;
+    --tier-rare-bg:      #14244a;  --tier-rare-ink:      #a9c0ff;  --tier-rare-accent:      #7a96ff;
+    --tier-epic-bg:      #2a1a45;  --tier-epic-ink:      #cbb0ff;  --tier-epic-accent:      #a779e8;
+    --tier-legendary-bg: #332a0a;  --tier-legendary-ink: #ffd76a;  --tier-legendary-accent: #f0bd3b;
+    --tier-prismatic-bg: linear-gradient(135deg, #5a2d4d 0%, #2d4d6e 33%, #2d6e4d 66%, #6e5a2d 100%);
+    --tier-prismatic-ink: #fff;
+    --tier-prismatic-accent: #e8a0ff;
 
     --error-bg: #3a1717;   --error-ink: #ff9b9b;
     --warning-bg: #3a2a0d; --warning-ink: #ffc980;
@@ -338,7 +346,7 @@ header h1 {
 
 .search-hint.mode-sbd-short,
 .search-hint.mode-name-short {
-  color: var(--score-weak-accent);
+  color: var(--tier-legendary-accent);
 }
 
 .example-btn {
@@ -437,11 +445,12 @@ tbody tr:hover { background: var(--surface-alt); }
 }
 
 /* Score tier color coding — mirror the detail-tile palette for scanability */
-.score-cell.tier-poor      { color: var(--score-poor-ink);      background: var(--score-poor-bg); }
-.score-cell.tier-weak      { color: var(--score-weak-ink);      background: var(--score-weak-bg); }
-.score-cell.tier-fair      { color: var(--score-fair-ink);      background: var(--score-fair-bg); }
-.score-cell.tier-good      { color: var(--score-good-ink);      background: var(--score-good-bg); font-weight: 600; }
-.score-cell.tier-excellent { color: var(--score-excellent-ink); background: var(--score-excellent-bg); font-weight: 700; }
+.score-cell.tier-common    { color: var(--tier-common-ink);    background: var(--tier-common-bg); }
+.score-cell.tier-uncommon  { color: var(--tier-uncommon-ink);  background: var(--tier-uncommon-bg); }
+.score-cell.tier-rare      { color: var(--tier-rare-ink);      background: var(--tier-rare-bg); }
+.score-cell.tier-epic      { color: var(--tier-epic-ink);      background: var(--tier-epic-bg); font-weight: 600; }
+.score-cell.tier-legendary { color: var(--tier-legendary-ink); background: var(--tier-legendary-bg); font-weight: 700; }
+.score-cell.tier-prismatic { color: var(--tier-prismatic-ink); background: var(--tier-prismatic-bg); font-weight: 700; }
 
 /* Messages */
 .no-results,
@@ -602,11 +611,12 @@ footer {
   background: var(--surface-alt);
 }
 
-.tier-legend-item.tier-poor      { background: var(--score-poor-bg);      color: var(--score-poor-ink);      border-color: var(--score-poor-accent); }
-.tier-legend-item.tier-weak      { background: var(--score-weak-bg);      color: var(--score-weak-ink);      border-color: var(--score-weak-accent); }
-.tier-legend-item.tier-fair      { background: var(--score-fair-bg);      color: var(--score-fair-ink);      border-color: var(--score-fair-accent); }
-.tier-legend-item.tier-good      { background: var(--score-good-bg);      color: var(--score-good-ink);      border-color: var(--score-good-accent); }
-.tier-legend-item.tier-excellent { background: var(--score-excellent-bg); color: var(--score-excellent-ink); border-color: var(--score-excellent-accent); }
+.tier-legend-item.tier-common    { background: var(--tier-common-bg);    color: var(--tier-common-ink);    border-color: var(--tier-common-accent); }
+.tier-legend-item.tier-uncommon  { background: var(--tier-uncommon-bg);  color: var(--tier-uncommon-ink);  border-color: var(--tier-uncommon-accent); }
+.tier-legend-item.tier-rare      { background: var(--tier-rare-bg);      color: var(--tier-rare-ink);      border-color: var(--tier-rare-accent); }
+.tier-legend-item.tier-epic      { background: var(--tier-epic-bg);      color: var(--tier-epic-ink);      border-color: var(--tier-epic-accent); }
+.tier-legend-item.tier-legendary { background: var(--tier-legendary-bg); color: var(--tier-legendary-ink); border-color: var(--tier-legendary-accent); }
+.tier-legend-item.tier-prismatic { background: var(--tier-prismatic-bg); color: var(--tier-prismatic-ink); border-color: var(--tier-prismatic-accent); }
 
 .tier-legend .tier-range {
   font-variant-numeric: tabular-nums;
@@ -660,30 +670,35 @@ footer {
   font-size: 0.9rem;
 }
 
-.score-tile.tier-poor      { background: var(--score-poor-bg);      border-color: var(--score-poor-accent); }
-.score-tile.tier-poor      .score-value,
-.score-tile.tier-poor      .score-tier,
-.score-tile.tier-poor      .score-subject { color: var(--score-poor-ink); }
+.score-tile.tier-common    { background: var(--tier-common-bg);    border-color: var(--tier-common-accent); }
+.score-tile.tier-common    .score-value,
+.score-tile.tier-common    .score-tier,
+.score-tile.tier-common    .score-subject { color: var(--tier-common-ink); }
 
-.score-tile.tier-weak      { background: var(--score-weak-bg);      border-color: var(--score-weak-accent); }
-.score-tile.tier-weak      .score-value,
-.score-tile.tier-weak      .score-tier,
-.score-tile.tier-weak      .score-subject { color: var(--score-weak-ink); }
+.score-tile.tier-uncommon  { background: var(--tier-uncommon-bg);  border-color: var(--tier-uncommon-accent); }
+.score-tile.tier-uncommon  .score-value,
+.score-tile.tier-uncommon  .score-tier,
+.score-tile.tier-uncommon  .score-subject { color: var(--tier-uncommon-ink); }
 
-.score-tile.tier-fair      { background: var(--score-fair-bg);      border-color: var(--score-fair-accent); }
-.score-tile.tier-fair      .score-value,
-.score-tile.tier-fair      .score-tier,
-.score-tile.tier-fair      .score-subject { color: var(--score-fair-ink); }
+.score-tile.tier-rare      { background: var(--tier-rare-bg);      border-color: var(--tier-rare-accent); }
+.score-tile.tier-rare      .score-value,
+.score-tile.tier-rare      .score-tier,
+.score-tile.tier-rare      .score-subject { color: var(--tier-rare-ink); }
 
-.score-tile.tier-good      { background: var(--score-good-bg);      border-color: var(--score-good-accent); }
-.score-tile.tier-good      .score-value,
-.score-tile.tier-good      .score-tier,
-.score-tile.tier-good      .score-subject { color: var(--score-good-ink); }
+.score-tile.tier-epic      { background: var(--tier-epic-bg);      border-color: var(--tier-epic-accent); }
+.score-tile.tier-epic      .score-value,
+.score-tile.tier-epic      .score-tier,
+.score-tile.tier-epic      .score-subject { color: var(--tier-epic-ink); }
 
-.score-tile.tier-excellent { background: var(--score-excellent-bg); border-color: var(--score-excellent-accent); }
-.score-tile.tier-excellent .score-value,
-.score-tile.tier-excellent .score-tier,
-.score-tile.tier-excellent .score-subject { color: var(--score-excellent-ink); }
+.score-tile.tier-legendary { background: var(--tier-legendary-bg); border-color: var(--tier-legendary-accent); }
+.score-tile.tier-legendary .score-value,
+.score-tile.tier-legendary .score-tier,
+.score-tile.tier-legendary .score-subject { color: var(--tier-legendary-ink); }
+
+.score-tile.tier-prismatic { background: var(--tier-prismatic-bg); border-color: var(--tier-prismatic-accent); }
+.score-tile.tier-prismatic .score-value,
+.score-tile.tier-prismatic .score-tier,
+.score-tile.tier-prismatic .score-subject { color: var(--tier-prismatic-ink); }
 
 /* Admission block rows */
 .block-list {
