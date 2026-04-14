@@ -15,7 +15,7 @@ export function SearchForm({ onSearch, disabled }) {
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Nhập số báo danh hoặc họ tên..."
+        placeholder="Nhập SBD hoặc họ tên (VD: nguyen van a)..."
         disabled={disabled}
         autoFocus
       />

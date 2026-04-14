@@ -26,6 +26,16 @@ const SCORE_PATTERNS = {
 
 const ALL_SCORE_FIELDS = Object.keys(SCORE_PATTERNS);
 
+// Strip Vietnamese diacritics: "NGUYỄN BŨU LỘC" → "nguyen buu loc"
+function toAscii(str) {
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase();
+}
+
 // Parse score text "Toán: 3.75  Ngữ văn: 5.00 ..." into { toan: 3.75, ... }
 function parseScoreString(diemThi) {
   const scores = {};
@@ -85,6 +95,7 @@ function processSeparateScoresRow(row) {
   return {
     so_bao_danh: sbd,
     ho_ten: hoTen,
+    ho_ten_ascii: toAscii(hoTen),
     ngay_sinh: null,
     ten_cum_thi: null,
     gioi_tinh: null,
@@ -126,6 +137,7 @@ function processMappedRow(row, map) {
   return {
     so_bao_danh: sbd,
     ho_ten: hoTen,
+    ho_ten_ascii: toAscii(hoTen),
     ngay_sinh: ngaySinh || null,
     ten_cum_thi: tenCumThi || null,
     gioi_tinh: gioiTinh || null,
@@ -148,6 +160,7 @@ function main() {
     CREATE TABLE student (
       so_bao_danh TEXT PRIMARY KEY,
       ho_ten      TEXT NOT NULL,
+      ho_ten_ascii TEXT NOT NULL,
       ngay_sinh   TEXT,
       ten_cum_thi TEXT,
       gioi_tinh   TEXT,
@@ -165,16 +178,17 @@ function main() {
       tieng_trung REAL
     );
     CREATE INDEX idx_ho_ten ON student(ho_ten);
+    CREATE INDEX idx_ho_ten_ascii ON student(ho_ten_ascii);
     CREATE INDEX idx_ten_cum_thi ON student(ten_cum_thi);
   `);
 
   const insert = db.prepare(`
     INSERT OR REPLACE INTO student
-      (so_bao_danh, ho_ten, ngay_sinh, ten_cum_thi, gioi_tinh,
+      (so_bao_danh, ho_ten, ho_ten_ascii, ngay_sinh, ten_cum_thi, gioi_tinh,
        toan, ngu_van, vat_ly, hoa_hoc, sinh_hoc, lich_su, dia_ly,
        tieng_anh, tieng_phap, tieng_duc, tieng_nhat, tieng_trung)
     VALUES
-      (@so_bao_danh, @ho_ten, @ngay_sinh, @ten_cum_thi, @gioi_tinh,
+      (@so_bao_danh, @ho_ten, @ho_ten_ascii, @ngay_sinh, @ten_cum_thi, @gioi_tinh,
        @toan, @ngu_van, @vat_ly, @hoa_hoc, @sinh_hoc, @lich_su, @dia_ly,
        @tieng_anh, @tieng_phap, @tieng_duc, @tieng_nhat, @tieng_trung)
   `);

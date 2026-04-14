@@ -8,6 +8,20 @@ import "./App.css";
 const DB_URL = import.meta.env.BASE_URL + "thptqg2016.db.gz";
 const MAX_RESULTS = 100;
 
+// Strip Vietnamese diacritics for search: "nguyễn bữu lộc" → "nguyen buu loc"
+function toAscii(str) {
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/gi, "d")
+    .toLowerCase();
+}
+
+// Check if string contains only ASCII (no Vietnamese diacritics)
+function isAsciiOnly(str) {
+  return /^[\x00-\x7F]*$/.test(str);
+}
+
 function App() {
   const { db, loading, error, progress } = useSqlite(DB_URL);
   const [results, setResults] = useState(null);
@@ -28,11 +42,25 @@ function App() {
             "SELECT * FROM student WHERE so_bao_danh = $q LIMIT $limit",
           );
           stmt.bind({ $q: query.toUpperCase(), $limit: MAX_RESULTS });
-        } else {
+        } else if (isAsciiOnly(query)) {
+          // ASCII input: search against normalized column (diacritics-insensitive)
           stmt = db.prepare(
-            "SELECT * FROM student WHERE ho_ten LIKE $q LIMIT $limit",
+            "SELECT * FROM student WHERE ho_ten_ascii LIKE $q LIMIT $limit",
           );
-          stmt.bind({ $q: `%${query}%`, $limit: MAX_RESULTS });
+          stmt.bind({ $q: `%${toAscii(query)}%`, $limit: MAX_RESULTS });
+        } else {
+          // Vietnamese input: search both original and normalized
+          const normalized = toAscii(query);
+          stmt = db.prepare(
+            `SELECT * FROM student
+             WHERE ho_ten LIKE $q OR ho_ten_ascii LIKE $qn
+             LIMIT $limit`,
+          );
+          stmt.bind({
+            $q: `%${query}%`,
+            $qn: `%${normalized}%`,
+            $limit: MAX_RESULTS,
+          });
         }
 
         const rows = [];
