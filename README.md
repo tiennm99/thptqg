@@ -9,8 +9,8 @@ Three deployments, one per dataset:
 | URL | Data source | Rows |
 |---|---|---|
 | `/thptqg2017/`      | `data/` — [baotintuc.vn](https://baotintuc.vn/tuyen-sinh/tra-cuu-diem-thi-thpt-2017-cua-63-tinh-thanh-pho-tren-baotintucvn-20170706073512672.htm) CDN, `.xls` | **861,068** |
-| `/thptqg2017/old/`  | `data-old/` — earlier xlsx collection | 847,348 |
-| `/thptqg2017/old2/` | `data-old2/` — partial re-export (54 provinces) | 679,764 |
+| `/thptqg2017/old/`  | `data-old/` — earlier `.xlsx` collection from Vietnamese news sites at the time (exact origin no longer known) | 847,348 |
+| `/thptqg2017/old2/` | `data-old2/` — partial re-export (54 provinces) also from contemporary news sites, exact origin unrecorded | 679,764 |
 
 ## Features
 
@@ -92,4 +92,12 @@ See `LICENSE`.
 
 ## Source
 
-Data collected from public Vietnamese news archives (2017). Intended for reference only.
+- **`data/`** — scraped in full from the baotintuc.vn 2017 announcement article:
+  `https://baotintuc.vn/tuyen-sinh/tra-cuu-diem-thi-thpt-2017-cua-63-tinh-thanh-pho-tren-baotintucvn-20170706073512672.htm`
+  Reproducible via `node scripts/crawl-baotintuc.js`.
+- **`data-old/`** and **`data-old2/`** — collected from Vietnamese news sites at the
+  time of the 2017 exam. The specific publisher URLs were not recorded and cannot
+  be recovered now. These datasets are preserved for comparison and historical
+  reference only; `data/` is the canonical source for the main deployment.
+
+Intended for reference only.
