@@ -8,6 +8,7 @@ import "./App.css";
 
 const DB_URL = import.meta.env.BASE_URL + "thptqg2017.db.gz";
 const MAX_RESULTS = 100;
+const DB_SIZE_MB = 47;
 
 // Strip Vietnamese diacritics: "Nguyễn Bửu Lộc" → "nguyen buu loc"
 function toAscii(str) {
@@ -19,11 +20,22 @@ function toAscii(str) {
 }
 
 function isAsciiOnly(str) {
-  // True if no Vietnamese diacritics or non-ASCII chars present
   for (let i = 0; i < str.length; i++) {
     if (str.charCodeAt(i) > 127) return false;
   }
   return true;
+}
+
+// Sync query to URL (?q=...) without adding history entries
+function writeUrlQuery(q) {
+  const u = new URL(window.location.href);
+  if (q) u.searchParams.set("q", q);
+  else u.searchParams.delete("q");
+  window.history.replaceState({}, "", u);
+}
+
+function readUrlQuery() {
+  return new URL(window.location.href).searchParams.get("q") || "";
 }
 
 function App() {
@@ -31,46 +43,47 @@ function App() {
   const [results, setResults] = useState(null);
   const [searchError, setSearchError] = useState(null);
   const [activeTab, setActiveTab] = useState("search");
+  // Query is owned here so we can bidirectionally bind it to the URL
+  const [query, setQuery] = useState(() => readUrlQuery());
+  const [totalCount, setTotalCount] = useState(null);
 
   const handleSearch = useCallback(
-    (query) => {
+    (q) => {
       if (!db) return;
       setSearchError(null);
+      setQuery(q);
+      writeUrlQuery(q);
 
       try {
-        const isExamId = /^\d+$/.test(query);
+        const isExamId = /^\d+$/.test(q);
         let stmt;
 
         if (isExamId) {
           stmt = db.prepare(
             "SELECT * FROM student WHERE so_bao_danh = $q LIMIT $limit",
           );
-          stmt.bind({ $q: query, $limit: MAX_RESULTS });
-        } else if (isAsciiOnly(query)) {
-          // ASCII input → match against folded column (handles "nguyen" = "Nguyễn")
+          stmt.bind({ $q: q, $limit: MAX_RESULTS });
+        } else if (isAsciiOnly(q)) {
           stmt = db.prepare(
             "SELECT * FROM student WHERE ho_ten_ascii LIKE $q LIMIT $limit",
           );
-          stmt.bind({ $q: `%${toAscii(query)}%`, $limit: MAX_RESULTS });
+          stmt.bind({ $q: `%${toAscii(q)}%`, $limit: MAX_RESULTS });
         } else {
-          // Vietnamese input → search both original and folded columns
-          const normalized = toAscii(query);
+          const normalized = toAscii(q);
           stmt = db.prepare(
             `SELECT * FROM student
              WHERE ho_ten LIKE $q OR ho_ten_ascii LIKE $qn
              LIMIT $limit`,
           );
           stmt.bind({
-            $q: `%${query}%`,
+            $q: `%${q}%`,
             $qn: `%${normalized}%`,
             $limit: MAX_RESULTS,
           });
         }
 
         const rows = [];
-        while (stmt.step()) {
-          rows.push(stmt.getAsObject());
-        }
+        while (stmt.step()) rows.push(stmt.getAsObject());
         stmt.free();
         setResults(rows);
       } catch (err) {
@@ -80,17 +93,50 @@ function App() {
     [db],
   );
 
-  // Ctrl+Enter submits the SQL query form when in SQL tab
+  // Run initial URL query once DB is ready
+  useEffect(() => {
+    if (db && query) handleSearch(query);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [db]);
+
+  // Fetch total count for footer once DB loads
+  useEffect(() => {
+    if (!db) return;
+    const stmt = db.prepare("SELECT COUNT(*) AS c FROM student");
+    stmt.step();
+    setTotalCount(stmt.getAsObject().c);
+    stmt.free();
+  }, [db]);
+
+  // Global keyboard shortcuts:
+  //   Ctrl+Enter → submit SQL query (when SQL tab active)
+  //   "/"        → focus search box (when search tab active and not already typing)
   useEffect(() => {
     function handleKeyDown(e) {
       if (e.ctrlKey && e.key === "Enter" && activeTab === "sql") {
         const form = document.querySelector(".query-form");
         if (form) form.requestSubmit();
+        return;
+      }
+      if (
+        e.key === "/" &&
+        activeTab === "search" &&
+        !(e.target instanceof HTMLInputElement) &&
+        !(e.target instanceof HTMLTextAreaElement)
+      ) {
+        e.preventDefault();
+        document.getElementById("search-input")?.focus();
       }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [activeTab]);
+
+  const handleClear = useCallback(() => {
+    setResults(null);
+    setQuery("");
+    writeUrlQuery("");
+  }, []);
 
   return (
     <div className="app">
@@ -104,10 +150,17 @@ function App() {
       <main>
         {loading && (
           <div className="loading">
-            <p>Đang tải cơ sở dữ liệu... {progress > 0 ? `${progress}%` : ""}</p>
+            <p>
+              Đang tải cơ sở dữ liệu ~{DB_SIZE_MB} MB
+              {progress > 0 ? ` · ${progress}%` : ""}
+            </p>
             <div className="progress-bar">
               <div className="progress-fill" style={{ width: `${progress}%` }} />
             </div>
+            <p className="loading-note">
+              Lần đầu có thể mất 10-30 giây. Sau đó trình duyệt sẽ lưu cache
+              và mở nhanh hơn.
+            </p>
           </div>
         )}
 
@@ -131,8 +184,9 @@ function App() {
         {activeTab === "search" && (
           <>
             <SearchForm
+              value={query}
               onSearch={handleSearch}
-              onClear={() => setResults(null)}
+              onClear={handleClear}
               disabled={loading || !!error}
             />
 
@@ -161,7 +215,9 @@ function App() {
 
       <footer>
         <p>
-          Nguồn: Sưu tầm từ trang báo thời đó · Dữ liệu chỉ mang tính tham khảo
+          Nguồn: baotintuc.vn
+          {totalCount !== null && ` · ${totalCount.toLocaleString("vi-VN")} thí sinh`}
+          {" · Dữ liệu chỉ mang tính tham khảo"}
         </p>
       </footer>
     </div>

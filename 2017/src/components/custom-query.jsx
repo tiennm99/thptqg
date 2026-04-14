@@ -1,51 +1,64 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 const MAX_ROWS = 1000;
 
-const PRESET_QUERIES = [
+const PRESET_GROUPS = [
   {
-    label: "Top 10 điểm Toán cao nhất",
-    sql: `SELECT so_bao_danh, ho_ten, ngay_sinh, toan
+    category: "Xếp hạng môn",
+    queries: [
+      {
+        label: "Top 10 điểm Toán",
+        sql: `SELECT so_bao_danh, ho_ten, ngay_sinh, toan
 FROM student WHERE toan IS NOT NULL
 ORDER BY toan DESC LIMIT 10`,
-  },
-  {
-    label: "Top 10 KHTN (TB Vật lí + Hóa + Sinh)",
-    sql: `SELECT so_bao_danh, ho_ten, vat_ly, hoa_hoc, sinh_hoc, khtn
+      },
+      {
+        label: "Top 10 KHTN",
+        sql: `SELECT so_bao_danh, ho_ten, vat_ly, hoa_hoc, sinh_hoc, khtn
 FROM student WHERE khtn IS NOT NULL
 ORDER BY khtn DESC LIMIT 10`,
-  },
-  {
-    label: "Top 10 KHXH (TB Sử + Địa + GDCD)",
-    sql: `SELECT so_bao_danh, ho_ten, lich_su, dia_ly, gdcd, khxh
+      },
+      {
+        label: "Top 10 KHXH",
+        sql: `SELECT so_bao_danh, ho_ten, lich_su, dia_ly, gdcd, khxh
 FROM student WHERE khxh IS NOT NULL
 ORDER BY khxh DESC LIMIT 10`,
+      },
+      {
+        label: "Thí sinh ≥ 9 điểm Toán",
+        sql: `SELECT so_bao_danh, ho_ten, ngay_sinh, toan
+FROM student WHERE toan >= 9
+ORDER BY toan DESC LIMIT 50`,
+      },
+    ],
   },
   {
-    label: "Top 10 điểm Toán - Long An",
-    sql: `SELECT so_bao_danh, ho_ten, ngay_sinh, toan
+    category: "Long An (SBD 49xxx)",
+    queries: [
+      {
+        label: "Top 10 Toán - Long An",
+        sql: `SELECT so_bao_danh, ho_ten, ngay_sinh, toan
 FROM student
 WHERE so_bao_danh LIKE '49%' AND toan IS NOT NULL
 ORDER BY toan DESC LIMIT 10`,
-  },
-  {
-    label: "Top 100 khối A - Long An",
-    sql: `SELECT so_bao_danh, ho_ten, toan, vat_ly, hoa_hoc,
+      },
+      {
+        label: "Top 100 khối A - Long An",
+        sql: `SELECT so_bao_danh, ho_ten, toan, vat_ly, hoa_hoc,
   ROUND(toan + vat_ly + hoa_hoc, 2) AS tong_khoi_a
 FROM student
 WHERE so_bao_danh LIKE '49%'
   AND toan IS NOT NULL AND vat_ly IS NOT NULL AND hoa_hoc IS NOT NULL
 ORDER BY tong_khoi_a DESC LIMIT 100`,
+      },
+    ],
   },
   {
-    label: "Thí sinh đạt 9+ điểm Toán",
-    sql: `SELECT so_bao_danh, ho_ten, ngay_sinh, toan
-FROM student WHERE toan >= 9
-ORDER BY toan DESC LIMIT 50`,
-  },
-  {
-    label: "Phân bố điểm Toán",
-    sql: `SELECT
+    category: "Thống kê",
+    queries: [
+      {
+        label: "Phân bố điểm Toán",
+        sql: `SELECT
   CASE
     WHEN toan < 1 THEN '0-1'
     WHEN toan < 2 THEN '1-2'
@@ -62,29 +75,38 @@ ORDER BY toan DESC LIMIT 50`,
 FROM student WHERE toan IS NOT NULL
 GROUP BY khoang_diem
 ORDER BY khoang_diem`,
-  },
-  {
-    label: "Số thí sinh theo ngoại ngữ",
-    sql: `SELECT
+      },
+      {
+        label: "Số TS theo ngoại ngữ",
+        sql: `SELECT
   SUM(CASE WHEN tieng_anh   IS NOT NULL THEN 1 ELSE 0 END) AS tieng_anh,
   SUM(CASE WHEN tieng_phap  IS NOT NULL THEN 1 ELSE 0 END) AS tieng_phap,
   SUM(CASE WHEN tieng_nga   IS NOT NULL THEN 1 ELSE 0 END) AS tieng_nga,
   SUM(CASE WHEN tieng_trung IS NOT NULL THEN 1 ELSE 0 END) AS tieng_trung
 FROM student`,
-  },
-  {
-    label: "Số thí sinh chọn KHTN vs KHXH",
-    sql: `SELECT
+      },
+      {
+        label: "KHTN vs KHXH",
+        sql: `SELECT
   SUM(CASE WHEN khtn IS NOT NULL THEN 1 ELSE 0 END) AS chon_khtn,
   SUM(CASE WHEN khxh IS NOT NULL THEN 1 ELSE 0 END) AS chon_khxh,
   SUM(CASE WHEN khtn IS NOT NULL AND khxh IS NOT NULL THEN 1 ELSE 0 END) AS chon_ca_hai
 FROM student`,
+      },
+    ],
   },
   {
-    label: "Schema bảng student",
-    sql: `PRAGMA table_info(student)`,
+    category: "Hệ thống",
+    queries: [
+      {
+        label: "Schema bảng student",
+        sql: `PRAGMA table_info(student)`,
+      },
+    ],
   },
 ];
+
+const SCHEMA_PRESET = PRESET_GROUPS[PRESET_GROUPS.length - 1].queries[0];
 
 export function CustomQuery({ db, disabled }) {
   const [sql, setSql] = useState("");
@@ -158,19 +180,35 @@ export function CustomQuery({ db, disabled }) {
     executeQuery(presetSql);
   }
 
+  // Auto-run the schema preset the first time the tab is opened so the user
+  // sees the student columns instead of a blank textarea.
+  useEffect(() => {
+    if (db && columns.length === 0 && !sql) {
+      executeQuery(SCHEMA_PRESET.sql);
+      setSql(SCHEMA_PRESET.sql);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [db]);
+
   return (
     <div className="custom-query">
-      <div className="preset-list">
-        <span className="preset-label">Mẫu truy vấn:</span>
-        {PRESET_QUERIES.map((p, i) => (
-          <button
-            key={i}
-            className="preset-btn"
-            onClick={() => handlePreset(p.sql)}
-            disabled={disabled}
-          >
-            {p.label}
-          </button>
+      <div className="preset-groups">
+        {PRESET_GROUPS.map((group) => (
+          <div key={group.category} className="preset-group">
+            <span className="preset-label">{group.category}</span>
+            <div className="preset-list">
+              {group.queries.map((p, i) => (
+                <button
+                  key={i}
+                  className="preset-btn"
+                  onClick={() => handlePreset(p.sql)}
+                  disabled={disabled}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
 
