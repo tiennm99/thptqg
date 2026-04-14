@@ -3,10 +3,7 @@ import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 
-const dirs = [
-  "D:/tiennm99/thptqg2017/data/raw",
-  "D:/tiennm99/thptqg2017/data/raw/update",
-];
+const dirs = ["D:/tiennm99/thptqg2017/data"];
 
 const byHash = {};
 for (const d of dirs) {

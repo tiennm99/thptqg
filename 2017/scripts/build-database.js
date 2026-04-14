@@ -6,7 +6,7 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const RAW_DIR = path.join(__dirname, "..", "data", "raw");
+const RAW_DIR = path.join(__dirname, "..", "data");
 const DB_PATH = path.join(__dirname, "..", "public", "thptqg2017.db");
 
 // Score patterns. Note: source data uses both "X.YZ" and "X" forms; allow optional decimal.
@@ -37,29 +37,15 @@ function toAscii(str) {
     .toLowerCase();
 }
 
-// Collect all .xlsx files: raw/ first, then raw/(update)/ to overwrite
+// Collect all .xlsx files directly under data/
 function collectExcelFiles() {
   const files = [];
-
-  // Main raw files first
   for (const f of fs.readdirSync(RAW_DIR)) {
     const full = path.join(RAW_DIR, f);
     if (fs.statSync(full).isFile() && f.endsWith(".xlsx")) {
       files.push(full);
     }
   }
-
-  // Update files second (will overwrite via INSERT OR REPLACE)
-  const updateDir = path.join(RAW_DIR, "update");
-  if (fs.existsSync(updateDir)) {
-    for (const f of fs.readdirSync(updateDir)) {
-      const full = path.join(updateDir, f);
-      if (fs.statSync(full).isFile() && f.endsWith(".xlsx")) {
-        files.push(full);
-      }
-    }
-  }
-
   return files;
 }
 
