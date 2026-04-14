@@ -28,17 +28,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build database
-        run: npm run build:db
+      - name: Build all databases
+        run: npm run build:db:all
 
-      - name: Compress database
-        run: gzip -k -9 public/thptqg2017.db
+      - name: Compress databases
+        run: |
+          gzip -kf -9 public/thptqg2017.db
+          gzip -kf -9 public-old/thptqg2017.db
+          gzip -kf -9 public-old2/thptqg2017.db
 
-      - name: Build site
-        run: npm run build
+      - name: Build all site variants
+        run: npm run build:all
 
-      - name: Remove uncompressed db from dist
-        run: rm -f dist/thptqg2017.db
+      - name: Drop uncompressed DB files from dist
+        run: |
+          rm -f dist/thptqg2017.db
+          rm -f dist/old/thptqg2017.db
+          rm -f dist/old2/thptqg2017.db
 
       - uses: actions/upload-pages-artifact@v3
         with:
