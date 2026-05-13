@@ -1,6 +1,7 @@
 {
   "name": "thptqg2016",
   "private": true,
+  "packageManager": "pnpm@11.1.1",
   "version": "1.0.0",
   "type": "module",
   "description": "Tra cứu điểm thi THPT QG 2016 - Hỗ trợ truy vấn SQL tùy chỉnh",
