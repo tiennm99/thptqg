@@ -20,16 +20,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build all databases
-        run: npm run build:db:all
+        run: pnpm build:db:all
 
       - name: Compress databases
         run: |
@@ -38,7 +42,7 @@ jobs:
           gzip -kf -9 public-old2/thptqg2017.db
 
       - name: Build all site variants
-        run: npm run build:all
+        run: pnpm build:all
 
       - name: Drop uncompressed DB files from dist
         run: |
