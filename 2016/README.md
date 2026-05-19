@@ -19,18 +19,33 @@ Fully static app running entirely in the browser (SQLite via `sql.js`). No backe
 ## Development
 
 ```bash
-npm install
-npm run build:db    # Parse data/*.xlsx → public/thptqg2016.db
-npm run dev         # Vite dev server
-npm run build       # Production bundle → dist/
-npm run lint        # ESLint
+# Build the SQLite database from source Excel files (requires Rust stable)
+pnpm run build:db
+
+# Or build in two steps:
+pnpm run build:rust          # compile the xlsxread binary
+./tools/xlsxread/target/release/xlsxread build \
+  --schema tools/xlsxread/configs/thptqg2016-data.toml \
+  --input data \
+  --output public/thptqg2016.db
+
+pnpm run dev         # Vite dev server
+pnpm run build       # Production bundle → dist/
+pnpm run lint        # ESLint
 ```
 
-The GitHub Actions workflow (`.github/workflows/deploy.yml`) builds the DB, gzips it, and deploys to GitHub Pages on every push to `main`.
+The database is built by the `xlsxread` Rust binary (`tools/xlsxread/`), which
+reads the 119 mixed `.xls`/`.xlsx` files and auto-detects the column layout per
+file (`separate-scores`, `mapped`, or positional default). No Node.js Excel
+library is required at build time.
+
+The GitHub Actions workflow (`.github/workflows/deploy.yml`) compiles
+`xlsxread`, builds the DB, gzips it, and deploys to GitHub Pages on every push
+to `main`.
 
 ## Tech stack
 
-React 19 · Vite · sql.js (WASM) · better-sqlite3 (build-time only) · GitHub Pages
+React 19 · Vite · sql.js (WASM) · xlsxread (Rust, build-time) · GitHub Pages
 
 ## Documentation
 

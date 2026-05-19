@@ -141,3 +141,6 @@ vite.config.ts.timestamp-*
 # Generated database files
 public/*.db
 public/*.db.gz
+
+# Rust build artifacts
+tools/xlsxread/target/

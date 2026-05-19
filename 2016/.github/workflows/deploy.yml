@@ -20,6 +20,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tools/xlsxread
+
+      - name: Build xlsxread binary
+        run: cargo build --release --manifest-path tools/xlsxread/Cargo.toml
+
+      - name: Build database
+        run: >
+          ./tools/xlsxread/target/release/xlsxread build
+          --schema tools/xlsxread/configs/thptqg2016-data.toml
+          --input data
+          --output public/thptqg2016.db
+
       - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v4
@@ -29,9 +45,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
-      - name: Build database
-        run: pnpm build:db
 
       - name: Compress database
         run: gzip -k -9 public/thptqg2016.db
