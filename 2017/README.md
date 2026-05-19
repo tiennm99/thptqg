@@ -24,32 +24,39 @@ Three deployments, one per dataset:
 
 ## Requirements
 
-- Node.js 20+
-- npm
+- Node.js 24+
+- pnpm
+- Rust (stable) — installed via [rustup](https://rustup.rs/); required for `build:db*` scripts
 
 ## Quickstart
 
 ```bash
-npm install
-npm run build:db     # parse data/ into public/thptqg2017.db (~2 min, 159 MB)
+pnpm install
+pnpm build:db        # compile xlsxread + parse data/ → public/thptqg2017.db (~2 min, 159 MB)
 gzip -kf -9 public/thptqg2017.db
-npm run dev          # http://localhost:5173
+pnpm dev             # http://localhost:5173
 ```
+
+The database build pipeline uses the `xlsxread` Rust CLI located at
+`tools/xlsxread/`. It reads `.xls`/`.xlsx` source files, strips
+diacritics, parses score text, and writes a SQLite database — replacing
+the former Node.js + `xlsx` (SheetJS) pipeline. See
+`tools/xlsxread/README.md` for CLI invocation details and config schema.
 
 ## Scripts
 
 | Command | Action |
 |---|---|
-| `npm run dev` | Vite dev server |
-| `npm run build` | Production build (main variant → `dist/`) |
-| `npm run build:old` / `build:old2` | Build variant sites to `dist/old/`, `dist/old2/` |
-| `npm run build:all` | All 3 web variants |
-| `npm run build:db` | Build main DB from `data/` |
-| `npm run build:db:old` / `build:db:old2` | Build old / old2 variant DBs |
-| `npm run build:db:all` | All 3 DBs |
-| `npm run lint` | ESLint |
+| `pnpm dev` | Vite dev server |
+| `pnpm build` | Production build (main variant → `dist/`) |
+| `pnpm build:old` / `build:old2` | Build variant sites to `dist/old/`, `dist/old2/` |
+| `pnpm build:all` | All 3 web variants |
+| `pnpm build:rust` | Compile `tools/xlsxread` release binary (run once; auto-called by `build:db*`) |
+| `pnpm build:db` | Build main DB from `data/` via xlsxread |
+| `pnpm build:db:old` / `build:db:old2` | Build old / old2 variant DBs via xlsxread |
+| `pnpm build:db:all` | All 3 DBs via xlsxread |
+| `pnpm lint` | ESLint |
 | `node scripts/crawl-baotintuc.js` | Re-download all 63 province files from baotintuc.vn |
-| `node scripts/audit-row-counts.js` | Verify source row count matches DB row count |
 | `node scripts/check-duplicates.js` | MD5 + row-content duplicate audit |
 | `node scripts/diff-datasets.js` | Compare `public/` vs `backup/` DB (when backup present) |
 
@@ -64,12 +71,7 @@ npm run dev          # http://localhost:5173
 ├── public-old/        # old variant assets
 ├── public-old2/       # old2 variant assets
 ├── scripts/
-│   ├── build-lib.js              # shared schema + helpers
-│   ├── build-database.js         # parser for data/
-│   ├── build-database-old.js     # parser for data-old/
-│   ├── build-database-old2.js    # parser for data-old2/
 │   ├── crawl-baotintuc.js        # downloader
-│   ├── audit-row-counts.js       # parse-loss audit
 │   ├── check-duplicates.js       # md5 dup detector
 │   └── diff-datasets.js          # DB-to-DB comparator
 ├── src/
@@ -78,6 +80,14 @@ npm run dev          # http://localhost:5173
 │   ├── components/{search-form, score-table, student-detail, custom-query}.jsx
 │   ├── hooks/use-sqlite.js
 │   └── lib/admission-blocks.js   # 49 admission-block definitions + score-tier helper
+├── tools/
+│   └── xlsxread/                 # Rust CLI — reads .xls/.xlsx, writes SQLite
+│       ├── configs/
+│       │   ├── thptqg2017-data.toml       # config for data/ (63 .xls, all sheets)
+│       │   ├── thptqg2017-data-old.toml   # config for data-old/ (63 .xlsx, sheet 0)
+│       │   └── thptqg2017-data-old2.toml  # config for data-old2/ (54 .xlsx, all sheets)
+│       ├── src/                  # Rust source
+│       └── README.md             # CLI reference + config schema
 ├── docs/              # see docs/README.md
 ├── index.html
 ├── vite.config.js
