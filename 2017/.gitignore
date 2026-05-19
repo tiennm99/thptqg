@@ -22,3 +22,6 @@ public-old2/thptqg2017.db.gz
 
 ### Build output ###
 dist/
+
+### Rust build artefacts ###
+tools/xlsxread/target/
