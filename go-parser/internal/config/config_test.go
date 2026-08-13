@@ -155,7 +155,7 @@ func TestLoadRealConfigs(t *testing.T) {
 	}
 	for id, w := range want {
 		t.Run(id, func(t *testing.T) {
-			cfg, err := Load(filepath.Join(root, "parser", "configs", id+".yml"))
+			cfg, err := Load(filepath.Join(root, "go-parser", "configs", id+".yml"))
 			if err != nil {
 				t.Fatalf("load: %v", err)
 			}
@@ -217,7 +217,7 @@ func repoRoot(t *testing.T) string {
 		t.Fatalf("getwd: %v", err)
 	}
 	for i := 0; i < 6; i++ {
-		if _, err := os.Stat(filepath.Join(dir, "parser", "configs")); err == nil {
+		if _, err := os.Stat(filepath.Join(dir, "go-parser", "configs")); err == nil {
 			return dir
 		}
 		dir = filepath.Dir(dir)

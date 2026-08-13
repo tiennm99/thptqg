@@ -34,7 +34,7 @@ docs/                 architecture, data pipeline, deployment
 The dataset id is one identifier end to end:
 
 ```
-data/2017-old/ → parser/configs/2017-old.yml → db/2017-old.db.gz → /thptqg/2017-old/
+data/2017-old/ → go-parser/configs/2017-old.yml → db/2017-old.db.gz → /thptqg/2017-old/
 ```
 
 ## Build
@@ -53,7 +53,7 @@ Pushing to `main` runs the same steps in
 ## Adding a dataset
 
 1. Put the Excel files in `data/<id>/`
-2. Add `parser/configs/<id>.yml` — sheet mode, column indices, validation
+2. Add `go-parser/configs/<id>.yml` — sheet mode, column indices, validation
    guards. No SQL; the schema is canonical.
 3. Add an entry to `DATASETS` in `src/datasets.js`
 

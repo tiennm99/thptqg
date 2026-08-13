@@ -31,7 +31,7 @@ data/<id>/*.xls(x)
 One identifier ties the whole pipeline together:
 
 ```
-data/2017-old/  →  parser/configs/2017-old.yml  →  db/2017-old.db.gz  →  /thptqg/2017-old/
+data/2017-old/  →  go-parser/configs/2017-old.yml  →  db/2017-old.db.gz  →  /thptqg/2017-old/
 ```
 
 `src/datasets.js` declares the four ids once. The frontend, the database build

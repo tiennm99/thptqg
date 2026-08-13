@@ -28,7 +28,7 @@ export default defineConfig([
   },
   {
     // Node-executed files (Vite config, parser tooling) run with Node globals.
-    files: ['vite.config.js', 'scripts/**/*.js', 'go-parser/scripts/**/*.js', 'parser/scripts/**/*.js'],
+    files: ['vite.config.js', 'scripts/**/*.js', 'go-parser/scripts/**/*.js'],
     languageOptions: {
       globals: { ...globals.node },
     },

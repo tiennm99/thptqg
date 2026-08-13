@@ -2,9 +2,9 @@
 
 From raw Excel files to a compressed SQLite file the browser can load.
 
-One Rust binary (`parser/`) builds every dataset. What differs per dataset is
+One Rust binary (`go-parser/`) builds every dataset. What differs per dataset is
 parse rules only — sheet strategy, column layout, validation guards — declared
-in `parser/configs/<id>.yml`. The table shape, the INSERT and the subject
+in `go-parser/configs/<id>.yml`. The table shape, the INSERT and the subject
 regexes are canonical and live in `go-parser/internal/schema/schema.go`.
 
 ## Sources
@@ -19,7 +19,7 @@ regexes are canonical and live in `go-parser/internal/schema/schema.go`.
 Only `2017` can be re-fetched:
 
 ```bash
-node parser/scripts/crawl-baotintuc.js
+node go-parser/scripts/crawl-baotintuc.js
 ```
 
 Idempotent — skips files already present, saves to `data/2017/`. Source article:
@@ -116,34 +116,44 @@ silently drops 13,720 students** (Hanoi +7,275, HCM +6,445). That is what
 
 ## Verifying a rebuild
 
-`parser/scripts/db-stats.js` dumps row counts, per-column non-NULL counts, file
-size and a deterministic student sample as JSON.
-`parser/scripts/verify-parity.js` diffs two such files and exits non-zero on any
-mismatch.
+`npm run build:db` verifies itself: each database's row count must match the
+figure in the table above, and each `.db.gz` must be at least 90% of its usual
+size, or the build fails rather than publishing. That guard is the reason a
+truncated dataset cannot reach the site with a green pipeline.
+
+For a deeper check, `go-parser/scripts/differential-parity.mjs` compares two sets
+of databases field-by-field — row counts, per-column non-NULL counts, a
+full-table SHA-256 over every row ordered by `so_bao_danh`, schema metadata, and
+build stdout:
 
 ```bash
-node parser/scripts/db-stats.js 2016=<path>.db … > current.json
-node parser/scripts/verify-parity.js plans/reports/parser-parity-baseline.json current.json
+node go-parser/scripts/differential-parity.mjs \
+  --rust /path/to/a-{id}.db --go /path/to/b-{id}.db
 ```
 
-The committed baseline was built with the pre-refactor code and cannot be
-regenerated — the two old crates no longer exist. Both scripts use the built-in
-`node:sqlite`, so they need no dependencies.
+It exits non-zero on any mismatch and fails loudly if a dataset is missing rather
+than skipping it. Written for the Rust-to-Go migration, it works for any two
+builds. Uses the built-in `node:sqlite`, so it needs no dependencies.
+
+`go-parser/internal/reader` additionally carries a frozen oracle of per-file
+cell-dump hashes covering all 299 inputs; `npm run test:go` fails if any single
+cell of any input file reads differently.
 
 ## Refreshing the 2017 data
 
 ```bash
 rm data/2017/*.xls
-node parser/scripts/crawl-baotintuc.js
+node go-parser/scripts/crawl-baotintuc.js
 node go-parser/scripts/build-db.js 2017
 ```
 
-Then re-run the parity check above and confirm the row count still matches.
+The row-count guard in `build:db` confirms the rebuild matches the expected total.
 
-## Legacy scripts
+## Removed scripts
 
-`parser/scripts/check-duplicates.js` and `diff-datasets.js` are one-off audits
-that were already broken before the repo was unified — a hardcoded Windows path
-in one, an undeclared `better-sqlite3` dependency and stale paths in the other.
-Each carries a comment saying so. For comparing two builds, use `db-stats.js`
-plus `verify-parity.js` instead.
+`check-duplicates.js`, `diff-datasets.js`, `db-stats.js` and `verify-parity.js`
+were dropped with the Rust parser. The first two had been broken since before the
+repo was unified (a hardcoded Windows path in one, an undeclared
+`better-sqlite3` dependency in the other) and neither had any automated caller.
+The latter two are superseded by `differential-parity.mjs`, which compares more
+and cannot silently skip a dataset.

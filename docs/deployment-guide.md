@@ -56,7 +56,7 @@ up as a blank page with 404s on `/assets/...`.
 ## Adding a dataset
 
 1. Put the Excel files in `data/<id>/`
-2. Add `parser/configs/<id>.yml` with the parse rules — sheet mode, column
+2. Add `go-parser/configs/<id>.yml` with the parse rules — sheet mode, column
    indices, SBD validation, header tokens, blank-row stripping. No SQL: the
    schema is canonical and lives in `go-parser/internal/schema/schema.go`
 3. Add an entry to `DATASETS` in `src/datasets.js`

@@ -3,7 +3,7 @@
  *
  * `id` is the single identifier used end to end:
  *
- *   data/<id>/  →  parser/configs/<id>.yml  →  db/<id>.db.gz  →  /thptqg/<id>/
+ *   data/<id>/  →  go-parser/configs/<id>.yml  →  db/<id>.db.gz  →  /thptqg/<id>/
  *
  * Site path and database URL are derived from `id` rather than stored, so a
  * dataset cannot be misconfigured into pointing at the wrong database.
