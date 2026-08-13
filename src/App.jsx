@@ -98,17 +98,21 @@ function DatasetApp({ dataset }) {
     [db],
   );
 
-  // Run initial URL query once DB is ready
+  // Hydrate a ?q= deep link once, as soon as the database is ready. Fires at
+  // most once per mount, so it cannot cascade.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (db && query) handleSearch(query);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [db]);
 
-  // Fetch total count for footer once DB loads
+  // Read the candidate count for the footer once the database loads. One-shot
+  // per mount; the query result cannot change without a new database.
   useEffect(() => {
     if (!db) return;
     const stmt = db.prepare("SELECT COUNT(*) AS c FROM student");
     stmt.step();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTotalCount(stmt.getAsObject().c);
     stmt.free();
   }, [db]);

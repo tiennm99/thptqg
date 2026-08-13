@@ -82,6 +82,7 @@ export function CustomQuery({ db, disabled, presets = [] }) {
   // sees the student columns instead of a blank textarea.
   useEffect(() => {
     if (db && schemaPreset && columns.length === 0 && !sql) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       executeQuery(schemaPreset.sql);
       setSql(schemaPreset.sql);
     }

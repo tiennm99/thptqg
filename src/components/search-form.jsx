@@ -16,8 +16,11 @@ export function SearchForm({
   const { mode, hint } = detectMode(query);
   const canSearch = mode === "sbd" || mode === "name";
 
-  // Sync from external value (deep-link URL, clear button in parent)
+  // Mirror the parent's query into local state. The parent owns the value so
+  // it can bind it to the URL; this only runs when that external value changes
+  // (deep-link hydration, or the clear button), never in response to typing.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setQuery(value);
   }, [value]);
 
