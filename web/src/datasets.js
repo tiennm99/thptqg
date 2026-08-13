@@ -24,7 +24,6 @@ const SUBTITLE = "Dữ liệu thí sinh toàn quốc · Hỗ trợ truy vấn SQ
 const CONTENT = {
   2016: {
     label: "Kỳ thi 2016",
-    blurb: "877.461 thí sinh",
     title: "Tra cứu điểm thi THPT Quốc gia 2016",
     subtitle: SUBTITLE,
     source: "Bộ GD&ĐT",
@@ -33,7 +32,6 @@ const CONTENT = {
   },
   2017: {
     label: "Kỳ thi 2017",
-    blurb: "861.068 thí sinh",
     title: "Tra cứu điểm thi THPT Quốc gia 2017",
     subtitle: SUBTITLE,
     source: "baotintuc.vn",
@@ -60,11 +58,11 @@ for (const id of Object.keys(CONTENT)) {
 export const DATASETS = registry.datasets.map((d) => ({
   id: d.id,
   dbSizeMb: d.dbSizeMb,
+  // Derived, not written twice: the candidate count the hub shows is the same
+  // number the assembler enforces, so the two cannot drift apart.
+  blurb: `${d.expectedRows.toLocaleString("vi-VN")} thí sinh`,
   ...CONTENT[d.id],
 }));
-
-/** Dataset IDs in build order. */
-export const DATASET_IDS = DATASETS.map((d) => d.id);
 
 /** Site path for a dataset, e.g. pathOf(d, "/thptqg/") → "/thptqg/2017/". */
 export function pathOf(dataset, base) {

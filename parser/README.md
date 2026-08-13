@@ -49,7 +49,7 @@ containing it.
 The port was gated on a field-by-field comparison of both implementations across
 the four datasets that existed then — 3,265,641 rows with identical full-table
 SHA-256, identical per-column non-NULL counts, identical schema metadata and
-identical build stdout. `scripts/differential-parity.mjs` is that comparator and
+identical build stdout. `assemble verify` is that comparator today and
 still runs against any two sets of databases.
 
 Behaviour was matched bug-for-bug, deliberately. Several quirks look like
@@ -70,7 +70,14 @@ Each has a test naming it, so none can be tidied away by accident.
 `testdata/reader-fidelity-hashes.tsv` holds a SHA-256 per input file over a
 canonical dump of every cell of every sheet. It is **frozen**: it was produced
 by the Rust reader, which no longer exists, so it cannot be regenerated. It
-still fails if any single cell of any of the 182 files reads differently.
+still fails if any single cell of any input file reads differently.
+
+A mismatch names the file but not the cell. `cmd/dumpcells` prints the stream
+the hash is taken over, so two runs can be diffed:
+
+```bash
+go -C parser run ./cmd/dumpcells ../data/2017/an-giang.xls out.tsv
+```
 
 The assembler refuses to publish a database whose row count does not match
 the known figure, or whose artifact is under 90% of its usual size.

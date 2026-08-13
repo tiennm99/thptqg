@@ -59,6 +59,7 @@ is missing altogether. Sub-steps when iterating:
 ```bash
 go -C assembler run ./cmd/assemble db 2017   # one database
 go -C assembler run ./cmd/assemble site      # web build and _site only
+go -C assembler run ./cmd/assemble verify A B  # compare two sets of databases
 (cd web && npm run dev)                      # the app against staged databases
 ```
 

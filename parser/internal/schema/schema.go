@@ -1,8 +1,7 @@
 // Package schema is the single source of truth for the SQL shape of every
 // dataset — a direct port of parser/src/schema.rs.
 //
-// All four datasets (2016, 2017, 2017-old, 2017-old2) write into the same
-// 22-column student table. Columns a dataset has no data for bind NULL.
+// Every dataset writes into the same 22-column student table. Columns a dataset has no data for bind NULL.
 //
 // Column provenance:
 //

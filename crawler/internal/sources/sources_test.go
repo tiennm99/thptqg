@@ -52,7 +52,7 @@ func resolveFixture(t *testing.T, src Source) []File {
 // parser sorts its inputs and inserts last-wins, so filenames decide which
 // row survives a duplicate exam number. If extraction or naming drifted, a
 // re-crawl could rebuild a database with the same row count and different
-// content, which the row-count guard in build-db.js would not catch.
+// content, which the assembler's row-count guard would not catch.
 //
 // The committed data/<id>/ is the oracle: reading the source article and
 // applying the source's naming rule must reproduce it exactly, both directions.

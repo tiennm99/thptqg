@@ -147,7 +147,6 @@ func Standard(cfg *config.DatasetConfig, inputDir, outputPath string) error {
 	}
 	defer db.Close()
 
-	isOld2 := strings.Contains(label, "old2")
 	stripBlank := cfg.Reader.StripBlankRows
 
 	// One transaction spans the whole dataset directory (main.rs:120,184).
@@ -230,7 +229,7 @@ func Standard(cfg *config.DatasetConfig, inputDir, outputPath string) error {
 	}
 
 	// VACUUM only after COMMIT — SQLite refuses it inside a transaction.
-	return writer.Finish(db, outputPath, st, label, isOld2)
+	return writer.Finish(db, outputPath, st)
 }
 
 // cellAt returns the trimmed cell at idx, or "" when out of range — the

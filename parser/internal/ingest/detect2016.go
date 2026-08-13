@@ -309,7 +309,7 @@ func Detect2016(cfg *config.DatasetConfig, inputDir, outputPath string) error {
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit: %w", err)
 	}
-	return writer.Finish(db, outputPath, st, label, false)
+	return writer.Finish(db, outputPath, st)
 }
 
 // processFile2016 detects the layout per SHEET and processes that sheet's rows.

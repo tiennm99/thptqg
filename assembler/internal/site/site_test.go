@@ -22,7 +22,7 @@ func fakeBuild(t *testing.T, dbs ...string) Paths {
 	for _, name := range dbs {
 		write(t, filepath.Join(dist, "db", name), "gzipped-bytes")
 	}
-	return Paths{Root: root, Web: filepath.Join(root, "web"), Dist: dist, Site: filepath.Join(root, "_site")}
+	return Paths{Web: filepath.Join(root, "web"), Dist: dist, Site: filepath.Join(root, "_site")}
 }
 
 func write(t *testing.T, path, body string) {
@@ -113,7 +113,7 @@ func TestGzipIsNotMistakenForRaw(t *testing.T) {
 
 func TestAssembleRejectsAMissingBuild(t *testing.T) {
 	root := t.TempDir()
-	p := Paths{Root: root, Web: root, Dist: filepath.Join(root, "dist"), Site: filepath.Join(root, "_site")}
+	p := Paths{Web: root, Dist: filepath.Join(root, "dist"), Site: filepath.Join(root, "_site")}
 	if err := Assemble(p, datasets); err == nil {
 		t.Fatal("expected an error when there is no Vite build")
 	}

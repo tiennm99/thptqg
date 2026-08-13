@@ -10,8 +10,8 @@ import react from "@vitejs/plugin-react";
 // path, so every URL is a real static file and no SPA 404-fallback is needed —
 // and the existing ?q= deep links keep working, which that fallback would break.
 //
-// publicDir holds only the gzipped databases, staged there by
-// parser/scripts/build-db.js. Nothing uncompressed is ever placed in it.
+// publicDir holds only the gzipped databases, staged there by the assembler
+// (assembler/internal/databases). Nothing uncompressed is ever placed in it.
 //
 // It sits at the repository root rather than inside this workspace because
 // parser writes it, so the path has to climb out of web/. Vite resolves
@@ -19,8 +19,8 @@ import react from "@vitejs/plugin-react";
 //
 // outDir is left at its default, so the build lands in web/dist and this
 // workspace stays self-contained. The Pages artifact (_site) is assembled at
-// the repository root by web/scripts/assemble-site.js, since that is where the
-// deploy action uploads from.
+// the repository root by the assembler (assembler/internal/site), since that is
+// where the deploy action uploads from.
 export default defineConfig({
   plugins: [react()],
   base: "/thptqg/",

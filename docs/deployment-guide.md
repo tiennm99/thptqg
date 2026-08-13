@@ -8,7 +8,7 @@ One-time setup: **Settings → Pages → Source: GitHub Actions**.
 ## What the workflow does
 
 1. Checkout, Go toolchain, Node 24, `npm ci` in `web/`
-2. Parser and crawler test suites, web lint, `govulncheck` over all three modules
+2. Parser, crawler and assembler test suites, web lint, `govulncheck` over all three modules
 3. `go -C assembler run ./cmd/assemble` — the whole pipeline: compile the
    parser, build and verify each database, compress it into `.build/public/db/`,
    run the Vite build, assemble `_site/`
@@ -85,7 +85,7 @@ artifact — one missing line away from publishing it.
 - **No server-side compression is assumed.** The app fetches the `.gz` bytes
   directly rather than relying on `Content-Encoding: gzip`; Pages does not
   reliably compress arbitrary paths on the fly.
-- **Total artifact is about 177 MB**, well inside the 1 GB site limit.
+- **Total artifact is about 93 MB**, well inside the 1 GB site limit.
 
 ## Rollback
 

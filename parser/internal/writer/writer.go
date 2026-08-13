@@ -117,12 +117,12 @@ type Stats struct {
 //
 // VACUUM must run AFTER the transaction commits — SQLite refuses it inside one.
 //
-// The wording branches on datasetLabel, which Rust derives from the input
-// directory's basename (main.rs:98-101). That makes the output depend on a
-// filesystem path rather than on config; it is reproduced here for parity, and
-// the caller passes the label explicitly so tests are not at the mercy of a
-// temp-directory name.
-func Finish(db *sql.DB, dbPath string, st Stats, datasetLabel string, isOld2 bool) error {
+// The Rust original varied the wording by dataset, keying off the input
+// directory's basename (main.rs:98-101) — one phrasing for the 2017-old2
+// export, another for anything with "old" in its name. Both of those datasets
+// have been removed, so only one branch was ever taken; the wording below is
+// exactly what 2016 and 2017 have always printed.
+func Finish(db *sql.DB, dbPath string, st Stats) error {
 	if _, err := db.Exec("VACUUM"); err != nil {
 		return fmt.Errorf("vacuum: %w", err)
 	}
@@ -135,22 +135,13 @@ func Finish(db *sql.DB, dbPath string, st Stats, datasetLabel string, isOld2 boo
 	insertable := st.SourceRows - st.Skipped
 
 	fmt.Println()
-	if isOld2 {
-		fmt.Printf("Source non-blank data rows:      %d\n", st.SourceRows)
-		fmt.Printf("  skipped (empty/non-numeric SBD): %d\n", st.Skipped)
-	} else {
-		fmt.Printf("Source data rows (post-header):  %d\n", st.SourceRows)
-		if containsOld(datasetLabel) {
-			fmt.Printf("  skipped (empty/non-numeric SBD): %d\n", st.Skipped)
-		} else {
-			fmt.Printf("  skipped (empty/invalid):        %d\n", st.Skipped)
-		}
-	}
+	fmt.Printf("Source data rows (post-header):  %d\n", st.SourceRows)
+	fmt.Printf("  skipped (empty/invalid):        %d\n", st.Skipped)
 	fmt.Printf("  insertable:                     %d\n", insertable)
 	fmt.Printf("  insert errors:                  %d\n", st.Errors)
 	fmt.Printf("DB rows (distinct SBD):           %d\n", dbCount)
 
-	if !containsOld(datasetLabel) && st.Errors == 0 {
+	if st.Errors == 0 {
 		gap := int64(insertable) - dbCount
 		if gap == 0 {
 			fmt.Println("Audit: OK — every source row made it in.")
@@ -165,13 +156,4 @@ func Finish(db *sql.DB, dbPath string, st Stats, datasetLabel string, isOld2 boo
 	}
 	fmt.Printf("Size: %.1f MB\n", float64(size)/1024.0/1024.0)
 	return nil
-}
-
-func containsOld(label string) bool {
-	for i := 0; i+3 <= len(label); i++ {
-		if label[i:i+3] == "old" {
-			return true
-		}
-	}
-	return false
 }

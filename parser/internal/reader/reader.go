@@ -2,9 +2,12 @@
 // contract, mirroring parser/src/reader.rs (which wraps calamine's
 // open_workbook_auto for both formats).
 //
-// The contract is deliberately row-streaming rather than whole-workbook
-// materialising: data/2017/ha-noi.xls alone holds 72k rows across two sheets,
-// and the Rust original keeps at most one sheet range live at a time.
+// The *contract* is row-at-a-time: callers receive one row per callback and
+// never hold the workbook. The two implementations do not honour that in
+// memory — both decode the whole workbook into [][][]Cell up front, because
+// neither underlying library exposes a usable row cursor. data/2017/ha-noi.xls
+// alone holds 72k rows across two sheets, so a caller that assumed streaming
+// memory here would be wrong.
 package reader
 
 import (
@@ -27,7 +30,7 @@ type Cell struct {
 
 // Sheet carries a sheet's identity and geometry. Height and Width describe the
 // used range, matching calamine's Range::height()/width(); every used range in
-// the corpus starts at (0,0), verified across all 299 files.
+// the corpus starts at (0,0), verified across every input file.
 type Sheet struct {
 	Index  int
 	Name   string

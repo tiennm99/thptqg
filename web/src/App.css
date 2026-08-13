@@ -14,7 +14,6 @@
   --focus-ring: 0 0 0 3px rgba(59, 79, 228, 0.35);
   --radius: 10px;
   --radius-sm: 6px;
-  --shadow-sm: 0 1px 2px rgba(15, 20, 40, 0.05);
   --shadow-md: 0 6px 20px rgba(15, 20, 40, 0.08);
 
   /* Score tier palette — TFT rarity ladder (white → green → blue → purple → gold → prismatic).
@@ -49,7 +48,6 @@
     --primary-hover: #879aff;
     --primary-ink: #0f1220;
     --focus-ring: 0 0 0 3px rgba(109, 130, 255, 0.45);
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
     --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.55);
 
     --tier-common-bg:    #242838;  --tier-common-ink:    #c5cad8;  --tier-common-accent:    #4a5163;
@@ -853,16 +851,7 @@ footer {
   font-size: 0.9rem;
 }
 
-.hub-archive h2 {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  margin-bottom: 0;
-}
 
-.hub-list-compact {
-  margin-top: 0.75rem;
-}
 
 .hub-back {
   margin: 0.35rem 0 0;
