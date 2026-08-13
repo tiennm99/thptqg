@@ -21,7 +21,7 @@ runs are idempotent: files already present are skipped.
 ```bash
 npm run crawl:2016              # crawler/internal/sources/source_2016.go
 npm run crawl:2017              # crawler/internal/sources/source_2017.go
-npm run crawl:2017 -- --list    # show what would be downloaded, fetch nothing
+npm run crawl:2017 -- --list    # read the article, list the files, download none
 ```
 
 **2017** comes from the article
@@ -29,19 +29,36 @@ npm run crawl:2017 -- --list    # show what would be downloaded, fetch nothing
 and its CDN is still serving the files.
 
 **2016** comes from the aggregator article
-`cong-bo-diem-thi-thptqg-2016-toan-bo-120-cum-thi-da-co-diem.html`. The site
-that originally published it (`dtntbacgiang.edu.vn`) no longer resolves, so the
-link list was read from the Internet Archive's copy of the page. Two caveats
-that matter:
+`cong-bo-diem-thi-thptqg-2016-toan-bo-120-cum-thi-da-co-diem.html`, served from
+a mirror — the site that first published it (`dtntbacgiang.edu.vn`) no longer
+resolves.
 
-- **The list is verified; the host is not.** All 119 filenames match `data/2016/`
-  exactly in both directions, which is asserted by a test. But the Archive
-  captured only the article, not the spreadsheets, so the URLs themselves could
-  not be confirmed by fetching. `baseURL` in `source_2016.go` points at a mirror
-  of the same article that is still online; if it serves the files from a
-  different directory, `uploadPath` is the one constant to change.
-- **`data/2016/` is still the only confirmed copy.** Do not delete it on the
-  assumption that a crawl can restore it.
+That mirror is **not reachable from every network.** It resolves to a Vietnamese
+address that times out from at least some hosts abroad, in which case the crawl
+stops with a connection error before downloading anything. `data/2016/` is
+therefore still the only confirmed copy: do not delete it on the assumption that
+a crawl can restore it.
+
+## How a source is defined
+
+A source carries no link list. It names the article that published the files and
+says how to name what it finds there:
+
+| field | meaning |
+| --- | --- |
+| `Article` | the page to read links from |
+| `Exts` | which file extensions to pick out of it |
+| `WantFiles` | how many links to expect — fewer aborts the crawl |
+| `Dest` | the local filename for one link |
+
+`internal/article` does the fetching and HTML parsing; `internal/fetch` does the
+downloading. Because `Article` is read at run time, `--list` needs network access
+too.
+
+`WantFiles` exists because a partial crawl is otherwise silent: go-parser will
+build a short database from whatever files are present, and only the row-count
+guard would notice, after the fact. A page that changes shape stops the crawl
+instead.
 
 ### Local filenames are load-bearing
 
@@ -56,13 +73,14 @@ Each source therefore pins its local names, and
 committed `data/<id>/` in both directions — every name it would write exists,
 and every file present is accounted for.
 
-2017 derives its names from the province (the CDN's own names are inconsistent:
+2017 derives its names from the province name in the link text, transliterated
+to ASCII (the CDN's own names are inconsistent:
 `Angiang.xls`, `1BaRiaVungTau.xls`, `23HaiPhong.xls`). 2016 keeps the
 server-assigned names verbatim, since it did not choose them.
 
 ## Source Excel shapes
 
-The 2017 datasets share one layout:
+2017 has one layout:
 
 | Col | Name | Content |
 | --- | --- | --- |
@@ -188,8 +206,12 @@ repo was unified (a hardcoded Windows path in one, an undeclared
 The latter two are superseded by `differential-parity.mjs`, which compares more
 and cannot silently skip a dataset.
 
-`crawl-baotintuc.js` was not dropped but rewritten in Go as
-`crawler/internal/sources/source_2017.go`, keeping the same link list and the same
-local filenames. The rewrite added a per-file timeout and made downloads land on
-a `.part` file first — writing straight to the destination meant an interrupted
-run left a truncated file that the skip check would then skip forever.
+`crawl-baotintuc.js` was not dropped but rewritten as the Go `crawler/` module,
+producing the same local filenames. Two changes beyond the port:
+
+- It carried its 63 links as a hardcoded array. The Go version reads them from
+  the article instead, so the list cannot drift from what was published.
+- Downloads land on a `.part` file and are renamed on completion. Writing
+  straight to the destination left a truncated file after an interrupted run,
+  and since the skip check only tests for a non-empty file, every later run
+  would skip it — the corruption was permanent and silent.

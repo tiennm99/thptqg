@@ -23,7 +23,8 @@ web/                  the frontend — one Vite app serving both datasets and th
   src/router.js         pathname → dataset
   scripts/              site assembly
 crawler/              Go — re-fetches the source spreadsheets
-  internal/sources/     one file per data source: its links and local filenames
+  internal/sources/     per dataset: which article to read, how to name its files
+  internal/article/     pulls the download links out of that article
   internal/fetch/       concurrent, resumable downloading
 go-parser/            Go — Excel to SQLite
   internal/schema/      canonical 22-column table: DDL, INSERT, subject regexes
@@ -58,11 +59,12 @@ them:
 
 ```bash
 npm run crawl:2016     # re-fetch data/2016/
-npm run crawl:2017     # re-fetch data/2017/ from the baotintuc.vn CDN
+npm run crawl:2017     # re-fetch data/2017/
 ```
 
-Crawling is idempotent — files already present are skipped — and is never part
-of the build.
+Each reads the download links out of the article that published the dataset, so
+no link list is kept in the repository. Crawling is idempotent — files already
+present are skipped — and is never part of the build.
 
 Pushing to `main` runs the same steps in
 `.github/workflows/deploy-pages.yml` and publishes to GitHub Pages.

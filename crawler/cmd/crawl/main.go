@@ -3,24 +3,27 @@
 // The argument is the dataset id, the same one used by go-parser's configs and
 // the published site paths.
 //
-//	crawl 2017                      # from the baotintuc.vn CDN
-//	crawl 2016                      # source not yet configured
+//	crawl 2016                      # 119 exam-cluster files
+//	crawl 2017                      # 63 province files
 //	crawl 2017 --list               # show what would be downloaded
 //
-// Runs are idempotent: a file already present and non-empty is skipped, so an
-// interrupted crawl can simply be re-run.
+// Each run reads the download links out of the article that published them, so
+// --list needs network access too. Runs are idempotent: a file already present
+// and non-empty is skipped, so an interrupted crawl can simply be re-run.
 package main
 
 import (
 	"context"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
 	"time"
 
+	"github.com/tiennm99/thptqg/crawler/internal/article"
 	"github.com/tiennm99/thptqg/crawler/internal/fetch"
 	"github.com/tiennm99/thptqg/crawler/internal/sources"
 )
@@ -70,12 +73,22 @@ func run(args []string) error {
 		return err
 	}
 
-	files, err := src.Files()
+	// Ctrl-C cancels the article fetch and any in-flight download; each worker
+	// deletes its partial file on the way out, so an interrupted run leaves
+	// nothing half-written.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	client := &http.Client{Timeout: *timeout}
+
+	fmt.Printf("Reading %s\n", src.Article)
+	links, err := article.Fetch(ctx, client, src.Article, src.Headers, src.Exts...)
 	if err != nil {
 		return err
 	}
-	if len(files) == 0 {
-		return fmt.Errorf("source %q produced no files", src.ID)
+	files, err := src.Resolve(links)
+	if err != nil {
+		return err
 	}
 
 	outDir, err := filepath.Abs(*out)
@@ -98,11 +111,6 @@ func run(args []string) error {
 		}
 		return nil
 	}
-
-	// Ctrl-C cancels in-flight requests; each worker deletes its partial file
-	// on the way out, so an interrupted run leaves nothing half-written.
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 
 	fmt.Printf("Downloading %d files to %s...\n", len(items), outDir)
 
