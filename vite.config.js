@@ -11,7 +11,7 @@ import react from "@vitejs/plugin-react";
 // and the existing ?q= deep links keep working, which that fallback would break.
 //
 // publicDir holds only the gzipped databases, staged there by
-// parser/scripts/build-db.js. Nothing uncompressed is ever placed in it.
+// go-parser/scripts/build-db.js. Nothing uncompressed is ever placed in it.
 export default defineConfig({
   plugins: [react()],
   base: "/thptqg/",

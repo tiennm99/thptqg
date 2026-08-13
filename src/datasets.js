@@ -3,18 +3,18 @@
  *
  * `id` is the single identifier used end to end:
  *
- *   data/<id>/  →  parser/configs/<id>.toml  →  db/<id>.db.gz  →  /thptqg/<id>/
+ *   data/<id>/  →  parser/configs/<id>.yml  →  db/<id>.db.gz  →  /thptqg/<id>/
  *
  * Site path and database URL are derived from `id` rather than stored, so a
  * dataset cannot be misconfigured into pointing at the wrong database.
  *
- * Imported by the Vite app *and* by parser/scripts/build-db.js under plain
+ * Imported by the Vite app *and* by go-parser/scripts/build-db.js under plain
  * Node, so this module must stay free of `import.meta.env` and any Vite-only
  * syntax. Callers pass the base URL in explicitly for that reason.
  */
 
 // Extension is required: this module is also imported by plain Node
-// (parser/scripts/build-db.js), which does not resolve extensionless paths.
+// (go-parser/scripts/build-db.js), which does not resolve extensionless paths.
 import { PRESETS_2016, PRESETS_2017 } from "./lib/sql-presets.js";
 
 const SUBTITLE = "Dữ liệu thí sinh toàn quốc · Hỗ trợ truy vấn SQL tùy chỉnh";

@@ -6,20 +6,20 @@
 #
 # Table shape, INSERT and subject regexes are canonical — see src/schema.rs.
 
-[reader]
-sheet_mode = "all"
-strip_blank_rows = false
+reader:
+  sheet_mode: all
+  strip_blank_rows: false
 
-[columns]
-ho_ten      = 0
-ngay_sinh   = 1
-so_bao_danh = 2
-diem_thi    = 3
+columns:
+  ho_ten: 0
+  ngay_sinh: 1
+  so_bao_danh: 2
+  diem_thi: 3
 
-[validation]
-require_numeric_sbd   = false
-require_nonempty_name = true
-require_nonempty_sbd  = true
+validation:
+  require_numeric_sbd: false
+  require_nonempty_name: true
+  require_nonempty_sbd: true
 
-[header]
-tokens = ["HO_TEN", "HỌ TÊN", "STT"]
+header:
+  tokens: ["HO_TEN", "HỌ TÊN", "STT"]

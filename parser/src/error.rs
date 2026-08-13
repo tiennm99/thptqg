@@ -20,7 +20,7 @@ pub enum BuildError {
     Sqlite(#[from] rusqlite::Error),
 
     #[error("Config parse error: {0}")]
-    Config(#[from] toml::de::Error),
+    Config(#[from] serde_yaml::Error),
 
     #[error("Regex compile error for pattern '{pattern}': {source}")]
     Regex {

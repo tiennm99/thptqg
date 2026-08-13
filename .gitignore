@@ -22,3 +22,7 @@ parser/target/
 
 ### Assembled Pages artifact ###
 _site/
+
+# Go parser build output and regenerable ground-truth dumps
+go-parser/bin/
+go-parser/testdata/dumps/

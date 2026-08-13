@@ -31,11 +31,11 @@ data/<id>/*.xls(x)
 One identifier ties the whole pipeline together:
 
 ```
-data/2017-old/  →  parser/configs/2017-old.toml  →  db/2017-old.db.gz  →  /thptqg/2017-old/
+data/2017-old/  →  parser/configs/2017-old.yml  →  db/2017-old.db.gz  →  /thptqg/2017-old/
 ```
 
 `src/datasets.js` declares the four ids once. The frontend, the database build
-(`parser/scripts/build-db.js`) and the site assembly all import that list, so
+(`go-parser/scripts/build-db.js`) and the site assembly all import that list, so
 adding a dataset means adding one entry and one config file.
 
 | id | Exam | Rows | Source |
@@ -47,7 +47,7 @@ adding a dataset means adding one entry and one config file.
 
 ## Canonical schema
 
-Defined once in `parser/src/schema.rs` — DDL, INSERT, column order and the 16
+Defined once in `go-parser/internal/schema/schema.go` — DDL, INSERT, column order and the 16
 subject regexes. The four TOML configs carry no SQL at all, only per-dataset
 parse rules. Config parsing uses `deny_unknown_fields`, so a leftover `[schema]`
 block fails loudly instead of looking effective while `schema.rs` drives the

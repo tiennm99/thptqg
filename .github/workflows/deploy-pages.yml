@@ -3,6 +3,11 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+  # Pull requests run the build job only. Before this, the workflow triggered on
+  # main-push and workflow_dispatch alone, so "verify on a branch first" was not
+  # actually possible: pushing to a branch ran nothing, and dispatching from one
+  # published that branch straight to the live site.
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -17,14 +22,18 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # The parser is pure Go — grate, excelize, yaml.v3 and modernc.org/sqlite
+      # are all cgo-free — so no C toolchain is needed. Set explicitly rather
+      # than relying on the default.
+      CGO_ENABLED: '0'
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-go@v5
         with:
-          workspaces: parser
+          go-version: '1.26'
+          cache-dependency-path: go-parser/go.sum
 
       - uses: actions/setup-node@v4
         with:
@@ -34,12 +43,26 @@ jobs:
 
       - run: npm ci
 
+      # The reader-fidelity suite compares all 299 real input files against a
+      # committed hash oracle, so it is the regression guard for the whole
+      # reader. Runs before anything is built.
+      - name: Test parser
+        run: npm run test:go
+
+      # excelize carries an open advisory, and the 2017 refresh runbook feeds
+      # network-downloaded spreadsheets straight into the parser.
+      - name: Vulnerability scan
+        working-directory: go-parser
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          "$(go env GOPATH)/bin/govulncheck" ./...
+
       # One parser binary builds every dataset; build-db.js reads the dataset
-      # list from src/datasets.js and gzips each database in place, leaving no
-      # uncompressed file behind.
+      # list from src/datasets.js, verifies each database against its known row
+      # count, then gzips it in place leaving no uncompressed file behind.
       - name: Build databases
         run: |
-          npm run build:rust
+          npm run build:go
           npm run build:db
 
       # One Vite build produces every page. scripts/assemble-site.js copies the
@@ -53,6 +76,10 @@ jobs:
           path: _site
 
   deploy:
+    # Guarded to main. Without this, a workflow_dispatch from any branch would
+    # publish that branch's output to the live site, and concurrency
+    # cancel-in-progress would kill an in-flight good deploy on the way.
+    if: github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     environment:

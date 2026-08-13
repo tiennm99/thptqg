@@ -267,7 +267,7 @@ fn ensure_fixtures() {
 fn make_data_config() -> xlsxread::config::DatasetConfig {
     let cfg_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("configs")
-        .join("2017.toml");
+        .join("2017.yml");
     xlsxread::config::load_config(&cfg_path).expect("load data config")
 }
 
@@ -284,7 +284,7 @@ fn province_100_builds_100_rows() {
     std::fs::create_dir_all(&fixture_dir).unwrap();
     std::fs::copy(province_fixture_path(), fixture_dir.join("province.xlsx")).unwrap();
 
-    run_build_cmd(&fixture_dir, &db_path, "2017.toml");
+    run_build_cmd(&fixture_dir, &db_path, "2017.yml");
 
     let count = query_count(&db_path);
     assert_eq!(count, 100, "expected 100 rows from province-100 fixture");
@@ -299,7 +299,7 @@ fn hcm_overflow_builds_400_rows() {
     std::fs::create_dir_all(&fixture_dir).unwrap();
     std::fs::copy(hcm_overflow_fixture_path(), fixture_dir.join("hcm.xlsx")).unwrap();
 
-    run_build_cmd(&fixture_dir, &db_path, "2017.toml");
+    run_build_cmd(&fixture_dir, &db_path, "2017.yml");
 
     let count = query_count(&db_path);
     assert_eq!(
@@ -318,7 +318,7 @@ fn data_old_first_sheet_only_100_rows() {
     // Use the overflow file but with data-old config (first sheet only → 200 rows)
     std::fs::copy(hcm_overflow_fixture_path(), fixture_dir.join("hcm.xlsx")).unwrap();
 
-    run_build_cmd(&fixture_dir, &db_path, "2017-old.toml");
+    run_build_cmd(&fixture_dir, &db_path, "2017-old.yml");
 
     // data-old: sheet_mode=first → only 200 rows from sheet1; but SBDs "1000NNNN" are
     // all digits so all pass the numeric guard
@@ -356,7 +356,7 @@ fn numeric_sbd_guard_rejects_non_numeric() {
     let mixed_path = fixture_dir.join("mixed.xlsx");
     write_xlsx(&mixed_path, &[("Sheet1".to_owned(), rows)]);
 
-    run_build_cmd(&fixture_dir, &db_path, "2017-old.toml");
+    run_build_cmd(&fixture_dir, &db_path, "2017-old.yml");
 
     // Row i=5 has non-numeric SBD → rejected by data-old config
     let count = query_count(&db_path);
@@ -390,7 +390,7 @@ fn scores_parsed_correctly_into_db() {
         &[("Sheet1".to_owned(), rows)],
     );
 
-    run_build_cmd(&fixture_dir, &db_path, "2017.toml");
+    run_build_cmd(&fixture_dir, &db_path, "2017.yml");
 
     let conn = rusqlite::Connection::open(&db_path).unwrap();
     let (toan, van, anh): (f64, f64, f64) = conn
@@ -429,7 +429,7 @@ fn to_ascii_stored_correctly() {
         &[("Sheet1".to_owned(), rows)],
     );
 
-    run_build_cmd(&fixture_dir, &db_path, "2017.toml");
+    run_build_cmd(&fixture_dir, &db_path, "2017.yml");
 
     let conn = rusqlite::Connection::open(&db_path).unwrap();
     let ascii: String = conn
@@ -451,7 +451,7 @@ fn audit_subcommand_matches_after_build() {
     std::fs::create_dir_all(&fixture_dir).unwrap();
     std::fs::copy(province_fixture_path(), fixture_dir.join("province.xlsx")).unwrap();
 
-    run_build_cmd(&fixture_dir, &db_path, "2017.toml");
+    run_build_cmd(&fixture_dir, &db_path, "2017.yml");
 
     // audit should match (100 distinct SBDs in xlsx == 100 rows in DB)
     let cfg = make_data_config();
@@ -491,7 +491,7 @@ fn audit_subcommand_mismatch_detected() {
         &[("Sheet1".to_owned(), five_rows)],
     );
 
-    run_build_cmd(&build_dir, &db_path, "2017.toml");
+    run_build_cmd(&build_dir, &db_path, "2017.yml");
 
     // audit against fixture_dir (10 xlsx rows) but DB has 5 rows → mismatch
     let cfg = make_data_config();

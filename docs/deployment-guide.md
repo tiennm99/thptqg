@@ -7,8 +7,8 @@ One-time setup: **Settings → Pages → Source: GitHub Actions**.
 
 ## What the workflow does
 
-1. Checkout, Rust toolchain, Node 24, `npm ci`
-2. `npm run build:rust` — one parser binary
+1. Checkout, Go toolchain, Node 24, `npm ci`
+2. `npm run build:go` — one parser binary
 3. `npm run build:db` — builds and gzips all four databases into
    `.build/public/db/`
 4. `npm run build:site` — one Vite build, then `scripts/assemble-site.js`
@@ -35,7 +35,7 @@ string intact.
 
 ```bash
 npm ci
-npm run build:rust
+npm run build:go
 npm run build:db      # all four; pass an id to build just one
 npm run build:site    # vite build + assemble into _site/
 npx serve _site
@@ -44,7 +44,7 @@ npx serve _site
 To rebuild a single dataset:
 
 ```bash
-node parser/scripts/build-db.js 2017-old
+node go-parser/scripts/build-db.js 2017-old
 ```
 
 ## Base path
@@ -56,9 +56,9 @@ up as a blank page with 404s on `/assets/...`.
 ## Adding a dataset
 
 1. Put the Excel files in `data/<id>/`
-2. Add `parser/configs/<id>.toml` with the parse rules — sheet mode, column
+2. Add `parser/configs/<id>.yml` with the parse rules — sheet mode, column
    indices, SBD validation, header tokens, blank-row stripping. No SQL: the
-   schema is canonical and lives in `parser/src/schema.rs`
+   schema is canonical and lives in `go-parser/internal/schema/schema.go`
 3. Add an entry to `DATASETS` in `src/datasets.js`
 
 Nothing else. The build script, the site assembly and the router all read that

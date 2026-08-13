@@ -50,7 +50,7 @@ for (const id of targets) {
     [
       "build",
       "--schema",
-      resolve(ROOT, `parser/configs/${id}.toml`),
+      resolve(ROOT, `parser/configs/${id}.yml`),
       "--input",
       resolve(ROOT, `data/${id}`),
       "--output",

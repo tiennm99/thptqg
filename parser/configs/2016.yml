@@ -15,18 +15,18 @@
 #
 # Table shape, INSERT and subject regexes are canonical — see src/schema.rs.
 
-format_detection = "thptqg2016"
+format_detection: thptqg2016
 
-[reader]
-sheet_mode = "all"
-strip_blank_rows = false
+reader:
+  sheet_mode: all
+  strip_blank_rows: false
 
-[validation]
-require_numeric_sbd   = false
-require_nonempty_name = true
-require_nonempty_sbd  = true
+validation:
+  require_numeric_sbd: false
+  require_nonempty_name: true
+  require_nonempty_sbd: true
 
-[header]
-# Tokens that identify a header row by first-cell content (uppercased).
-# Covers both SOBAODANH-style and SBD-style headers.
-tokens = ["SOBAODANH", "SBD", "HO_TEN", "HOTEN", "HỌ TÊN", "STT"]
+header:
+  # Tokens that identify a header row by first-cell content (uppercased).
+  # Covers both SOBAODANH-style and SBD-style headers.
+  tokens: ["SOBAODANH", "SBD", "HO_TEN", "HOTEN", "HỌ TÊN", "STT"]

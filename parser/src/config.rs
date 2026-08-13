@@ -6,7 +6,7 @@ use serde::Deserialize;
 use crate::error::BuildError;
 
 // ---------------------------------------------------------------------------
-// Top-level dataset configuration loaded from a .toml file
+// Top-level dataset configuration loaded from a .yml file
 // ---------------------------------------------------------------------------
 
 /// Per-dataset parse rules.
@@ -79,7 +79,7 @@ pub fn load_config(path: &Path) -> Result<DatasetConfig, BuildError> {
         path: path.display().to_string(),
         source: e,
     })?;
-    let cfg: DatasetConfig = toml::from_str(&text)?;
+    let cfg: DatasetConfig = serde_yaml::from_str(&text)?;
     Ok(cfg)
 }
 
@@ -91,29 +91,29 @@ pub fn load_config(path: &Path) -> Result<DatasetConfig, BuildError> {
 mod tests {
     use super::*;
 
-    const SAMPLE_TOML: &str = r#"
-[reader]
-sheet_mode = "all"
-strip_blank_rows = false
+    const SAMPLE_YAML: &str = r#"
+reader:
+  sheet_mode: all
+  strip_blank_rows: false
 
-[columns]
-ho_ten      = 0
-ngay_sinh   = 1
-so_bao_danh = 2
-diem_thi    = 3
+columns:
+  ho_ten: 0
+  ngay_sinh: 1
+  so_bao_danh: 2
+  diem_thi: 3
 
-[validation]
-require_numeric_sbd   = false
-require_nonempty_name = true
-require_nonempty_sbd  = true
+validation:
+  require_numeric_sbd: false
+  require_nonempty_name: true
+  require_nonempty_sbd: true
 
-[header]
-tokens = ["HO_TEN", "HỌ TÊN", "STT"]
+header:
+  tokens: ["HO_TEN", "HỌ TÊN", "STT"]
 "#;
 
     #[test]
     fn config_round_trip() {
-        let cfg: DatasetConfig = toml::from_str(SAMPLE_TOML).expect("parse failed");
+        let cfg: DatasetConfig = serde_yaml::from_str(SAMPLE_YAML).expect("parse failed");
         assert_eq!(cfg.reader.sheet_mode, SheetMode::All);
         assert!(!cfg.reader.strip_blank_rows);
         let cols = cfg.columns.as_ref().unwrap();
@@ -131,37 +131,38 @@ tokens = ["HO_TEN", "HỌ TÊN", "STT"]
     #[test]
     fn config_rejects_leftover_sql_sections() {
         let with_ddl = format!(
-            "{SAMPLE_TOML}\n[schema]\nddl = \"CREATE TABLE student (so_bao_danh TEXT);\"\n"
+            "{SAMPLE_YAML}\nschema:\n  ddl: \"CREATE TABLE student (so_bao_danh TEXT);\"\n"
         );
-        assert!(toml::from_str::<DatasetConfig>(&with_ddl).is_err());
+        assert!(serde_yaml::from_str::<DatasetConfig>(&with_ddl).is_err());
     }
 
     #[test]
     fn config_first_sheet_mode() {
-        let toml_str = SAMPLE_TOML.replace(r#"sheet_mode = "all""#, r#"sheet_mode = "first""#);
-        let cfg: DatasetConfig = toml::from_str(&toml_str).expect("parse failed");
+        let yaml_str = SAMPLE_YAML.replace("sheet_mode: all", "sheet_mode: first");
+        let cfg: DatasetConfig = serde_yaml::from_str(&yaml_str).expect("parse failed");
         assert_eq!(cfg.reader.sheet_mode, SheetMode::First);
     }
 
     #[test]
     fn config_format_detection_field() {
-        // Configs without [columns] and with format_detection = "thptqg2016" parse correctly
-        let toml_str = r#"
-format_detection = "thptqg2016"
+        // Configs without a `columns:` mapping and with format_detection:
+        // thptqg2016 parse correctly
+        let yaml_str = r#"
+format_detection: thptqg2016
 
-[reader]
-sheet_mode = "all"
-strip_blank_rows = false
+reader:
+  sheet_mode: all
+  strip_blank_rows: false
 
-[validation]
-require_numeric_sbd   = false
-require_nonempty_name = true
-require_nonempty_sbd  = true
+validation:
+  require_numeric_sbd: false
+  require_nonempty_name: true
+  require_nonempty_sbd: true
 
-[header]
-tokens = ["SBD", "SOBAODANH", "STT"]
+header:
+  tokens: ["SBD", "SOBAODANH", "STT"]
 "#;
-        let cfg: DatasetConfig = toml::from_str(toml_str).expect("parse failed");
+        let cfg: DatasetConfig = serde_yaml::from_str(yaml_str).expect("parse failed");
         assert_eq!(cfg.format_detection.as_deref(), Some("thptqg2016"));
         assert!(cfg.columns.is_none());
     }

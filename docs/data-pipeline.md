@@ -4,8 +4,8 @@ From raw Excel files to a compressed SQLite file the browser can load.
 
 One Rust binary (`parser/`) builds every dataset. What differs per dataset is
 parse rules only — sheet strategy, column layout, validation guards — declared
-in `parser/configs/<id>.toml`. The table shape, the INSERT and the subject
-regexes are canonical and live in `parser/src/schema.rs`.
+in `parser/configs/<id>.yml`. The table shape, the INSERT and the subject
+regexes are canonical and live in `go-parser/internal/schema/schema.go`.
 
 ## Sources
 
@@ -54,7 +54,7 @@ which is why only 2016 populates those columns.
 
 ## Score text parsing
 
-`SCORE_PATTERNS` in `parser/src/schema.rs` defines one regex per subject, and
+`SCORE_PATTERNS` in `go-parser/internal/schema/schema.go` defines one regex per subject, and
 **all 16 run against every dataset**. A subject a given exam year did not offer
 simply never matches and stays NULL.
 
@@ -110,7 +110,7 @@ silently drops 13,720 students** (Hanoi +7,275, HCM +6,445). That is what
 | id | Source rows | Skipped | DB rows |
 | --- | --- | --- | --- |
 | `2016` | 877,464 | 3 duplicate SBDs collapsed | **877,461** |
-| `2017` | 861,131 | 63 empty | **861,068** |
+| `2017` | 861,068 | 0 | **861,068** |
 | `2017-old` | 847,349 | 1 header leak | **847,348** |
 | `2017-old2` | 679,764 | 0 | **679,764** |
 
@@ -135,7 +135,7 @@ regenerated — the two old crates no longer exist. Both scripts use the built-i
 ```bash
 rm data/2017/*.xls
 node parser/scripts/crawl-baotintuc.js
-node parser/scripts/build-db.js 2017
+node go-parser/scripts/build-db.js 2017
 ```
 
 Then re-run the parity check above and confirm the row count still matches.

@@ -25,7 +25,7 @@ index.html + src/     the frontend — one app serving all four datasets and the
 data/<id>/            raw Excel files, one directory per dataset
 parser/               the Rust parser
   src/schema.rs         canonical 22-column table: DDL, INSERT, subject regexes
-  configs/<id>.toml     per-dataset parse rules only, no SQL
+  configs/<id>.yml     per-dataset parse rules only, no SQL
   scripts/              database build, crawler, parity verification
 scripts/              site assembly
 docs/                 architecture, data pipeline, deployment
@@ -34,14 +34,14 @@ docs/                 architecture, data pipeline, deployment
 The dataset id is one identifier end to end:
 
 ```
-data/2017-old/ → parser/configs/2017-old.toml → db/2017-old.db.gz → /thptqg/2017-old/
+data/2017-old/ → parser/configs/2017-old.yml → db/2017-old.db.gz → /thptqg/2017-old/
 ```
 
 ## Build
 
 ```bash
 npm ci
-npm run build:rust     # compile the parser
+npm run build:go     # compile the parser
 npm run build:db       # build + gzip all four databases (add an id for just one)
 npm run build:site     # one Vite build, then assemble into _site/
 npx serve _site
@@ -53,7 +53,7 @@ Pushing to `main` runs the same steps in
 ## Adding a dataset
 
 1. Put the Excel files in `data/<id>/`
-2. Add `parser/configs/<id>.toml` — sheet mode, column indices, validation
+2. Add `parser/configs/<id>.yml` — sheet mode, column indices, validation
    guards. No SQL; the schema is canonical.
 3. Add an entry to `DATASETS` in `src/datasets.js`
 

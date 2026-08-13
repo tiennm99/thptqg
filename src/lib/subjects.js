@@ -1,7 +1,7 @@
 /**
  * The 16 subject columns of the canonical schema, in display order.
  *
- * Mirrors `SCORE_FIELDS` in parser/src/schema.rs. Previously this list was
+ * Mirrors `SCORE_FIELDS` in go-parser/internal/schema/schema.go. Previously this list was
  * maintained separately in score-table.jsx and student-detail.jsx, which is how
  * they drifted out of sync with each other and with the database.
  *

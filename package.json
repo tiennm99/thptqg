@@ -5,14 +5,15 @@
   "type": "module",
   "description": "Tra cứu điểm thi THPT Quốc gia — 2016 và 2017",
   "scripts": {
-    "build:rust": "cargo build --release --manifest-path parser/Cargo.toml",
-    "build:db": "node parser/scripts/build-db.js",
+    "build:go": "go -C go-parser build -o bin/xlsxread ./cmd/xlsxread",
+    "build:db": "node go-parser/scripts/build-db.js",
     "dev": "vite",
     "build": "vite build",
     "assemble": "node scripts/assemble-site.js",
     "build:site": "npm run build && npm run assemble",
     "preview": "vite preview",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test:go": "go -C go-parser test ./..."
   },
   "repository": {
     "type": "git",
