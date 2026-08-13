@@ -1,7 +1,13 @@
 # Parser parity result
 
+**Archived record.** This documents a verification run made on 2026-08-13,
+against a tree that had a Rust parser, npm-script entry points and four
+datasets — none of which exist now. It is kept because `docs/data-pipeline.md`
+cites it as the evidence that the recovered foreign-language scores are real
+rather than false regex matches. Do not expect the commands below to run.
+
 Comparison of the databases the unified pipeline ships against a baseline built
-from the pre-refactor code. Run on 2026-08-13 against the final tree
+from the pre-refactor code. Run on 2026-08-13 against the tree as it then stood
 (`npm run build:rust && npm run build:db`), gate exit code 0.
 
 Inputs:

@@ -3,6 +3,11 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+  # Pull requests run the build job only. Before this, the workflow triggered on
+  # main-push and workflow_dispatch alone, so "verify on a branch first" was not
+  # actually possible: pushing to a branch ran nothing, and dispatching from one
+  # published that branch straight to the live site.
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -17,42 +22,74 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # Every Go module here is cgo-free — grate, excelize, yaml.v3, x/net,
+      # x/text and modernc.org/sqlite — so no C toolchain is needed. Set
+      # explicitly rather than relying on the default.
+      CGO_ENABLED: '0'
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-go@v5
         with:
-          workspaces: parser
+          go-version: '1.26'
+          cache-dependency-path: |
+            parser/go.sum
+            crawler/go.sum
+            assembler/go.sum
 
+      # web/ is the only npm project in the repository; the other stages are Go.
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: 'npm'
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: web/package-lock.json
 
-      - run: npm ci
+      - name: Install web dependencies
+        working-directory: web
+        run: npm ci
 
-      # One parser binary builds every dataset; build-db.js reads the dataset
-      # list from src/datasets.js and gzips each database in place, leaving no
-      # uncompressed file behind.
-      - name: Build databases
+      # The reader-fidelity suite compares every real input file against a
+      # committed hash oracle, so it is the regression guard for the whole
+      # reader. Runs before anything is built.
+      - name: Test parser
+        run: go -C parser test ./...
+
+      # The crawler is not part of the build — it only refreshes data/ by hand.
+      # It is still tested here so it cannot rot unnoticed, and because its
+      # fixture test guards the parser: input filenames decide which row
+      # survives a duplicate exam number.
+      - name: Test crawler
+        run: go -C crawler test ./...
+
+      - name: Lint web
+        working-directory: web
+        run: npm run lint
+
+      # excelize carries an open advisory, and the 2017 refresh runbook feeds
+      # network-downloaded spreadsheets straight into the parser.
+      - name: Vulnerability scan
         run: |
-          npm run build:rust
-          npm run build:db
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          GOVULNCHECK="$(go env GOPATH)/bin/govulncheck"
+          for m in parser crawler assembler; do (cd "$m" && "$GOVULNCHECK" ./...); done
 
-      # One Vite build produces every page. scripts/assemble-site.js copies the
-      # emitted index.html to each dataset path (and the legacy nested URLs),
-      # then fails the job if any uncompressed database reached the artifact.
-      - name: Build and assemble site
-        run: npm run build:site
+      # One command runs the whole pipeline: compile the parser, build and
+      # verify each database against its registry row count, compress it, build
+      # the web app, and assemble _site — refusing to continue if a database is
+      # short, an artifact looks truncated, or one is missing entirely.
+      - name: Build site
+        run: go -C assembler run ./cmd/assemble
 
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
 
   deploy:
+    # Guarded to main. Without this, a workflow_dispatch from any branch would
+    # publish that branch's output to the live site, and concurrency
+    # cancel-in-progress would kill an in-flight good deploy on the way.
+    if: github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     environment:

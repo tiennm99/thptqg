@@ -2,36 +2,85 @@
 
 From raw Excel files to a compressed SQLite file the browser can load.
 
-One Rust binary (`parser/`) builds every dataset. What differs per dataset is
+One Go binary (`parser/`) builds every dataset. What differs per dataset is
 parse rules only — sheet strategy, column layout, validation guards — declared
-in `parser/configs/<id>.toml`. The table shape, the INSERT and the subject
-regexes are canonical and live in `parser/src/schema.rs`.
+in `parser/configs/<id>.yml`. The table shape, the INSERT and the subject
+regexes are canonical and live in `parser/internal/schema/schema.go`.
 
 ## Sources
 
-| id | Files | Reproducible | Origin |
+| id | Files | Origin | Host live? |
 | --- | --- | --- | --- |
-| `2016` | 4 `.xls` + 115 `.xlsx` | no | Bộ GD&ĐT, collected 2016 |
-| `2017` | 63 `.xls` | **yes** | baotintuc.vn CDN |
-| `2017-old` | 63 `.xlsx` | no | pre-refresh archive |
-| `2017-old2` | 54 `.xlsx` | no | corrected re-export |
+| `2016` | 4 `.xls` + 115 `.xlsx` | aggregator article, 119 exam clusters | unconfirmed |
+| `2017` | 63 `.xls` | baotintuc.vn CDN | **yes** |
 
-Only `2017` can be re-fetched:
+Crawling lives in `crawler/`, a separate Go module. It is never part of the
+build — the source files are committed, so a crawl only refreshes them. Both
+runs are idempotent: files already present are skipped.
 
 ```bash
-node parser/scripts/crawl-baotintuc.js
+go -C crawler run ./cmd/crawl 2016     # sources/source_2016.go
+go -C crawler run ./cmd/crawl 2017     # sources/source_2017.go
+go -C crawler run ./cmd/crawl 2017 --list   # list only, download nothing
 ```
 
-Idempotent — skips files already present, saves to `data/2017/`. Source article:
+**2017** comes from the article
 `https://baotintuc.vn/tuyen-sinh/tra-cuu-diem-thi-thpt-2017-cua-63-tinh-thanh-pho-tren-baotintucvn-20170706073512672.htm`
+and its CDN is still serving the files.
 
-The other three were collected from Vietnamese news sites at the time and the
-publisher URLs were not recorded. **The files committed in git are the only
-copy.**
+**2016** comes from the aggregator article
+`cong-bo-diem-thi-thptqg-2016-toan-bo-120-cum-thi-da-co-diem.html`, served from
+a mirror — the site that first published it (`dtntbacgiang.edu.vn`) no longer
+resolves.
+
+That mirror is **not reachable from every network.** It resolves to a Vietnamese
+address that times out from at least some hosts abroad, in which case the crawl
+stops with a connection error before downloading anything. `data/2016/` is
+therefore still the only confirmed copy: do not delete it on the assumption that
+a crawl can restore it.
+
+## How a source is defined
+
+A source carries no link list. It names the article that published the files and
+says how to name what it finds there:
+
+| field | meaning |
+| --- | --- |
+| `Article` | the page to read links from |
+| `Exts` | which file extensions to pick out of it |
+| `WantFiles` | how many links to expect — fewer aborts the crawl |
+| `Dest` | the local filename for one link |
+
+`internal/article` does the fetching and HTML parsing; `internal/fetch` does the
+downloading. Because `Article` is read at run time, `--list` needs network access
+too.
+
+`WantFiles` exists because a partial crawl is otherwise silent: parser will
+build a short database from whatever files are present, and only the row-count
+guard would notice, after the fact. A page that changes shape stops the crawl
+instead.
+
+### Local filenames are load-bearing
+
+`parser` sorts its input files and inserts with `INSERT OR REPLACE`, which is
+last-wins, so **filenames decide which row survives a duplicate exam number**. A
+re-crawl that names files differently can produce a database with the same row
+count and different content, which the assembler's row-count guard would
+not catch.
+
+Each source therefore pins its local names, and
+`crawler/internal/sources/sources_test.go` checks every source against its
+committed `data/<id>/` in both directions — every name it would write exists,
+and every file present is accounted for.
+
+2017 derives its names from the province name in the link text, transliterated
+to ASCII (the CDN's own names are inconsistent:
+`Angiang.xls`, `1BaRiaVungTau.xls`, `23HaiPhong.xls`). 2016 keeps the
+server-assigned names verbatim, since it did not choose them.
 
 ## Source Excel shapes
 
-The 2017 datasets share one layout:
+2017 has one layout:
 
 | Col | Name | Content |
 | --- | --- | --- |
@@ -41,7 +90,7 @@ The 2017 datasets share one layout:
 | 3 | DIEM_THI | concatenated per-subject scores, e.g. `"Toán: 6.80 Ngữ văn: 5.25 …"` |
 
 2016 has **three** layouts across its 119 files, chosen per file at runtime via
-`format_detection = "thptqg2016"` in its config:
+`format_detection: thptqg2016` in its config:
 
 | Format | Detected by | Notes |
 | --- | --- | --- |
@@ -54,7 +103,7 @@ which is why only 2016 populates those columns.
 
 ## Score text parsing
 
-`SCORE_PATTERNS` in `parser/src/schema.rs` defines one regex per subject, and
+`SCORE_PATTERNS` in `parser/internal/schema/schema.go` defines one regex per subject, and
 **all 16 run against every dataset**. A subject a given exam year did not offer
 simply never matches and stays NULL.
 
@@ -95,8 +144,6 @@ scores rather than false matches.
 | --- | --- | --- |
 | `2016` | all sheets | per-file format detection; header-token rows rejected |
 | `2017` | all sheets — Hà Nội and HCM overflow | none |
-| `2017-old` | first sheet only | reject non-numeric SBD (rejects a header leak in this export) |
-| `2017-old2` | all sheets — HCM overflows | reject non-numeric SBD; skip blank rows before counting |
 
 ### Overflow-sheet gotcha
 
@@ -110,40 +157,61 @@ silently drops 13,720 students** (Hanoi +7,275, HCM +6,445). That is what
 | id | Source rows | Skipped | DB rows |
 | --- | --- | --- | --- |
 | `2016` | 877,464 | 3 duplicate SBDs collapsed | **877,461** |
-| `2017` | 861,131 | 63 empty | **861,068** |
-| `2017-old` | 847,349 | 1 header leak | **847,348** |
-| `2017-old2` | 679,764 | 0 | **679,764** |
+| `2017` | 861,068 | 0 | **861,068** |
 
 ## Verifying a rebuild
 
-`parser/scripts/db-stats.js` dumps row counts, per-column non-NULL counts, file
-size and a deterministic student sample as JSON.
-`parser/scripts/verify-parity.js` diffs two such files and exits non-zero on any
-mismatch.
+The assembler verifies itself: each database's row count must match the
+figure in the table above, and each `.db.gz` must be at least 90% of its usual
+size, or the build fails rather than publishing. That guard is the reason a
+truncated dataset cannot reach the site with a green pipeline.
+
+For a deeper check, `parser/scripts/differential-parity.mjs` compares two sets
+of databases field-by-field — row counts, per-column non-NULL counts, a
+full-table SHA-256 over every row ordered by `so_bao_danh`, schema metadata, and
+build stdout:
 
 ```bash
-node parser/scripts/db-stats.js 2016=<path>.db … > current.json
-node parser/scripts/verify-parity.js plans/reports/parser-parity-baseline.json current.json
+node parser/scripts/differential-parity.mjs \
+  --rust /path/to/a-{id}.db --go /path/to/b-{id}.db
 ```
 
-The committed baseline was built with the pre-refactor code and cannot be
-regenerated — the two old crates no longer exist. Both scripts use the built-in
-`node:sqlite`, so they need no dependencies.
+It exits non-zero on any mismatch and fails loudly if a dataset is missing rather
+than skipping it. Written for the Rust-to-Go migration, it works for any two
+builds. Uses the built-in `node:sqlite`, so it needs no dependencies.
+
+`parser/internal/reader` additionally carries a frozen oracle of per-file
+cell-dump hashes covering all 182 inputs; `go -C parser test ./...` fails if any single
+cell of any input file reads differently.
 
 ## Refreshing the 2017 data
 
 ```bash
 rm data/2017/*.xls
-node parser/scripts/crawl-baotintuc.js
-node parser/scripts/build-db.js 2017
+go -C crawler run ./cmd/crawl 2017
+go -C assembler run ./cmd/assemble db 2017
 ```
 
-Then re-run the parity check above and confirm the row count still matches.
+The row-count guard in `build:db` confirms the rebuild matches the expected
+total. That guard checks the count only, so if the crawl was expected to change
+the data, compare content with `differential-parity.mjs` against a copy of the
+previous database rather than trusting the count.
 
-## Legacy scripts
+## Removed scripts
 
-`parser/scripts/check-duplicates.js` and `diff-datasets.js` are one-off audits
-that were already broken before the repo was unified — a hardcoded Windows path
-in one, an undeclared `better-sqlite3` dependency and stale paths in the other.
-Each carries a comment saying so. For comparing two builds, use `db-stats.js`
-plus `verify-parity.js` instead.
+`check-duplicates.js`, `diff-datasets.js`, `db-stats.js` and `verify-parity.js`
+were dropped with the Rust parser. The first two had been broken since before the
+repo was unified (a hardcoded Windows path in one, an undeclared
+`better-sqlite3` dependency in the other) and neither had any automated caller.
+The latter two are superseded by `differential-parity.mjs`, which compares more
+and cannot silently skip a dataset.
+
+`crawl-baotintuc.js` was not dropped but rewritten as the Go `crawler/` module,
+producing the same local filenames. Two changes beyond the port:
+
+- It carried its 63 links as a hardcoded array. The Go version reads them from
+  the article instead, so the list cannot drift from what was published.
+- Downloads land on a `.part` file and are renamed on completion. Writing
+  straight to the destination left a truncated file after an interrupted run,
+  and since the skip check only tests for a non-empty file, every later run
+  would skip it — the corruption was permanent and silent.

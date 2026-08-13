@@ -1,20 +1,20 @@
 # Deployment Guide
 
 Deploys to GitHub Pages via `.github/workflows/deploy-pages.yml`. Every push to
-`main` rebuilds all four datasets and redeploys the whole site.
+`main` rebuilds both datasets and redeploys the whole site.
 
 One-time setup: **Settings → Pages → Source: GitHub Actions**.
 
 ## What the workflow does
 
-1. Checkout, Rust toolchain, Node 24, `npm ci`
-2. `npm run build:rust` — one parser binary
-3. `npm run build:db` — builds and gzips all four databases into
-   `.build/public/db/`
-4. `npm run build:site` — one Vite build, then `scripts/assemble-site.js`
-5. `actions/upload-pages-artifact` + `actions/deploy-pages`
+1. Checkout, Go toolchain, Node 24, `npm ci` in `web/`
+2. Parser and crawler test suites, web lint, `govulncheck` over all three modules
+3. `go -C assembler run ./cmd/assemble` — the whole pipeline: compile the
+   parser, build and verify each database, compress it into `.build/public/db/`,
+   run the Vite build, assemble `_site/`
+4. `actions/upload-pages-artifact` + `actions/deploy-pages`
 
-The database build dominates the runtime: roughly 419 MB of Excel is parsed on
+The database build dominates the runtime: roughly 348 MB of Excel is parsed on
 every deploy.
 
 ## Resulting URLs
@@ -23,28 +23,25 @@ every deploy.
 https://<user>.github.io/thptqg/
 https://<user>.github.io/thptqg/2016/
 https://<user>.github.io/thptqg/2017/
-https://<user>.github.io/thptqg/2017-old/
-https://<user>.github.io/thptqg/2017-old2/
 ```
 
-`/thptqg/2017/old/` and `/thptqg/2017/old2/` were the pre-flattening URLs. They
-are still served, and the router rewrites them to the flat form with the query
-string intact.
+`/thptqg/2017/old/` and `/thptqg/2017/old2/` were the pre-flattening URLs for
+the two removed 2017 archives. They are no longer served; like any unknown path
+they now render the hub via `404.html`.
 
 ## Local reproduction
 
 ```bash
-npm ci
-npm run build:rust
-npm run build:db      # all four; pass an id to build just one
-npm run build:site    # vite build + assemble into _site/
+(cd web && npm ci)
+go -C assembler run ./cmd/assemble
 npx serve _site
 ```
 
-To rebuild a single dataset:
+To rebuild a single dataset, or only the site:
 
 ```bash
-node parser/scripts/build-db.js 2017-old
+go -C assembler run ./cmd/assemble db 2017
+go -C assembler run ./cmd/assemble site
 ```
 
 ## Base path
@@ -56,19 +53,21 @@ up as a blank page with 404s on `/assets/...`.
 ## Adding a dataset
 
 1. Put the Excel files in `data/<id>/`
-2. Add `parser/configs/<id>.toml` with the parse rules — sheet mode, column
+2. Add `parser/configs/<id>.yml` with the parse rules — sheet mode, column
    indices, SBD validation, header tokens, blank-row stripping. No SQL: the
-   schema is canonical and lives in `parser/src/schema.rs`
-3. Add an entry to `DATASETS` in `src/datasets.js`
+   schema is canonical and lives in `parser/internal/schema/schema.go`
+3. Add an entry to `datasets.json` — id, `expectedRows`, `dbSizeMb`
+4. Add its presentation to `CONTENT` in `web/src/datasets.js`
 
-Nothing else. The build script, the site assembly and the router all read that
-one list, and the frontend adapts to whichever columns the dataset populates.
+Nothing else. The assembler and the router both read the registry, and the
+frontend adapts to whichever columns the dataset populates. The last two steps
+check each other, so forgetting either fails rather than half-working.
 
 ## Why no uncompressed database can ship
 
-`build-db.js` runs `gzip -9` **without** `-k`, so the raw file does not survive
-the build. `assemble-site.js` then fails the job if any `.db`, `.db-journal`,
-`.db-wal` or `.db-shm` reached the output.
+The assembler deletes the source once compression succeeds, so the raw file
+does not survive the build, and it then fails the job if any `.db`,
+`.db-journal`, `.db-wal` or `.db-shm` reached the output.
 
 Both guards exist because the previous pipeline wrote a 100+ MB uncompressed
 database into the source tree and relied on an `rm` step to keep it out of the
@@ -98,8 +97,8 @@ run rebuilds the older state. There is no data to migrate.
 | Symptom | Typical cause |
 | --- | --- |
 | Blank page, 404 on assets | `base` in `vite.config.js` does not match the repo name |
-| `Failed to fetch database: 404` | Dataset id in `src/datasets.js` does not match the file in `db/` |
-| A route 404s | `assemble-site.js` did not run, or the id is missing from `DATASETS` |
+| `Failed to fetch database: 404` | Dataset id in `datasets.json` does not match the file in `db/` |
+| A route 404s | The site step did not run, or the id is missing from `datasets.json` |
 | WASM fails to load | `sql.js.org` unreachable — self-host `sql-wasm.wasm` and update `SQL_WASM_URL` in `use-sqlite.js` |
 | Deploy fails on assembly | An uncompressed database artefact reached the output; the error names the files |
 | Missing rows after a data update | Unknown Excel header — check the per-file row counts the parser prints |

@@ -17,8 +17,9 @@ dist/
 ### Generated databases and Vite publicDir staging ###
 .build/
 
-### Rust build artefacts ###
-parser/target/
-
 ### Assembled Pages artifact ###
 _site/
+
+# Parser build output and regenerable ground-truth dumps
+parser/bin/
+parser/testdata/dumps/

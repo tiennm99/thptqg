@@ -3,23 +3,27 @@
 Static site, no backend. The browser downloads a compressed SQLite file at boot
 and every query runs locally via `sql.js` (SQLite compiled to WebAssembly).
 
-One frontend, one parser, one schema, four datasets.
+One frontend, one parser, one schema, two datasets.
 
 ## Data flow
 
+Each stage is a directory; `data/` and `_site/` are the stores they hand work
+through. `assembler/` sequences everything from the parser onwards.
+
 ```
+        ▲  crawler/   (Go — manual refresh only, never part of the build)
 data/<id>/*.xls(x)
         │
-        ▼  parser/  (Rust, one binary, one config per dataset)
+        ▼  parser/    (Go, one binary, one config per dataset)
    .build/public/db/<id>.db
         │
-        ▼  gzip -9   (no -k: the raw file does not survive)
-   .build/public/db/<id>.db.gz
+        ▼  assembler/ — row count must match datasets.json, then gzip
+   .build/public/db/<id>.db.gz      (the raw .db does not survive)
         │
-        ▼  vite build   (publicDir = .build/public)
-   dist/
+        ▼  assembler/ → vite build   (root = web/, publicDir = .build/public)
+   web/dist/
         │
-        ▼  scripts/assemble-site.js
+        ▼  assembler/ — one index.html per dataset; every database must be present
    _site/   →  GitHub Pages
         │
         ▼  browser
@@ -31,26 +35,31 @@ data/<id>/*.xls(x)
 One identifier ties the whole pipeline together:
 
 ```
-data/2017-old/  →  parser/configs/2017-old.toml  →  db/2017-old.db.gz  →  /thptqg/2017-old/
+data/2017/  →  parser/configs/2017.yml  →  db/2017.db.gz  →  /thptqg/2017/
 ```
 
-`src/datasets.js` declares the four ids once. The frontend, the database build
-(`parser/scripts/build-db.js`) and the site assembly all import that list, so
-adding a dataset means adding one entry and one config file.
+`datasets.json` at the repository root declares the ids once, with the row count
+and artifact size the assembler enforces. It is JSON rather than a module
+because the assembler is a Go program and the Vite app is not, and JSON is the
+only format both parse without a dependency.
+
+Presentation — titles, labels, search examples, SQL presets — stays in
+`web/src/datasets.js`, keyed by id. That file cross-checks the two: a registry
+entry with no content, or content for a dataset that was never built, throws at
+module load rather than rendering a page with no title or a link to a database
+that does not exist.
 
 | id | Exam | Rows | Source |
 | --- | --- | --- | --- |
 | `2016` | 2016 | 877,461 | Bộ GD&ĐT |
 | `2017` | 2017 | 861,068 | baotintuc.vn |
-| `2017-old` | 2017 | 847,348 | pre-refresh archive |
-| `2017-old2` | 2017 | 679,764 | corrected re-export |
 
 ## Canonical schema
 
-Defined once in `parser/src/schema.rs` — DDL, INSERT, column order and the 16
-subject regexes. The four TOML configs carry no SQL at all, only per-dataset
-parse rules. Config parsing uses `deny_unknown_fields`, so a leftover `[schema]`
-block fails loudly instead of looking effective while `schema.rs` drives the
+Defined once in `parser/internal/schema/schema.go` — DDL, INSERT, column order and the 16
+subject regexes. The two YAML configs carry no SQL at all, only per-dataset
+parse rules. Config parsing sets `KnownFields(true)`, so a leftover `schema:`
+block fails loudly instead of looking effective while `schema.go` drives the
 build.
 
 ```sql
@@ -73,7 +82,7 @@ CREATE INDEX idx_ten_cum_thi  ON student(ten_cum_thi) WHERE ten_cum_thi IS NOT N
 
 Every dataset gets all 22 columns; ones it has no data for are NULL, costing
 about a byte per row. `khtn`, `khxh` and `gdcd` are empty on 2016;
-`ten_cum_thi` and `gioi_tinh` are empty on the 2017 datasets.
+`ten_cum_thi` and `gioi_tinh` are empty on 2017.
 
 `idx_ten_cum_thi` is partial, so it holds zero entries where the column is
 always NULL.
@@ -86,15 +95,13 @@ URLs are flat, one segment per dataset, and the segment is the id:
 /thptqg/            hub
 /thptqg/2016/
 /thptqg/2017/
-/thptqg/2017-old/
-/thptqg/2017-old2/
 ```
 
-`src/router.js` is an exact match on that segment. The nested form used before
-(`/thptqg/2017/old/`) would have needed longest-prefix matching, since it also
-starts with `/thptqg/2017/`. Those two legacy URLs still resolve: the router
-rewrites them to the flat equivalent with `history.replaceState`, preserving the
-query string so `?q=` deep links survive.
+`web/src/router.js` is an exact match on that segment. The nested form used
+before (`/thptqg/2017/old/`) would have needed longest-prefix matching, since it
+also starts with `/thptqg/2017/`. Both of those URLs addressed the two removed
+2017 archives, so the rewrite that kept them working has gone with them; they
+fall through to the hub like any other unknown path.
 
 A single Vite build emits one `index.html`. Because `base` is absolute
 (`/thptqg/`), that file references `/thptqg/assets/...` regardless of the
@@ -115,11 +122,11 @@ No component contains a per-dataset conditional. Two mechanisms do the work:
   self-exclude wherever those languages were not sat.
 
 Anything genuinely per-dataset — title, source, database size, search examples,
-SQL presets — lives in `src/datasets.js`.
+SQL presets — lives in `web/src/datasets.js`.
 
 ## Exam ID formats
 
-`src/lib/query-mode.js` decides whether a query is an exam ID or a name, and is
+`web/src/lib/query-mode.js` decides whether a query is an exam ID or a name, and is
 shared by `App.jsx` and `search-form.jsx` (they previously held separate copies
 and had drifted apart on exactly this rule).
 
@@ -135,7 +142,7 @@ candidates (70.3%). Letter prefixes are upper-cased before lookup, so
 
 ## Score tiers
 
-Six-level ladder in `scoreTier()` (`src/lib/admission-blocks.js`), paired with a
+Six-level ladder in `scoreTier()` (`web/src/lib/admission-blocks.js`), paired with a
 symbol so meaning is never colour-only.
 
 | Tier | Range | Vietnamese |
@@ -150,7 +157,7 @@ symbol so meaning is never colour-only.
 ## Admission blocks
 
 Vietnamese universities admit on three-subject combinations (khối thi).
-`src/lib/admission-blocks.js` lists the blocks computable from this schema
+`web/src/lib/admission-blocks.js` lists the blocks computable from this schema
 (A00–A11, B00–B08, C00–C20, D01–D15, plus D05/D06 for German and Japanese).
 `computeBlocks(student)` returns those where all three scores exist, sorted by
 total descending.
@@ -165,11 +172,11 @@ total descending.
 | Diacritics search | Pre-computed `ho_ten_ascii` | `LOWER(REPLACE(...))` at query time defeats the index |
 | SQL safety | Leading-keyword allowlist | `sql.js` is in-memory so writes cannot persist; the allowlist prevents confusion |
 | Row caps | 100 (lookup), 1000 (SQL) | Keeps DOM render sizes reasonable |
-| Routing | Hand-rolled, ~20 lines | Five static routes do not justify a router dependency |
+| Routing | Hand-rolled, ~15 lines | Three static routes do not justify a router dependency |
 
 ## Risks and limitations
 
-- **Database size.** 38–48 MB gzipped per dataset; slow links wait, mitigated by
+- **Database size.** 44–48 MB gzipped per dataset; slow links wait, mitigated by
   a progress bar.
 - **Browser memory.** The full database lives in RAM; older mobile devices may
   run out.
@@ -177,4 +184,4 @@ total descending.
   load. Self-hosting `sql-wasm.wasm` and updating `SQL_WASM_URL` in
   `use-sqlite.js` is the fix.
 - **Excel format drift.** A new source file with an unseen header layout needs a
-  new branch in `format_detect_2016.rs` or a new config.
+  new branch in `parser/internal/ingest/detect2016.go` or a new config.
