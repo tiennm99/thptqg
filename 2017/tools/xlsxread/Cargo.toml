@@ -1,0 +1,30 @@
+[package]
+name = "xlsxread"
+version = "0.1.0"
+edition = "2021"
+description = "Rust CLI replacing SheetJS xlsx build scripts for thptqg2017/thptqg2016"
+
+[dependencies]
+calamine       = "0.26"
+rusqlite       = { version = "0.32", features = ["bundled"] }
+clap           = { version = "4", features = ["derive"] }
+serde          = { version = "1", features = ["derive"] }
+toml           = "0.8"
+regex          = "1"
+unicode-normalization = "0.1"
+thiserror      = "1"
+anyhow         = "1"
+glob           = "0.3"
+
+# zip is already a transitive dep of calamine; pin explicitly so tests can use it
+[dev-dependencies]
+zip = "2"
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+[[bin]]
+name = "xlsxread"
+path = "src/main.rs"
+
+[[test]]
+name = "golden"
+path = "tests/golden.rs"

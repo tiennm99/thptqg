@@ -1,0 +1,76 @@
+# Test-only config used by golden integration tests (data-old variant).
+# Same column layout as thptqg2017-data.toml but with:
+#   - sheet_mode = "first" (reads only first sheet)
+#   - require_numeric_sbd = true (rejects non-digit SBDs)
+# Schema and INSERT match SCORE_FIELDS_2017 (14 score cols).
+
+[reader]
+sheet_mode = "first"
+strip_blank_rows = false
+
+[columns]
+ho_ten      = 0
+ngay_sinh   = 1
+so_bao_danh = 2
+diem_thi    = 3
+
+[validation]
+require_numeric_sbd   = true
+require_nonempty_name = true
+require_nonempty_sbd  = true
+
+[header]
+tokens = ["HO_TEN", "HỌ TÊN", "STT"]
+
+[schema]
+ddl = """
+CREATE TABLE student (
+  so_bao_danh   TEXT PRIMARY KEY,
+  ho_ten        TEXT NOT NULL,
+  ho_ten_ascii  TEXT NOT NULL,
+  ngay_sinh     TEXT,
+  toan          REAL,
+  ngu_van       REAL,
+  vat_ly        REAL,
+  hoa_hoc       REAL,
+  sinh_hoc      REAL,
+  khtn          REAL,
+  lich_su       REAL,
+  dia_ly        REAL,
+  gdcd          REAL,
+  khxh          REAL,
+  tieng_anh     REAL,
+  tieng_phap    REAL,
+  tieng_nga     REAL,
+  tieng_trung   REAL
+);
+CREATE INDEX idx_ho_ten ON student(ho_ten);
+CREATE INDEX idx_ho_ten_ascii ON student(ho_ten_ascii);
+"""
+
+[scores]
+toan        = 'Toán:\s*(\d+(?:\.\d+)?)'
+ngu_van     = 'Ngữ văn:\s*(\d+(?:\.\d+)?)'
+vat_ly      = 'Vật lí:\s*(\d+(?:\.\d+)?)'
+hoa_hoc     = 'Hóa học:\s*(\d+(?:\.\d+)?)'
+sinh_hoc    = 'Sinh học:\s*(\d+(?:\.\d+)?)'
+khtn        = 'KHTN:\s*(\d+(?:\.\d+)?)'
+lich_su     = 'Lịch sử:\s*(\d+(?:\.\d+)?)'
+dia_ly      = 'Địa lí:\s*(\d+(?:\.\d+)?)'
+gdcd        = 'GDCD:\s*(\d+(?:\.\d+)?)'
+khxh        = 'KHXH:\s*(\d+(?:\.\d+)?)'
+tieng_anh   = 'Tiếng Anh:\s*(\d+(?:\.\d+)?)'
+tieng_phap  = 'Tiếng Pháp:\s*(\d+(?:\.\d+)?)'
+tieng_nga   = 'Tiếng Nga:\s*(\d+(?:\.\d+)?)'
+tieng_trung = 'Tiếng Trung:\s*(\d+(?:\.\d+)?)'
+
+[insert]
+sql = """
+INSERT OR REPLACE INTO student
+  (so_bao_danh, ho_ten, ho_ten_ascii, ngay_sinh,
+   toan, ngu_van, vat_ly, hoa_hoc, sinh_hoc, khtn,
+   lich_su, dia_ly, gdcd, khxh,
+   tieng_anh, tieng_phap, tieng_nga, tieng_trung)
+VALUES
+  (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+"""
