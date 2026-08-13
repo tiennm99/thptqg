@@ -19,7 +19,10 @@
 ///    SBD(0) HO_TEN(1) NGAY_SINH(2) TEN_CUMTHI(3) GIOI_TINH(4) DIEM_THI(5)
 ///    → JS: build-database.js:149–151 DEFAULT_MAP + processMappedRow
 ///
-/// JS citations are line numbers in /config/workspace/tiennm99/thptqg2016/scripts/build-database.js.
+/// The `build-database.js` citations throughout this file refer to the Node
+/// script this parser replaced, in the original standalone thptqg2016 repo.
+/// That file no longer exists here; the references are kept because they
+/// explain why several of the rules below look arbitrary.
 use calamine::Data;
 
 use crate::transform::{parse_scores, to_ascii, CompiledPatterns, ParsedRow};

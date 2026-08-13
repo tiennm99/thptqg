@@ -1,7 +1,7 @@
 ---
 title: "Unify frontend, standardize SQL schema, restructure repo"
 description: "One 2017-based frontend, one canonical 22-column student schema, one parser crate, four datasets under data/"
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [refactor, schema, frontend, parser]
@@ -134,11 +134,11 @@ CREATE INDEX idx_ten_cum_thi  ON student(ten_cum_thi) WHERE ten_cum_thi IS NOT N
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Standard schema and unified parser](./phase-01-standard-schema-and-unified-parser.md) | Pending |
-| 2 | [Repo restructure](./phase-02-repo-restructure.md) | Pending |
-| 3 | [Unified frontend and dataset registry](./phase-03-unified-frontend-and-dataset-registry.md) | Pending |
-| 4 | [Build and deploy pipeline](./phase-04-build-and-deploy-pipeline.md) | Pending |
-| 5 | [Parity verification and docs](./phase-05-parity-verification-and-docs.md) | Pending |
+| 1 | [Standard schema and unified parser](./phase-01-standard-schema-and-unified-parser.md) | Completed |
+| 2 | [Repo restructure](./phase-02-repo-restructure.md) | Completed |
+| 3 | [Unified frontend and dataset registry](./phase-03-unified-frontend-and-dataset-registry.md) | Completed |
+| 4 | [Build and deploy pipeline](./phase-04-build-and-deploy-pipeline.md) | Completed |
+| 5 | [Parity verification and docs](./phase-05-parity-verification-and-docs.md) | Completed |
 
 ## Dependencies
 
@@ -151,17 +151,17 @@ No cross-plan dependencies (`plans/` was empty before this plan).
 
 ## Acceptance Criteria
 
-- [ ] One Rust crate; `2016/tools/` and `2017/tools/` gone
-- [ ] One `src/`; `2016/src/` and `2017/src/` gone
-- [ ] One Vite build producing all five pages
-- [ ] All four DBs built from the same DDL, same INSERT, same 16 regexes
-- [ ] Per-dataset row count and per-column non-NULL count identical to pre-refactor baseline
-- [ ] All five published URLs functional under the flat scheme, deep links included
-- [ ] Legacy `/2017/old/` and `/2017/old2/` redirect to their flat equivalents, preserving `?q=`
-- [ ] 2016 site still shows `ten_cum_thi` + `gioi_tinh`; 2017 sites do not
-- [ ] 2016 site gains 2017's features (deep links, student detail, tiers, live search)
-- [ ] npm only: `package-lock.json` committed, no pnpm files or CI steps remain
-- [ ] `cargo test` green; `npm run lint` green
+- [x] One Rust crate; `2016/tools/` and `2017/tools/` gone
+- [x] One `src/`; `2016/src/` and `2017/src/` gone
+- [x] One Vite build producing all five pages
+- [x] All four DBs built from the same DDL, same INSERT, same 16 regexes
+- [x] Per-dataset row count and per-column non-NULL count identical to pre-refactor baseline
+- [x] All five published URLs functional under the flat scheme, deep links included
+- [x] Legacy `/2017/old/` and `/2017/old2/` redirect to their flat equivalents, preserving `?q=`
+- [x] 2016 site still shows `ten_cum_thi` + `gioi_tinh`; 2017 sites do not
+- [x] 2016 site gains 2017's features (deep links, student detail, tiers, live search)
+- [x] npm only: `package-lock.json` committed, no pnpm files or CI steps remain
+- [x] `cargo test` green; `npm run lint` green
 
 ## Rollback
 

@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Parity verification and docs"
-status: pending
+status: completed
 priority: P1
 dependencies: [4]
 effort: ""
@@ -110,13 +110,13 @@ so reruns compare the same students.
 
 ## Success Criteria
 
-- [ ] `verify-parity.js` committed and exiting 0 on all four datasets
-- [ ] Parity result report committed under `plans/reports/`
-- [ ] Zero unexpected non-NULL columns
-- [ ] Manual checklist passes on the hub and all four dataset routes
-- [ ] `verify-parity.js` has zero npm dependencies (`node:sqlite` only)
-- [ ] `README.md` and `docs/` describe the actual repo, with npm commands
-- [ ] No stale path, pnpm, or build-variant references anywhere outside `plans/`
+- [x] `verify-parity.js` committed and exiting 0 on all four datasets
+- [x] Parity result report committed under `plans/reports/`
+- [x] Zero unexpected non-NULL columns
+- [x] Manual checklist passes on the hub and all four dataset routes
+- [x] `verify-parity.js` has zero npm dependencies (`node:sqlite` only)
+- [x] `README.md` and `docs/` describe the actual repo, with npm commands
+- [x] No stale path, pnpm, or build-variant references anywhere outside `plans/`
 
 ## Risk Assessment
 

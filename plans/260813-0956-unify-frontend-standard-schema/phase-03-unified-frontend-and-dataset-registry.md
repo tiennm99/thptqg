@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Unified frontend and dataset registry"
-status: pending
+status: completed
 priority: P1
 dependencies: [2]
 effort: ""
@@ -225,16 +225,16 @@ this repo today):
 
 ## Success Criteria
 
-- [ ] One `src/` serving four datasets **and** the hub, zero `if (dataset === ...)` in components
-- [ ] Subject list defined once in `src/lib/subjects.js`
-- [ ] Hub route fetches no database
-- [ ] Dataset path and DB URL are derived from `id`, not stored per entry
-- [ ] Legacy `/2017/old/` and `/2017/old2/` redirect to flat URLs, `?q=` preserved
-- [ ] 2016 route renders cluster + gender; 2017 routes do not
-- [ ] 2016 route has live search, deep links, student detail, score tiers
-- [ ] Admission blocks correct for both exam years
-- [ ] No routing library added
-- [ ] `npm run lint` green
+- [x] One `src/` serving four datasets **and** the hub, zero `if (dataset === ...)` in components
+- [x] Subject list defined once in `src/lib/subjects.js`
+- [x] Hub route fetches no database
+- [x] Dataset path and DB URL are derived from `id`, not stored per entry
+- [x] Legacy `/2017/old/` and `/2017/old2/` redirect to flat URLs, `?q=` preserved
+- [x] 2016 route renders cluster + gender; 2017 routes do not
+- [x] 2016 route has live search, deep links, student detail, score tiers
+- [x] Admission blocks correct for both exam years
+- [x] No routing library added
+- [x] `npm run lint` green
 
 ## Risk Assessment
 

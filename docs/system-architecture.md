@@ -1,97 +1,180 @@
 # System Architecture
 
-Static site. No backend. Browser downloads a compressed SQLite file at boot, then every query runs locally via `sql.js` (WASM).
+Static site, no backend. The browser downloads a compressed SQLite file at boot
+and every query runs locally via `sql.js` (SQLite compiled to WebAssembly).
+
+One frontend, one parser, one schema, four datasets.
 
 ## Data flow
 
 ```
-Excel files (.xls / .xlsx)
+data/<id>/*.xls(x)
         │
-        ▼  build-database*.js (Node)
-SQLite DB (public*/thptqg2017.db)
+        ▼  parser/  (Rust, one binary, one config per dataset)
+   .build/public/db/<id>.db
         │
-        ▼  gzip -9
-thptqg2017.db.gz (~47 MB for main variant)
+        ▼  gzip -9   (no -k: the raw file does not survive)
+   .build/public/db/<id>.db.gz
         │
-        ▼  Vite build copies public*/ into dist/
-Static site on GitHub Pages
+        ▼  vite build   (publicDir = .build/public)
+   dist/
         │
-        ▼  browser loads
-sql.js (WASM) opens the .db → queries run client-side
+        ▼  scripts/assemble-site.js
+   _site/   →  GitHub Pages
+        │
+        ▼  browser
+   sql.js (WASM) opens the .db → queries run client-side
 ```
 
-## Three deployment variants
+## The dataset id
 
-One repo → three independent sites, same frontend, different dataset.
+One identifier ties the whole pipeline together:
 
-| Variant | Route | Source dir | Public dir | Build cmd |
-|---|---|---|---|---|
-| main  | `/thptqg2017/`      | `data/`      | `public/`      | `npm run build` |
-| old   | `/thptqg2017/old/`  | `data-old/`  | `public-old/`  | `npm run build:old` |
-| old2  | `/thptqg2017/old2/` | `data-old2/` | `public-old2/` | `npm run build:old2` |
+```
+data/2017-old/  →  parser/configs/2017-old.toml  →  db/2017-old.db.gz  →  /thptqg/2017-old/
+```
 
-`vite.config.js` reads `process.env.VARIANT` and switches `base`, `publicDir`, `outDir` accordingly. `emptyOutDir` is on only for the main build so the variant builds merge into `dist/old/`, `dist/old2/` cleanly.
+`src/datasets.js` declares the four ids once. The frontend, the database build
+(`parser/scripts/build-db.js`) and the site assembly all import that list, so
+adding a dataset means adding one entry and one config file.
 
-## Schema (all 3 DBs share this)
+| id | Exam | Rows | Source |
+| --- | --- | --- | --- |
+| `2016` | 2016 | 877,461 | Bộ GD&ĐT |
+| `2017` | 2017 | 861,068 | baotintuc.vn |
+| `2017-old` | 2017 | 847,348 | pre-refresh archive |
+| `2017-old2` | 2017 | 679,764 | corrected re-export |
+
+## Canonical schema
+
+Defined once in `parser/src/schema.rs` — DDL, INSERT, column order and the 16
+subject regexes. The four TOML configs carry no SQL at all, only per-dataset
+parse rules. Config parsing uses `deny_unknown_fields`, so a leftover `[schema]`
+block fails loudly instead of looking effective while `schema.rs` drives the
+build.
 
 ```sql
 CREATE TABLE student (
-  so_bao_danh   TEXT PRIMARY KEY,     -- exam ID (8 digits, first 2 = province)
+  so_bao_danh   TEXT PRIMARY KEY,   -- 2017: 8 digits; 2016: 9 digits or a
+                                    -- 2-4 letter cluster code then digits
   ho_ten        TEXT NOT NULL,
-  ho_ten_ascii  TEXT NOT NULL,        -- NFD-stripped lowercase for accent-insensitive search
-  ngay_sinh     TEXT,                 -- dd/mm/yyyy
+  ho_ten_ascii  TEXT NOT NULL,      -- NFD-stripped lowercase, for accent-insensitive search
+  ngay_sinh     TEXT,               -- dd/mm/yyyy
+  ten_cum_thi   TEXT,               -- 2016 only
+  gioi_tinh     TEXT,               -- 2016 only
   toan, ngu_van, vat_ly, hoa_hoc, sinh_hoc, khtn,
   lich_su, dia_ly, gdcd, khxh,
-  tieng_anh, tieng_phap, tieng_nga, tieng_trung   REAL
+  tieng_anh, tieng_phap, tieng_nga, tieng_duc, tieng_nhat, tieng_trung   REAL
 );
-CREATE INDEX idx_ho_ten        ON student(ho_ten);
-CREATE INDEX idx_ho_ten_ascii  ON student(ho_ten_ascii);
+CREATE INDEX idx_ho_ten       ON student(ho_ten);
+CREATE INDEX idx_ho_ten_ascii ON student(ho_ten_ascii);
+CREATE INDEX idx_ten_cum_thi  ON student(ten_cum_thi) WHERE ten_cum_thi IS NOT NULL;
 ```
 
-No German / Japanese language columns — neither appears in any source file.
+Every dataset gets all 22 columns; ones it has no data for are NULL, costing
+about a byte per row. `khtn`, `khxh` and `gdcd` are empty on 2016;
+`ten_cum_thi` and `gioi_tinh` are empty on the 2017 datasets.
 
-Each score column is `NULL` when the student didn't take that subject. A student's "admission block" total is only computed when all 3 required subjects are non-null.
+`idx_ten_cum_thi` is partial, so it holds zero entries where the column is
+always NULL.
 
-## Parse quirks (why 3 builder scripts)
+## Routing
 
-Each dataset had a different quirk. Rather than one mega-parser with mode flags, each builder script is ~70 lines and isolates its own workarounds.
+URLs are flat, one segment per dataset, and the segment is the id:
 
-| Dataset | Quirk | Mitigation |
-|---|---|---|
-| data/ (baotintuc .xls) | Hanoi + HCM overflow past the 65,536 row-per-sheet .xls limit | Iterate all `wb.SheetNames` |
-| data-old/ (xlsx) | Single-sheet always; one bogus header row (`SOBAODANH`/`HO_TEN`) leaked into an earlier DB | Strict numeric-SBD guard rejects the leak |
-| data-old2/ (xlsx) | HCM overflow + many blank trailing rows | Multi-sheet walk + blank-row pre-filter |
+```
+/thptqg/            hub
+/thptqg/2016/
+/thptqg/2017/
+/thptqg/2017-old/
+/thptqg/2017-old2/
+```
 
-Shared concerns (regex, schema, `toAscii`, header detection) live in `scripts/build-lib.js`.
+`src/router.js` is an exact match on that segment. The nested form used before
+(`/thptqg/2017/old/`) would have needed longest-prefix matching, since it also
+starts with `/thptqg/2017/`. Those two legacy URLs still resolve: the router
+rewrites them to the flat equivalent with `history.replaceState`, preserving the
+query string so `?q=` deep links survive.
+
+A single Vite build emits one `index.html`. Because `base` is absolute
+(`/thptqg/`), that file references `/thptqg/assets/...` regardless of the
+directory it is served from, so the assemble step copies it to every route and
+each URL is a real static file. **No SPA 404-fallback redirect is used** — the
+usual hack rewrites URLs and would interfere with the deep links.
+
+## Serving both exam years without branching
+
+No component contains a per-dataset conditional. Two mechanisms do the work:
+
+- **All-NULL columns are hidden.** `score-table.jsx` drops any column where
+  every row in the result set is NULL, so 2016 rows surface Cụm thi / GT / Đức /
+  Nhật and 2017 rows surface KHTN / KHXH / GDCD / Nga.
+- **Incomplete admission blocks are skipped.** `computeBlocks()` only returns a
+  block when the student has all three subjects, so one block list covers both
+  years: GDCD blocks self-exclude on 2016, German and Japanese blocks
+  self-exclude wherever those languages were not sat.
+
+Anything genuinely per-dataset — title, source, database size, search examples,
+SQL presets — lives in `src/datasets.js`.
+
+## Exam ID formats
+
+`src/lib/query-mode.js` decides whether a query is an exam ID or a name, and is
+shared by `App.jsx` and `search-form.jsx` (they previously held separate copies
+and had drifted apart on exactly this rule).
+
+| Form | Example | Where |
+| --- | --- | --- |
+| 8 digits | `49008235` | 2017 — first two digits are the province |
+| 9 digits with leading zero | `017006021` | 2016 |
+| 2-4 letters then digits | `BAL000001` | 2016 — exam cluster code |
+
+The letter-prefixed form is the majority case for 2016: 616,593 of 877,461
+candidates (70.3%). Letter prefixes are upper-cased before lookup, so
+`bal000001` resolves.
+
+## Score tiers
+
+Six-level ladder in `scoreTier()` (`src/lib/admission-blocks.js`), paired with a
+symbol so meaning is never colour-only.
+
+| Tier | Range | Vietnamese |
+| --- | --- | --- |
+| common | ≤ 1 | Điểm liệt |
+| uncommon | < 5 | Chưa đạt |
+| rare | 5–6.5 | Trung bình |
+| epic | 6.5–8 | Khá |
+| legendary | 8–9 | Giỏi |
+| prismatic | 9–10 | Xuất sắc |
 
 ## Admission blocks
 
-Vietnamese universities admit students based on 3-subject combinations called "admission blocks" (khối thi). `src/lib/admission-blocks.js` lists all 49 official 2017 blocks computable from our schema (A00–A11, B00–B08, C00–C20, D01–D15). Each entry is `{ code, subjects: [3 keys], label }`.
+Vietnamese universities admit on three-subject combinations (khối thi).
+`src/lib/admission-blocks.js` lists the blocks computable from this schema
+(A00–A11, B00–B08, C00–C20, D01–D15, plus D05/D06 for German and Japanese).
+`computeBlocks(student)` returns those where all three scores exist, sorted by
+total descending.
 
-`computeBlocks(student)` returns only blocks where the student has all 3 subject scores, sorted by total desc. Used by the student detail card.
+## Design decisions
 
-The SQL preset "Top 10 best-block in Long An" materialises all 49 blocks as a `UNION ALL` CTE, picks each student's best block via `ROW_NUMBER() OVER (PARTITION BY so_bao_danh ORDER BY s DESC, k)`, then ranks across students.
+| Concern | Choice | Rationale |
+| --- | --- | --- |
+| Storage | Static SQLite file | No backend; the datasets are frozen |
+| Compression | gzip in CI, `DecompressionStream` in the browser | Native API, no extra library |
+| WASM hosting | `sql.js.org` CDN | Smaller self-hosted artifact |
+| Diacritics search | Pre-computed `ho_ten_ascii` | `LOWER(REPLACE(...))` at query time defeats the index |
+| SQL safety | Leading-keyword allowlist | `sql.js` is in-memory so writes cannot persist; the allowlist prevents confusion |
+| Row caps | 100 (lookup), 1000 (SQL) | Keeps DOM render sizes reasonable |
+| Routing | Hand-rolled, ~20 lines | Five static routes do not justify a router dependency |
 
-## Score tiers (UI coding)
+## Risks and limitations
 
-6-level TFT rarity ladder (white → green → blue → purple → gold → prismatic). Defined in `scoreTier()` in `src/lib/admission-blocks.js`.
-
-| Tier | Range | UI label (Vietnamese) | English |
-|---|---|---|---|
-| common    | ≤ 1   | Điểm liệt  | Disqualifying |
-| uncommon  | < 5   | Chưa đạt   | Below passing |
-| rare      | 5–6.5 | Trung bình | Average |
-| epic      | 6.5–8 | Khá        | Good |
-| legendary | 8–9   | Giỏi       | Very good |
-| prismatic | 9–10  | Xuất sắc   | Excellent |
-
-Color + icon + text label — never color-only.
-
-## Frontend key behaviors
-
-- Query state lives in `App.jsx` and is synced to URL `?q=...` via `history.replaceState` — bookmarkable, shareable.
-- `SearchForm` is a controlled component that 300ms-debounces input changes and auto-triggers search once the query is long enough (3+ digits for SBD, 2+ chars for name).
-- Detection: all-digits → exact `so_bao_danh` match; ASCII-only → folded `ho_ten_ascii LIKE`; has Vietnamese diacritics → search both `ho_ten` and folded column.
-- Exactly 1 result → `StudentDetail` card; 0 or >1 → `ScoreTable`.
-- Global `/` key focuses the search input when not already typing.
-- Share button on the detail card uses Web Share API when present, else clipboard with a pre-formatted summary + deep-link URL.
+- **Database size.** 38–48 MB gzipped per dataset; slow links wait, mitigated by
+  a progress bar.
+- **Browser memory.** The full database lives in RAM; older mobile devices may
+  run out.
+- **`sql.js.org` dependency.** If that CDN is unreachable, the WASM fails to
+  load. Self-hosting `sql-wasm.wasm` and updating `SQL_WASM_URL` in
+  `use-sqlite.js` is the fix.
+- **Excel format drift.** A new source file with an unseen header layout needs a
+  new branch in `format_detect_2016.rs` or a new config.

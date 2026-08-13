@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Build and deploy pipeline"
-status: pending
+status: completed
 priority: P1
 dependencies: [3]
 effort: ""

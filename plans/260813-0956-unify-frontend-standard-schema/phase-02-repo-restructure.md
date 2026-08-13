@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Repo restructure"
-status: pending
+status: completed
 priority: P1
 dependencies: [1]
 effort: ""
@@ -131,12 +131,12 @@ component.
 
 ## Success Criteria
 
-- [ ] Target layout matches `plan.md` exactly
-- [ ] `2016/` and `2017/` no longer exist
-- [ ] Old hub page content captured before deletion
-- [ ] Git reports renames, repository size unchanged
-- [ ] `package-lock.json` committed; `npm ci` succeeds; zero pnpm files remain
-- [ ] `cargo test` green from the new location
+- [x] Target layout matches `plan.md` exactly
+- [x] `2016/` and `2017/` no longer exist
+- [x] Old hub page content captured before deletion
+- [x] Git reports renames, repository size unchanged
+- [x] `package-lock.json` committed; `npm ci` succeeds; zero pnpm files remain
+- [x] `cargo test` green from the new location
 
 ## Risk Assessment
 

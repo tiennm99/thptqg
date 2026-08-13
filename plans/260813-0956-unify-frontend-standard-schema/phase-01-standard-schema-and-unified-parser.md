@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Standard schema and unified parser"
-status: pending
+status: completed
 priority: P1
 dependencies: []
 effort: ""
