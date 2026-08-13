@@ -4,17 +4,19 @@ import { SearchForm } from "./components/search-form";
 import { ScoreTable } from "./components/score-table";
 import { StudentDetail } from "./components/student-detail";
 import { CustomQuery } from "./components/custom-query";
+import { Hub } from "./components/hub";
+import { dbOf } from "./datasets";
+import { resolveRoute } from "./router";
+import { isExamId, normaliseExamId } from "./lib/query-mode";
 import "./App.css";
 
-const DB_URL = import.meta.env.BASE_URL + "thptqg2017.db.gz";
 const MAX_RESULTS = 100;
-const DB_SIZE_MB = 47;
 
 // Strip Vietnamese diacritics: "Nguyễn Bửu Lộc" → "nguyen buu loc"
 function toAscii(str) {
   return str
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .replace(/đ/gi, "d")
     .toLowerCase();
 }
@@ -38,8 +40,11 @@ function readUrlQuery() {
   return new URL(window.location.href).searchParams.get("q") || "";
 }
 
-function App() {
-  const { db, loading, error, progress } = useSqlite(DB_URL);
+/** The score-lookup view for one dataset. */
+function DatasetApp({ dataset }) {
+  const { db, loading, error, progress } = useSqlite(
+    dbOf(dataset, import.meta.env.BASE_URL),
+  );
   const [results, setResults] = useState(null);
   const [searchError, setSearchError] = useState(null);
   const [activeTab, setActiveTab] = useState("search");
@@ -55,14 +60,14 @@ function App() {
       writeUrlQuery(q);
 
       try {
-        const isExamId = /^\d+$/.test(q);
         let stmt;
 
-        if (isExamId) {
+        if (isExamId(q)) {
+          // Letter-prefixed 2016 IDs are stored upper-case; digits are unaffected.
           stmt = db.prepare(
             "SELECT * FROM student WHERE so_bao_danh = $q LIMIT $limit",
           );
-          stmt.bind({ $q: q, $limit: MAX_RESULTS });
+          stmt.bind({ $q: normaliseExamId(q), $limit: MAX_RESULTS });
         } else if (isAsciiOnly(q)) {
           stmt = db.prepare(
             "SELECT * FROM student WHERE ho_ten_ascii LIKE $q LIMIT $limit",
@@ -141,9 +146,10 @@ function App() {
   return (
     <div className="app">
       <header>
-        <h1>Tra cứu điểm thi THPT Quốc gia 2017</h1>
-        <p className="subtitle">
-          Dữ liệu thí sinh toàn quốc · Hỗ trợ truy vấn SQL tùy chỉnh
+        <h1>{dataset.title}</h1>
+        <p className="subtitle">{dataset.subtitle}</p>
+        <p className="hub-back">
+          <a href={import.meta.env.BASE_URL}>← Tất cả các kỳ thi</a>
         </p>
       </header>
 
@@ -151,7 +157,7 @@ function App() {
         {loading && (
           <div className="loading">
             <p>
-              Đang tải cơ sở dữ liệu ~{DB_SIZE_MB} MB
+              Đang tải cơ sở dữ liệu ~{dataset.dbSizeMb} MB
               {progress > 0 ? ` · ${progress}%` : ""}
             </p>
             <div className="progress-bar">
@@ -188,6 +194,7 @@ function App() {
               onSearch={handleSearch}
               onClear={handleClear}
               disabled={loading || !!error}
+              examples={dataset.examples}
             />
 
             {searchError && (
@@ -209,19 +216,31 @@ function App() {
         )}
 
         {activeTab === "sql" && (
-          <CustomQuery db={db} disabled={loading || !!error} />
+          <CustomQuery
+            db={db}
+            disabled={loading || !!error}
+            presets={dataset.presets}
+          />
         )}
       </main>
 
       <footer>
         <p>
-          Nguồn: baotintuc.vn
+          Nguồn: {dataset.source}
           {totalCount !== null && ` · ${totalCount.toLocaleString("vi-VN")} thí sinh`}
           {" · Dữ liệu chỉ mang tính tham khảo"}
         </p>
       </footer>
     </div>
   );
+}
+
+function App() {
+  // Resolved once at mount: every route is a full page load on GitHub Pages,
+  // so there is no in-app navigation to react to.
+  const [dataset] = useState(() => resolveRoute());
+
+  return dataset ? <DatasetApp dataset={dataset} /> : <Hub />;
 }
 
 export default App;

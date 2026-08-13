@@ -1,21 +1,5 @@
 import { scoreTier } from "../lib/admission-blocks";
-
-const SUBJECT_COLUMNS = [
-  { key: "toan", label: "Toán" },
-  { key: "ngu_van", label: "Ngữ văn" },
-  { key: "vat_ly", label: "Vật lí" },
-  { key: "hoa_hoc", label: "Hóa học" },
-  { key: "sinh_hoc", label: "Sinh học" },
-  { key: "khtn", label: "KHTN" },
-  { key: "lich_su", label: "Lịch sử" },
-  { key: "dia_ly", label: "Địa lí" },
-  { key: "gdcd", label: "GDCD" },
-  { key: "khxh", label: "KHXH" },
-  { key: "tieng_anh", label: "Tiếng Anh" },
-  { key: "tieng_phap", label: "Tiếng Pháp" },
-  { key: "tieng_nga", label: "Tiếng Nga" },
-  { key: "tieng_trung", label: "Tiếng Trung" },
-];
+import { SUBJECTS, IDENTITY_COLUMNS, hasAnyValue } from "../lib/subjects";
 
 function formatScore(val) {
   if (val === null || val === undefined) return "—";
@@ -28,10 +12,14 @@ export function ScoreTable({ results }) {
     return <p className="no-results">Không tìm thấy kết quả.</p>;
   }
 
-  // Hide columns where every row in the result set is null (e.g. unused foreign langs)
-  const visibleColumns = SUBJECT_COLUMNS.filter((col) =>
-    results.some((row) => row[col.key] !== null && row[col.key] !== undefined),
+  // Drop columns where every row in the result set is NULL. This is what makes
+  // one table serve both exam years: 2016 rows surface Cụm thi / GT / Đức /
+  // Nhật and hide KHTN / KHXH / GDCD / Nga, and 2017 rows do the reverse — with
+  // no dataset conditional anywhere in this component.
+  const visibleIdentity = IDENTITY_COLUMNS.filter((col) =>
+    hasAnyValue(results, col.key),
   );
+  const visibleSubjects = SUBJECTS.filter((col) => hasAnyValue(results, col.key));
 
   return (
     <div className="table-wrapper">
@@ -42,7 +30,10 @@ export function ScoreTable({ results }) {
             <th>SBD</th>
             <th>Họ tên</th>
             <th>Ngày sinh</th>
-            {visibleColumns.map((col) => (
+            {visibleIdentity.map((col) => (
+              <th key={col.key}>{col.label}</th>
+            ))}
+            {visibleSubjects.map((col) => (
               <th key={col.key}>{col.label}</th>
             ))}
           </tr>
@@ -50,10 +41,19 @@ export function ScoreTable({ results }) {
         <tbody>
           {results.map((row) => (
             <tr key={row.so_bao_danh}>
-              <td>{row.so_bao_danh}</td>
+              <td className="sbd-cell">{row.so_bao_danh}</td>
               <td className="name-cell">{row.ho_ten}</td>
               <td>{row.ngay_sinh || "—"}</td>
-              {visibleColumns.map((col) => {
+              {visibleIdentity.map((col) => (
+                <td
+                  key={col.key}
+                  className={col.key === "ten_cum_thi" ? "cumthi-cell" : undefined}
+                  title={col.key === "ten_cum_thi" ? row[col.key] || "" : undefined}
+                >
+                  {row[col.key] || "—"}
+                </td>
+              ))}
+              {visibleSubjects.map((col) => {
                 const tier = scoreTier(row[col.key]);
                 const cls = tier ? `score-cell tier-${tier.key}` : "score-cell";
                 return (

@@ -1,10 +1,13 @@
-// Vietnamese university admission-block ("khối thi") definitions for 2017.
+// Vietnamese university admission-block ("khối thi") definitions.
 // Each block is the sum of 3 subjects; we only compute a block when ALL three
 // subject scores exist for the student.
-
-// Full 2017 admission-block list (Circular 03/2017/TT-BGDĐT) restricted to
-// the 12 subjects available in our DB. Blocks needing Tiếng Đức / Nhật are
-// excluded — neither language appears in any source file.
+//
+// One list serves both exam years. computeBlocks() skips any block with a
+// missing subject score, so blocks needing GDCD self-exclude on 2016 rows and
+// blocks needing Tiếng Đức / Nhật self-exclude wherever those weren't sat —
+// no per-year branching required.
+//
+// Based on Circular 03/2017/TT-BGDĐT.
 export const ADMISSION_BLOCKS = [
   { code: "A00", subjects: ["toan", "vat_ly", "hoa_hoc"],     label: "Toán + Lý + Hóa" },
   { code: "A01", subjects: ["toan", "vat_ly", "tieng_anh"],   label: "Toán + Lý + Anh" },
@@ -55,6 +58,14 @@ export const ADMISSION_BLOCKS = [
   { code: "D13", subjects: ["ngu_van", "sinh_hoc", "tieng_anh"], label: "Văn + Sinh + Anh" },
   { code: "D14", subjects: ["ngu_van", "lich_su", "tieng_anh"], label: "Văn + Sử + Anh" },
   { code: "D15", subjects: ["ngu_van", "dia_ly", "tieng_anh"], label: "Văn + Địa + Anh" },
+
+  // German and Japanese blocks. Previously omitted because neither language
+  // appeared in the 2017 database — but that was a parser gap, not reality:
+  // unifying the subject patterns recovered German and Japanese scores in every
+  // dataset. Students who sat neither are unaffected, since computeBlocks()
+  // skips blocks with a missing subject.
+  { code: "D05", subjects: ["toan", "ngu_van", "tieng_duc"],  label: "Toán + Văn + Đức" },
+  { code: "D06", subjects: ["toan", "ngu_van", "tieng_nhat"], label: "Toán + Văn + Nhật" },
 ];
 
 // Returns { code, label, total, parts:[{key,score}] } for every block where

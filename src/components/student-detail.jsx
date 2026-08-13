@@ -1,29 +1,6 @@
 import { useState } from "react";
 import { computeBlocks, scoreTier } from "../lib/admission-blocks";
-
-const SUBJECT_LABELS = {
-  toan: "Toán",
-  ngu_van: "Ngữ văn",
-  vat_ly: "Vật lí",
-  hoa_hoc: "Hóa học",
-  sinh_hoc: "Sinh học",
-  khtn: "KHTN",
-  lich_su: "Lịch sử",
-  dia_ly: "Địa lí",
-  gdcd: "GDCD",
-  khxh: "KHXH",
-  tieng_anh: "Tiếng Anh",
-  tieng_phap: "Tiếng Pháp",
-  tieng_nga: "Tiếng Nga",
-  tieng_trung: "Tiếng Trung",
-};
-
-const SUBJECT_ORDER = [
-  "toan", "ngu_van",
-  "vat_ly", "hoa_hoc", "sinh_hoc", "khtn",
-  "lich_su", "dia_ly", "gdcd", "khxh",
-  "tieng_anh", "tieng_phap", "tieng_nga", "tieng_trung",
-];
+import { SUBJECTS } from "../lib/subjects";
 
 function fmt(n) {
   return n === null || n === undefined ? "—" : Number(n).toFixed(2);
@@ -43,9 +20,9 @@ const TIER_LEGEND = [
 export function StudentDetail({ student }) {
   const [copied, setCopied] = useState(null);  // null | 'sbd' | 'share' | 'url'
   const blocks = computeBlocks(student);
-  const subjects = SUBJECT_ORDER
-    .filter((k) => student[k] !== null && student[k] !== undefined)
-    .map((k) => ({ key: k, label: SUBJECT_LABELS[k], score: student[k] }));
+  const subjects = SUBJECTS
+    .filter((s) => student[s.key] !== null && student[s.key] !== undefined)
+    .map((s) => ({ key: s.key, label: s.label, score: student[s.key] }));
 
   function flash(kind) {
     setCopied(kind);
@@ -106,6 +83,19 @@ export function StudentDetail({ student }) {
               <div>
                 <dt>Ngày sinh</dt>
                 <dd className="mono">{student.ngay_sinh}</dd>
+              </div>
+            )}
+            {/* Only the 2016 dataset carries these; NULL elsewhere. */}
+            {student.ten_cum_thi && (
+              <div>
+                <dt>Cụm thi</dt>
+                <dd>{student.ten_cum_thi}</dd>
+              </div>
+            )}
+            {student.gioi_tinh && (
+              <div>
+                <dt>Giới tính</dt>
+                <dd>{student.gioi_tinh}</dd>
               </div>
             )}
           </dl>

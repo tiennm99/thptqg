@@ -1,25 +1,15 @@
 import { useEffect, useRef, useState } from "react";
+import { detectMode } from "../lib/query-mode";
 
 const DEBOUNCE_MS = 300;
-const MIN_SBD_DIGITS = 3;
-const MIN_NAME_CHARS = 2;
-const EXAMPLES = ["49008235", "Nguyễn Minh Tiến"];
 
-// Detect input mode for dynamic hint shown under the field
-function detectMode(raw) {
-  const q = raw.trim();
-  if (!q) return { mode: "empty", hint: "Gõ SBD (chữ số) hoặc họ tên để tìm" };
-  if (/^\d+$/.test(q)) {
-    return q.length >= MIN_SBD_DIGITS
-      ? { mode: "sbd", hint: `Tìm theo số báo danh · khớp chính xác` }
-      : { mode: "sbd-short", hint: `Cần ít nhất ${MIN_SBD_DIGITS} chữ số` };
-  }
-  return q.length >= MIN_NAME_CHARS
-    ? { mode: "name", hint: "Tìm theo họ tên · không phân biệt dấu và hoa/thường" }
-    : { mode: "name-short", hint: `Cần ít nhất ${MIN_NAME_CHARS} ký tự` };
-}
-
-export function SearchForm({ value = "", onSearch, onClear, disabled }) {
+export function SearchForm({
+  value = "",
+  onSearch,
+  onClear,
+  disabled,
+  examples = [],
+}) {
   const [query, setQuery] = useState(value);
   const inputRef = useRef(null);
   const timerRef = useRef(null);
@@ -104,7 +94,7 @@ export function SearchForm({ value = "", onSearch, onClear, disabled }) {
         {mode === "empty" && (
           <>
             {" · VD: "}
-            {EXAMPLES.map((ex, i) => (
+            {examples.map((ex, i) => (
               <span key={ex}>
                 <button
                   type="button"
@@ -116,7 +106,7 @@ export function SearchForm({ value = "", onSearch, onClear, disabled }) {
                 >
                   {ex}
                 </button>
-                {i < EXAMPLES.length - 1 ? " hoặc " : ""}
+                {i < examples.length - 1 ? " hoặc " : ""}
               </span>
             ))}
           </>

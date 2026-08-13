@@ -779,3 +779,101 @@ footer {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Table cells for the 2016-only identity columns.
+   Ported from the 2016 frontend; hidden automatically on the 2017 datasets
+   because every row there is NULL.
+   --------------------------------------------------------------------------- */
+
+.sbd-cell {
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.cumthi-cell {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------------
+   Hub route (/thptqg/) — replaces the old standalone static index.html
+   --------------------------------------------------------------------------- */
+
+.hub {
+  max-width: 42rem;
+  margin: 3rem auto;
+  padding: 0 1rem;
+  line-height: 1.6;
+}
+
+.hub h1 {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.hub-list {
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.hub-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+  padding: 0.9rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface, transparent);
+  text-decoration: none;
+  color: inherit;
+}
+
+.hub-link:hover,
+.hub-link:focus-visible {
+  border-color: var(--border-strong);
+}
+
+.hub-label {
+  font-weight: 600;
+}
+
+.hub-blurb {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.hub-archive h2 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 0;
+}
+
+.hub-list-compact {
+  margin-top: 0.75rem;
+}
+
+.hub-back {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+}
+
+.hub-back a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.hub-back a:hover {
+  text-decoration: underline;
+}
