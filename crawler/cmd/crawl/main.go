@@ -1,6 +1,6 @@
 // Command crawl downloads a dataset's source spreadsheets into data/<id>/.
 //
-// The argument is the dataset id, the same one used by go-parser's configs and
+// The argument is the dataset id, the same one used by the parser's configs and
 // the published site paths.
 //
 //	crawl 2016                      # 119 exam-cluster files

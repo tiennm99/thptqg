@@ -141,7 +141,7 @@ func Run(ctx context.Context, items []Item, opts Options) ([]Result, error) {
 //
 // A .part left behind by an abrupt kill needs no cleanup: it does not satisfy
 // the skip check, os.Create truncates it, and the next run re-fetches the file.
-// go-parser ignores it in the meantime, since it reads only .xls and .xlsx.
+// The parser ignores it in the meantime, since it reads only .xls and .xlsx.
 func download(ctx context.Context, client *http.Client, it Item, headers map[string]string) Result {
 	if st, err := os.Stat(it.Path); err == nil && st.Size() > 0 {
 		return Result{Item: it, Status: StatusSkip, Size: st.Size()}

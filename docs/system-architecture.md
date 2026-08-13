@@ -7,20 +7,23 @@ One frontend, one parser, one schema, two datasets.
 
 ## Data flow
 
+Each stage is a directory; `data/` and `_site/` are the stores they hand work
+through. `assembler/` sequences everything from the parser onwards.
+
 ```
-        ▲  crawler/  (Go — manual refresh only, never part of the build)
+        ▲  crawler/   (Go — manual refresh only, never part of the build)
 data/<id>/*.xls(x)
         │
-        ▼  go-parser/  (Go, one binary, one config per dataset)
+        ▼  parser/    (Go, one binary, one config per dataset)
    .build/public/db/<id>.db
         │
-        ▼  gzip -9   (no -k: the raw file does not survive)
-   .build/public/db/<id>.db.gz
+        ▼  assembler/ — row count must match datasets.json, then gzip
+   .build/public/db/<id>.db.gz      (the raw .db does not survive)
         │
-        ▼  vite build   (root = web/, publicDir = .build/public)
+        ▼  assembler/ → vite build   (root = web/, publicDir = .build/public)
    web/dist/
         │
-        ▼  web/scripts/assemble-site.js
+        ▼  assembler/ — one index.html per dataset; every database must be present
    _site/   →  GitHub Pages
         │
         ▼  browser
@@ -32,16 +35,19 @@ data/<id>/*.xls(x)
 One identifier ties the whole pipeline together:
 
 ```
-data/2017/  →  go-parser/configs/2017.yml  →  db/2017.db.gz  →  /thptqg/2017/
+data/2017/  →  parser/configs/2017.yml  →  db/2017.db.gz  →  /thptqg/2017/
 ```
 
-`web/src/datasets.js` declares the two ids once. The frontend, the database
-build (`go-parser/scripts/build-db.js`) and the site assembly all import that
-list, so adding a dataset means adding one entry and one config file.
+`datasets.json` at the repository root declares the ids once, with the row count
+and artifact size the assembler enforces. It is JSON rather than a module
+because the assembler is a Go program and the Vite app is not, and JSON is the
+only format both parse without a dependency.
 
-That import crosses a package boundary — go-parser reaches into the web
-workspace for it. It stays there because the same entries also carry the UI's
-labels and SQL presets, and splitting them would mean two lists to keep in step.
+Presentation — titles, labels, search examples, SQL presets — stays in
+`web/src/datasets.js`, keyed by id. That file cross-checks the two: a registry
+entry with no content, or content for a dataset that was never built, throws at
+module load rather than rendering a page with no title or a link to a database
+that does not exist.
 
 | id | Exam | Rows | Source |
 | --- | --- | --- | --- |
@@ -50,7 +56,7 @@ labels and SQL presets, and splitting them would mean two lists to keep in step.
 
 ## Canonical schema
 
-Defined once in `go-parser/internal/schema/schema.go` — DDL, INSERT, column order and the 16
+Defined once in `parser/internal/schema/schema.go` — DDL, INSERT, column order and the 16
 subject regexes. The two YAML configs carry no SQL at all, only per-dataset
 parse rules. Config parsing sets `KnownFields(true)`, so a leftover `schema:`
 block fails loudly instead of looking effective while `schema.go` drives the
@@ -178,4 +184,4 @@ total descending.
   load. Self-hosting `sql-wasm.wasm` and updating `SQL_WASM_URL` in
   `use-sqlite.js` is the fix.
 - **Excel format drift.** A new source file with an unseen header layout needs a
-  new branch in `go-parser/internal/ingest/detect2016.go` or a new config.
+  new branch in `parser/internal/ingest/detect2016.go` or a new config.

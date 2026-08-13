@@ -1,0 +1,31 @@
+{
+  "_comment": [
+    "The dataset registry: the one place every stage agrees on what exists.",
+    "",
+    "  crawler/  fills   data/<id>/",
+    "  parser/   reads   data/<id>/ with configs/<id>.yml, writes <id>.db",
+    "  assembler/ verifies, compresses and publishes it as db/<id>.db.gz",
+    "  web/      serves it at /thptqg/<id>/",
+    "",
+    "It is JSON rather than a module because Go and the Vite app both read it,",
+    "and JSON is the only format both parse without a dependency. Presentation",
+    "(titles, labels, SQL presets) stays in web/src/datasets.js keyed by id;",
+    "that file fails loudly if the two lists disagree.",
+    "",
+    "expectedRows is exact, not approximate. The inputs are frozen historical",
+    "exam results, so a deviation of even one row means something changed that",
+    "nobody intended, and the assembler refuses to publish."
+  ],
+  "datasets": [
+    {
+      "id": "2016",
+      "expectedRows": 877461,
+      "dbSizeMb": 44
+    },
+    {
+      "id": "2017",
+      "expectedRows": 861068,
+      "dbSizeMb": 48
+    }
+  ]
+}

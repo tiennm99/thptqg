@@ -23,9 +23,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      # The parser is pure Go — grate, excelize, yaml.v3 and modernc.org/sqlite
-      # are all cgo-free — so no C toolchain is needed. Set explicitly rather
-      # than relying on the default.
+      # Every Go module here is cgo-free — grate, excelize, yaml.v3, x/net,
+      # x/text and modernc.org/sqlite — so no C toolchain is needed. Set
+      # explicitly rather than relying on the default.
       CGO_ENABLED: '0'
     steps:
       - uses: actions/checkout@v4
@@ -34,29 +34,37 @@ jobs:
         with:
           go-version: '1.26'
           cache-dependency-path: |
-            go-parser/go.sum
+            parser/go.sum
             crawler/go.sum
+            assembler/go.sum
 
+      # web/ is the only npm project in the repository; the other stages are Go.
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: 'npm'
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: web/package-lock.json
 
-      - run: npm ci
+      - name: Install web dependencies
+        working-directory: web
+        run: npm ci
 
-      # The reader-fidelity suite compares all 299 real input files against a
+      # The reader-fidelity suite compares every real input file against a
       # committed hash oracle, so it is the regression guard for the whole
       # reader. Runs before anything is built.
       - name: Test parser
-        run: npm run test:go
+        run: go -C parser test ./...
 
       # The crawler is not part of the build — it only refreshes data/ by hand.
-      # It is still compiled and tested here so it cannot rot unnoticed, and
-      # because its filename test guards the parser: input filenames decide
-      # which row survives a duplicate exam number.
+      # It is still tested here so it cannot rot unnoticed, and because its
+      # fixture test guards the parser: input filenames decide which row
+      # survives a duplicate exam number.
       - name: Test crawler
-        run: npm run test:crawler
+        run: go -C crawler test ./...
+
+      - name: Lint web
+        working-directory: web
+        run: npm run lint
 
       # excelize carries an open advisory, and the 2017 refresh runbook feeds
       # network-downloaded spreadsheets straight into the parser.
@@ -64,22 +72,14 @@ jobs:
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
           GOVULNCHECK="$(go env GOPATH)/bin/govulncheck"
-          (cd go-parser && "$GOVULNCHECK" ./...)
-          (cd crawler && "$GOVULNCHECK" ./...)
+          for m in parser crawler assembler; do (cd "$m" && "$GOVULNCHECK" ./...); done
 
-      # One parser binary builds every dataset; build-db.js reads the dataset
-      # list from web/src/datasets.js, verifies each database against its row
-      # count, then gzips it in place leaving no uncompressed file behind.
-      - name: Build databases
-        run: |
-          npm run build:go
-          npm run build:db
-
-      # One Vite build produces every page. web/scripts/assemble-site.js copies
-      # the emitted index.html to each dataset path (and the legacy nested
-      # URLs), then fails the job if an uncompressed database reached _site.
-      - name: Build and assemble site
-        run: npm run build:site
+      # One command runs the whole pipeline: compile the parser, build and
+      # verify each database against its registry row count, compress it, build
+      # the web app, and assemble _site — refusing to continue if a database is
+      # short, an artifact looks truncated, or one is missing entirely.
+      - name: Build site
+        run: go -C assembler run ./cmd/assemble
 
       - uses: actions/upload-pages-artifact@v3
         with:

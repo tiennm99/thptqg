@@ -11,10 +11,10 @@ import react from "@vitejs/plugin-react";
 // and the existing ?q= deep links keep working, which that fallback would break.
 //
 // publicDir holds only the gzipped databases, staged there by
-// go-parser/scripts/build-db.js. Nothing uncompressed is ever placed in it.
+// parser/scripts/build-db.js. Nothing uncompressed is ever placed in it.
 //
 // It sits at the repository root rather than inside this workspace because
-// go-parser writes it, so the path has to climb out of web/. Vite resolves
+// parser writes it, so the path has to climb out of web/. Vite resolves
 // publicDir against the project root, which is this directory.
 //
 // outDir is left at its default, so the build lands in web/dist and this

@@ -17,49 +17,57 @@ in git history.
 
 ## Layout
 
+The repository is one directory per pipeline stage, plus the two stores they
+pass between them.
+
 ```
-web/                  the frontend — one Vite app serving both datasets and the hub
-  src/datasets.js       the dataset ids and their per-dataset content
-  src/router.js         pathname → dataset
-  scripts/              site assembly
-crawler/              Go — re-fetches the source spreadsheets
-  internal/sources/     per dataset: which article to read, how to name its files
-  internal/article/     pulls the download links out of that article
-  internal/fetch/       concurrent, resumable downloading
-go-parser/            Go — Excel to SQLite
-  internal/schema/      canonical 22-column table: DDL, INSERT, subject regexes
-  configs/<id>.yml      per-dataset parse rules only, no SQL
-  scripts/              database build, parity verification
-data/<id>/            raw Excel files, one directory per dataset
-docs/                 architecture, data pipeline, deployment
+crawler/      Go   — re-fetches the source spreadsheets      → data/
+parser/       Go   — Excel to SQLite                          data/ → .db
+assembler/    Go   — verifies, compresses, builds, assembles  .db + web/ → _site/
+web/          npm  — the frontend, one Vite app for every dataset
+data/<id>/         raw Excel files, one directory per dataset
+datasets.json      the registry: which datasets exist, and their expected size
+docs/              architecture, data pipeline, deployment
 ```
 
-`web/` is the only npm workspace; `crawler/` and `go-parser/` are independent Go
-modules. The one cross-boundary import is `web/src/datasets.js`, which
-`go-parser/scripts/build-db.js` reads for the dataset list and expected sizes.
+Each stage runs on its own and hands its output to the next through the stores.
+`web/` is the only npm project; the three stages are independent Go modules.
+
+`datasets.json` is the contract between them. It is JSON because Go and the Vite
+app both read it and neither needs a dependency to do so; presentation stays in
+`web/src/datasets.js`, keyed by id, which fails loudly if the two disagree.
 
 The dataset id is one identifier end to end:
 
 ```
-data/2017/ → go-parser/configs/2017.yml → db/2017.db.gz → /thptqg/2017/
+data/2017/ → parser/configs/2017.yml → db/2017.db.gz → /thptqg/2017/
 ```
 
 ## Build
 
 ```bash
-npm ci
-npm run build:go       # compile the parser
-npm run build:db       # build + gzip both databases (add an id for just one)
-npm run build:site     # one Vite build, then assemble into _site/
+(cd web && npm ci)
+go -C assembler run ./cmd/assemble        # databases, then the site, into _site/
 npx serve _site
+```
+
+That one command compiles the parser, builds and verifies each database against
+its registry row count, compresses it, builds the web app and assembles `_site` —
+refusing to continue if a database is short, an artifact looks truncated, or one
+is missing altogether. Sub-steps when iterating:
+
+```bash
+go -C assembler run ./cmd/assemble db 2017   # one database
+go -C assembler run ./cmd/assemble site      # web build and _site only
+(cd web && npm run dev)                      # the app against staged databases
 ```
 
 The source spreadsheets are committed, so a crawl is only needed to refresh
 them:
 
 ```bash
-npm run crawl:2016     # re-fetch data/2016/
-npm run crawl:2017     # re-fetch data/2017/
+go -C crawler run ./cmd/crawl 2016
+go -C crawler run ./cmd/crawl 2017
 ```
 
 Each reads the download links out of the article that published the dataset, so
@@ -72,12 +80,14 @@ Pushing to `main` runs the same steps in
 ## Adding a dataset
 
 1. Put the Excel files in `data/<id>/`
-2. Add `go-parser/configs/<id>.yml` — sheet mode, column indices, validation
+2. Add `parser/configs/<id>.yml` — sheet mode, column indices, validation
    guards. No SQL; the schema is canonical.
-3. Add an entry to `DATASETS` in `web/src/datasets.js`
+3. Add an entry to `datasets.json` with its expected row count and size
+4. Add the matching presentation to `CONTENT` in `web/src/datasets.js`
 
-Everything else follows: the build script, the site assembly and the router all
-read that one list, and the UI adapts to whichever columns the dataset fills.
+Everything else follows: the assembler, the router and the hub all read the
+registry, and the UI adapts to whichever columns the dataset fills. Steps 3 and 4
+check each other, so forgetting either one fails rather than half-working.
 
 ## Docs
 

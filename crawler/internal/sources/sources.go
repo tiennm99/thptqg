@@ -15,7 +15,7 @@ import (
 // Source is one crawlable dataset.
 type Source struct {
 	// ID is the dataset id: the subcommand, the directory under data/, and the
-	// go-parser config name, all at once. Keeping it single means a source
+	// parser config name, all at once. Keeping it single means a source
 	// cannot be pointed at the wrong dataset's directory.
 	ID      string
 	Summary string
@@ -32,14 +32,14 @@ type Source struct {
 
 	// WantFiles is how many links the article is expected to yield. A page that
 	// suddenly yields fewer has changed shape, and silently crawling a partial
-	// dataset is the failure this exists to prevent — go-parser would happily
+	// dataset is the failure this exists to prevent — parser would happily
 	// build a short database and only the row-count guard would catch it, after
 	// the fact.
 	WantFiles int
 
 	// Dest names the local file for one discovered link.
 	//
-	// This is the load-bearing part. go-parser sorts input files bytewise and
+	// This is the load-bearing part. parser sorts input files bytewise and
 	// inserts last-wins, so the names chosen here decide which row survives a
 	// duplicate exam number. Two sources answer it differently and both have a
 	// reason: see source_2016.go and source_2017.go.

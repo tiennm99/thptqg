@@ -53,7 +53,7 @@ var nonAlphanumeric = regexp.MustCompile(`[^a-z0-9]+`)
 //
 // The article writes the names with diacritics, so this has to strip them.
 // Combining marks are removed by the literal range U+0300–U+036F rather than by
-// the unicode.Mn category, matching what go-parser does to build ho_ten_ascii.
+// the unicode.Mn category, matching what parser does to build ho_ten_ascii.
 func slug(name string) string {
 	var b strings.Builder
 	for _, r := range norm.NFD.String(name) {

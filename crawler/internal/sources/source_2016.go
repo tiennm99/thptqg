@@ -16,11 +16,11 @@ import (
 // Dest keeps the server's own filename verbatim — a 32-hex content hash, the
 // cluster slug, then a millisecond timestamp. Two reasons not to prettify it:
 //
-//   - go-parser sorts inputs bytewise and inserts last-wins, so filenames decide
+//   - parser sorts inputs bytewise and inserts last-wins, so filenames decide
 //     which row survives a duplicate exam number. That is live here, not
 //     hypothetical: 877,464 source rows collapse to 877,461, so three rows'
 //     contents depend on this ordering.
-//   - go-parser/testdata/reader-fidelity-hashes.tsv is keyed by full path, and
+//   - parser/testdata/reader-fidelity-hashes.tsv is keyed by full path, and
 //     it is frozen — it was produced by the Rust reader, which no longer exists.
 //
 // Unlike 2017 this needs no transliteration: the name comes from the URL, so it

@@ -66,7 +66,7 @@ func TestFiltersByExtension(t *testing.T) {
 }
 
 // TestFileIgnoresQueryString: a query string is not part of the filename, and
-// writing one to disk would produce a name go-parser never sees.
+// writing one to disk would produce a name the parser never sees.
 func TestFileIgnoresQueryString(t *testing.T) {
 	got := extract(t, `<a href="/d/report.xlsx?v=2&t=3">x</a>`, ".xlsx")
 	if len(got) != 1 {

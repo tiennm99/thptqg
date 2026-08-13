@@ -2,10 +2,10 @@
 
 From raw Excel files to a compressed SQLite file the browser can load.
 
-One Go binary (`go-parser/`) builds every dataset. What differs per dataset is
+One Go binary (`parser/`) builds every dataset. What differs per dataset is
 parse rules only — sheet strategy, column layout, validation guards — declared
-in `go-parser/configs/<id>.yml`. The table shape, the INSERT and the subject
-regexes are canonical and live in `go-parser/internal/schema/schema.go`.
+in `parser/configs/<id>.yml`. The table shape, the INSERT and the subject
+regexes are canonical and live in `parser/internal/schema/schema.go`.
 
 ## Sources
 
@@ -19,9 +19,9 @@ build — the source files are committed, so a crawl only refreshes them. Both
 runs are idempotent: files already present are skipped.
 
 ```bash
-npm run crawl:2016              # crawler/internal/sources/source_2016.go
-npm run crawl:2017              # crawler/internal/sources/source_2017.go
-npm run crawl:2017 -- --list    # read the article, list the files, download none
+go -C crawler run ./cmd/crawl 2016     # sources/source_2016.go
+go -C crawler run ./cmd/crawl 2017     # sources/source_2017.go
+go -C crawler run ./cmd/crawl 2017 --list   # list only, download nothing
 ```
 
 **2017** comes from the article
@@ -55,17 +55,17 @@ says how to name what it finds there:
 downloading. Because `Article` is read at run time, `--list` needs network access
 too.
 
-`WantFiles` exists because a partial crawl is otherwise silent: go-parser will
+`WantFiles` exists because a partial crawl is otherwise silent: parser will
 build a short database from whatever files are present, and only the row-count
 guard would notice, after the fact. A page that changes shape stops the crawl
 instead.
 
 ### Local filenames are load-bearing
 
-`go-parser` sorts its input files and inserts with `INSERT OR REPLACE`, which is
+`parser` sorts its input files and inserts with `INSERT OR REPLACE`, which is
 last-wins, so **filenames decide which row survives a duplicate exam number**. A
 re-crawl that names files differently can produce a database with the same row
-count and different content, which the row-count guard in `build-db.js` would
+count and different content, which the assembler's row-count guard would
 not catch.
 
 Each source therefore pins its local names, and
@@ -103,7 +103,7 @@ which is why only 2016 populates those columns.
 
 ## Score text parsing
 
-`SCORE_PATTERNS` in `go-parser/internal/schema/schema.go` defines one regex per subject, and
+`SCORE_PATTERNS` in `parser/internal/schema/schema.go` defines one regex per subject, and
 **all 16 run against every dataset**. A subject a given exam year did not offer
 simply never matches and stays NULL.
 
@@ -161,18 +161,18 @@ silently drops 13,720 students** (Hanoi +7,275, HCM +6,445). That is what
 
 ## Verifying a rebuild
 
-`npm run build:db` verifies itself: each database's row count must match the
+The assembler verifies itself: each database's row count must match the
 figure in the table above, and each `.db.gz` must be at least 90% of its usual
 size, or the build fails rather than publishing. That guard is the reason a
 truncated dataset cannot reach the site with a green pipeline.
 
-For a deeper check, `go-parser/scripts/differential-parity.mjs` compares two sets
+For a deeper check, `parser/scripts/differential-parity.mjs` compares two sets
 of databases field-by-field — row counts, per-column non-NULL counts, a
 full-table SHA-256 over every row ordered by `so_bao_danh`, schema metadata, and
 build stdout:
 
 ```bash
-node go-parser/scripts/differential-parity.mjs \
+node parser/scripts/differential-parity.mjs \
   --rust /path/to/a-{id}.db --go /path/to/b-{id}.db
 ```
 
@@ -180,16 +180,16 @@ It exits non-zero on any mismatch and fails loudly if a dataset is missing rathe
 than skipping it. Written for the Rust-to-Go migration, it works for any two
 builds. Uses the built-in `node:sqlite`, so it needs no dependencies.
 
-`go-parser/internal/reader` additionally carries a frozen oracle of per-file
-cell-dump hashes covering all 299 inputs; `npm run test:go` fails if any single
+`parser/internal/reader` additionally carries a frozen oracle of per-file
+cell-dump hashes covering all 182 inputs; `go -C parser test ./...` fails if any single
 cell of any input file reads differently.
 
 ## Refreshing the 2017 data
 
 ```bash
 rm data/2017/*.xls
-npm run crawl:2017
-npm run build:db 2017
+go -C crawler run ./cmd/crawl 2017
+go -C assembler run ./cmd/assemble db 2017
 ```
 
 The row-count guard in `build:db` confirms the rebuild matches the expected

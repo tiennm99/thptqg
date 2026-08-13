@@ -49,7 +49,7 @@ func resolveFixture(t *testing.T, src Source) []File {
 
 // TestReproducesFilesOnDisk is the guard that matters.
 //
-// go-parser sorts its inputs and inserts last-wins, so filenames decide which
+// parser sorts its inputs and inserts last-wins, so filenames decide which
 // row survives a duplicate exam number. If extraction or naming drifted, a
 // re-crawl could rebuild a database with the same row count and different
 // content, which the row-count guard in build-db.js would not catch.
