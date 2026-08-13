@@ -15,22 +15,25 @@ use crate::error::BuildError;
 // ---------------------------------------------------------------------------
 
 pub struct CompiledPatterns {
-    /// Ordered list so INSERT column order is deterministic
+    /// One compiled regex per subject column in `schema::SCORE_PATTERNS`.
     pub patterns: Vec<(String, Regex)>,
 }
 
 impl CompiledPatterns {
-    pub fn new(scores: &HashMap<String, String>) -> Result<Self, BuildError> {
-        let mut patterns = Vec::with_capacity(scores.len());
-        for (field, src) in scores {
+    /// Compile the canonical subject patterns once at startup.
+    ///
+    /// All 16 patterns run against every dataset. A subject that did not exist
+    /// in a given exam year simply never matches and stays NULL — the parity
+    /// check asserts those counts are exactly zero rather than assuming it.
+    pub fn new() -> Result<Self, BuildError> {
+        let mut patterns = Vec::with_capacity(crate::schema::SCORE_PATTERNS.len());
+        for (field, src) in crate::schema::SCORE_PATTERNS {
             let re = Regex::new(src).map_err(|e| BuildError::Regex {
-                pattern: src.clone(),
+                pattern: (*src).to_string(),
                 source: e,
             })?;
-            patterns.push((field.clone(), re));
+            patterns.push(((*field).to_string(), re));
         }
-        // Sort for deterministic order across HashMap iteration
-        patterns.sort_by(|a, b| a.0.cmp(&b.0));
         Ok(Self { patterns })
     }
 }
@@ -314,11 +317,7 @@ mod tests {
     // --- Score parsing tests ---
 
     fn make_patterns() -> CompiledPatterns {
-        let mut map = HashMap::new();
-        map.insert("toan".into(), r"Toán:\s*(\d+(?:\.\d+)?)".into());
-        map.insert("ngu_van".into(), r"Ngữ văn:\s*(\d+(?:\.\d+)?)".into());
-        map.insert("vat_ly".into(), r"Vật lí:\s*(\d+(?:\.\d+)?)".into());
-        CompiledPatterns::new(&map).unwrap()
+        CompiledPatterns::new().unwrap()
     }
 
     #[test]

@@ -1,4 +1,4 @@
-# Config for thptqg2016 data/ — 4 .xls + 115 .xlsx mixed files.
+# thptqg2016 data/ — 4 .xls + 115 .xlsx mixed files.
 #
 # Three column layouts exist across the 119 files; the binary selects the
 # right one per-file at runtime via format_detection = "thptqg2016":
@@ -7,15 +7,13 @@
 #   mapped           header SOBAODANH|SBD + DIEM_THI     — most provinces
 #   default          no header; positional 6-col layout  — remaining files
 #
-# Schema differences from thptqg2017:
-#   + ten_cum_thi  TEXT   (exam-cluster name, TEN_CUMTHI column)
-#   + gioi_tinh    TEXT   (gender: "Nam"/"Nữ", GIOI_TINH column)
-#   + tieng_duc    REAL   (German)
-#   + tieng_nhat   REAL   (Japanese)
-#   - khtn, khxh, tieng_nga (not in 2016 dataset)
+# This is the only dataset that populates ten_cum_thi and gioi_tinh, and the
+# only one whose files carry Tiếng Đức / Tiếng Nhật scores.
 #
 # sheet_mode = "all": several provinces overflow into Sheet2 (65k Excel row cap).
 # strip_blank_rows = false: no blank-row anomaly observed in this dataset.
+#
+# Table shape, INSERT and subject regexes are canonical — see src/schema.rs.
 
 format_detection = "thptqg2016"
 
@@ -32,55 +30,3 @@ require_nonempty_sbd  = true
 # Tokens that identify a header row by first-cell content (uppercased).
 # Covers both SOBAODANH-style and SBD-style headers.
 tokens = ["SOBAODANH", "SBD", "HO_TEN", "HOTEN", "HỌ TÊN", "STT"]
-
-[schema]
-ddl = """
-CREATE TABLE student (
-  so_bao_danh   TEXT PRIMARY KEY,
-  ho_ten        TEXT NOT NULL,
-  ho_ten_ascii  TEXT NOT NULL,
-  ngay_sinh     TEXT,
-  ten_cum_thi   TEXT,
-  gioi_tinh     TEXT,
-  toan          REAL,
-  ngu_van       REAL,
-  vat_ly        REAL,
-  hoa_hoc       REAL,
-  sinh_hoc      REAL,
-  lich_su       REAL,
-  dia_ly        REAL,
-  tieng_anh     REAL,
-  tieng_phap    REAL,
-  tieng_duc     REAL,
-  tieng_nhat    REAL,
-  tieng_trung   REAL
-);
-CREATE INDEX idx_ho_ten ON student(ho_ten);
-CREATE INDEX idx_ho_ten_ascii ON student(ho_ten_ascii);
-CREATE INDEX idx_ten_cum_thi ON student(ten_cum_thi);
-"""
-
-[scores]
-toan        = 'Toán:\s*(\d+(?:\.\d+)?)'
-ngu_van     = 'Ngữ văn:\s*(\d+(?:\.\d+)?)'
-vat_ly      = 'Vật lí:\s*(\d+(?:\.\d+)?)'
-hoa_hoc     = 'Hóa học:\s*(\d+(?:\.\d+)?)'
-sinh_hoc    = 'Sinh học:\s*(\d+(?:\.\d+)?)'
-lich_su     = 'Lịch sử:\s*(\d+(?:\.\d+)?)'
-dia_ly      = 'Địa lí:\s*(\d+(?:\.\d+)?)'
-tieng_anh   = 'Tiếng Anh:\s*(\d+(?:\.\d+)?)'
-tieng_phap  = 'Tiếng Pháp:\s*(\d+(?:\.\d+)?)'
-tieng_duc   = 'Tiếng Đức:\s*(\d+(?:\.\d+)?)'
-tieng_nhat  = 'Tiếng Nhật:\s*(\d+(?:\.\d+)?)'
-tieng_trung = 'Tiếng Trung:\s*(\d+(?:\.\d+)?)'
-
-[insert]
-sql = """
-INSERT OR REPLACE INTO student
-  (so_bao_danh, ho_ten, ho_ten_ascii, ngay_sinh, ten_cum_thi, gioi_tinh,
-   toan, ngu_van, vat_ly, hoa_hoc, sinh_hoc,
-   lich_su, dia_ly,
-   tieng_anh, tieng_phap, tieng_duc, tieng_nhat, tieng_trung)
-VALUES
-  (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-"""

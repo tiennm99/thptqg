@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
@@ -10,7 +9,14 @@ use crate::error::BuildError;
 // Top-level dataset configuration loaded from a .toml file
 // ---------------------------------------------------------------------------
 
+/// Per-dataset parse rules.
+///
+/// Deliberately carries no SQL. The table shape, the INSERT and the subject
+/// regexes are identical for every dataset and live in `crate::schema` — keeping
+/// them here meant four copies of the same DDL, which is how the 2016 and 2017
+/// schemas drifted apart.
 #[derive(Debug, Deserialize, Clone)]
+#[serde(deny_unknown_fields)]
 pub struct DatasetConfig {
     pub reader: ReaderCfg,
     /// Fixed column indices. Optional when format_detection handles per-file mapping.
@@ -18,10 +24,6 @@ pub struct DatasetConfig {
     pub columns: Option<ColumnMap>,
     pub validation: ValidationCfg,
     pub header: HeaderCfg,
-    pub schema: SchemaCfg,
-    /// field name → regex source string (one entry per scoreable subject)
-    pub scores: HashMap<String, String>,
-    pub insert: InsertCfg,
     /// When set to "thptqg2016", enables per-file format auto-detection.
     /// Each file's header row is inspected at runtime to choose the right
     /// column layout (separate-scores / mapped / default-positional).
@@ -68,18 +70,6 @@ pub struct HeaderCfg {
     pub tokens: Vec<String>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
-pub struct SchemaCfg {
-    /// DDL executed verbatim before inserts (CREATE TABLE + CREATE INDEX)
-    pub ddl: String,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct InsertCfg {
-    /// Parameterised INSERT OR REPLACE SQL using :named_param style
-    pub sql: String,
-}
-
 // ---------------------------------------------------------------------------
 // Loader
 // ---------------------------------------------------------------------------
@@ -119,16 +109,6 @@ require_nonempty_sbd  = true
 
 [header]
 tokens = ["HO_TEN", "HỌ TÊN", "STT"]
-
-[schema]
-ddl = "CREATE TABLE student (so_bao_danh TEXT PRIMARY KEY);"
-
-[scores]
-toan    = 'Toán:\s*(\d+(?:\.\d+)?)'
-ngu_van = 'Ngữ văn:\s*(\d+(?:\.\d+)?)'
-
-[insert]
-sql = "INSERT OR REPLACE INTO student (so_bao_danh) VALUES (:so_bao_danh)"
 "#;
 
     #[test]
@@ -142,9 +122,18 @@ sql = "INSERT OR REPLACE INTO student (so_bao_danh) VALUES (:so_bao_danh)"
         assert!(!cfg.validation.require_numeric_sbd);
         assert!(cfg.validation.require_nonempty_name);
         assert_eq!(cfg.header.tokens.len(), 3);
-        assert!(cfg.scores.contains_key("toan"));
-        assert!(cfg.scores.contains_key("ngu_van"));
         assert!(cfg.format_detection.is_none());
+    }
+
+    /// A config carrying leftover SQL sections must be rejected rather than
+    /// silently ignored — otherwise a stale [schema] block would look effective
+    /// while `crate::schema` was actually driving the build.
+    #[test]
+    fn config_rejects_leftover_sql_sections() {
+        let with_ddl = format!(
+            "{SAMPLE_TOML}\n[schema]\nddl = \"CREATE TABLE student (so_bao_danh TEXT);\"\n"
+        );
+        assert!(toml::from_str::<DatasetConfig>(&with_ddl).is_err());
     }
 
     #[test]
@@ -171,15 +160,6 @@ require_nonempty_sbd  = true
 
 [header]
 tokens = ["SBD", "SOBAODANH", "STT"]
-
-[schema]
-ddl = "CREATE TABLE student (so_bao_danh TEXT PRIMARY KEY);"
-
-[scores]
-toan = 'Toán:\s*(\d+(?:\.\d+)?)'
-
-[insert]
-sql = "INSERT OR REPLACE INTO student (so_bao_danh) VALUES (?)"
 "#;
         let cfg: DatasetConfig = toml::from_str(toml_str).expect("parse failed");
         assert_eq!(cfg.format_detection.as_deref(), Some("thptqg2016"));

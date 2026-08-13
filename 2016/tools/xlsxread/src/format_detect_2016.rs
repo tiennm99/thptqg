@@ -337,20 +337,13 @@ pub fn process_row_2016(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
 
     fn s(v: &str) -> Data {
         Data::String(v.to_string())
     }
 
     fn make_patterns() -> CompiledPatterns {
-        let mut map = HashMap::new();
-        map.insert("toan".into(), r"Toán:\s*(\d+(?:\.\d+)?)".into());
-        map.insert("ngu_van".into(), r"Ngữ văn:\s*(\d+(?:\.\d+)?)".into());
-        map.insert("tieng_anh".into(), r"Tiếng Anh:\s*(\d+(?:\.\d+)?)".into());
-        map.insert("tieng_duc".into(), r"Tiếng Đức:\s*(\d+(?:\.\d+)?)".into());
-        map.insert("tieng_nhat".into(), r"Tiếng Nhật:\s*(\d+(?:\.\d+)?)".into());
-        CompiledPatterns::new(&map).unwrap()
+        CompiledPatterns::new().unwrap()
     }
 
     // --- detect_format: branch 1 — separate-scores ---

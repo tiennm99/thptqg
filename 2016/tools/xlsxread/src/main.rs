@@ -25,9 +25,7 @@ use xlsxread::format_detect_2016::{
 };
 use xlsxread::reader::{is_all_blank, process_file};
 use xlsxread::transform::{validate_row, CompiledPatterns, SkipReason};
-use xlsxread::writer::{
-    finish_db, insert_row, insert_row_2016, open_db, SCORE_FIELDS, SCORE_FIELDS_2016,
-};
+use xlsxread::writer::{finish_db, insert_row, open_db};
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -79,7 +77,7 @@ fn run_build_standard(
     output_path: &Path,
 ) -> Result<()> {
     let patterns =
-        CompiledPatterns::new(&cfg.scores).with_context(|| "Failed to compile score regexes")?;
+        CompiledPatterns::new().with_context(|| "Failed to compile score regexes")?;
 
     let mut files: Vec<std::path::PathBuf> = std::fs::read_dir(input_dir)
         .with_context(|| format!("Cannot read input dir: {}", input_dir.display()))?
@@ -109,7 +107,7 @@ fn run_build_standard(
         files.len()
     );
 
-    let conn = open_db(output_path, cfg)
+    let conn = open_db(output_path)
         .with_context(|| format!("Failed to open DB: {}", output_path.display()))?;
 
     let mut total_source_rows: u64 = 0;
@@ -159,7 +157,7 @@ fn run_build_standard(
 
             let parsed = xlsxread::transform::transform_row(raw, cfg, &patterns);
 
-            match insert_row(&conn, &cfg.insert.sql, &parsed, SCORE_FIELDS) {
+            match insert_row(&conn, &parsed) {
                 Ok(()) => file_rows += 1,
                 Err(e) => {
                     file_errors += 1;
@@ -216,7 +214,7 @@ fn run_build_2016(
     output_path: &Path,
 ) -> Result<()> {
     let patterns =
-        CompiledPatterns::new(&cfg.scores).with_context(|| "Failed to compile score regexes")?;
+        CompiledPatterns::new().with_context(|| "Failed to compile score regexes")?;
 
     let mut files: Vec<std::path::PathBuf> = std::fs::read_dir(input_dir)
         .with_context(|| format!("Cannot read input dir: {}", input_dir.display()))?
@@ -246,7 +244,7 @@ fn run_build_2016(
         files.len()
     );
 
-    let conn = open_db(output_path, cfg)
+    let conn = open_db(output_path)
         .with_context(|| format!("Failed to open DB: {}", output_path.display()))?;
 
     let mut total_source_rows: u64 = 0;
@@ -361,7 +359,7 @@ fn process_file_2016(
                     // Row was empty/invalid — skipped (mirrors JS `if (!record) continue`)
                 }
                 Some(parsed) => {
-                    match insert_row_2016(conn, &cfg.insert.sql, &parsed, SCORE_FIELDS_2016) {
+                    match insert_row(conn, &parsed) {
                         Ok(()) => file_rows += 1,
                         Err(e) => {
                             *total_errors += 1;

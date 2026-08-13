@@ -6,5 +6,6 @@ pub mod config;
 pub mod error;
 pub mod format_detect_2016;
 pub mod reader;
+pub mod schema;
 pub mod transform;
 pub mod writer;

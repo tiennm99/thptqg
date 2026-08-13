@@ -581,8 +581,7 @@ fn run_build_cmd(input_dir: &Path, db_path: &Path, config_name: &str) {
 
     let cfg = xlsxread::config::load_config(&cfg_path)
         .unwrap_or_else(|e| panic!("load config {config_name}: {e}"));
-    let patterns =
-        xlsxread::transform::CompiledPatterns::new(&cfg.scores).expect("compile patterns");
+    let patterns = xlsxread::transform::CompiledPatterns::new().expect("compile patterns");
 
     // Collect files
     let mut files: Vec<PathBuf> = std::fs::read_dir(input_dir)
@@ -602,7 +601,7 @@ fn run_build_cmd(input_dir: &Path, db_path: &Path, config_name: &str) {
         .collect();
     files.sort();
 
-    let conn = xlsxread::writer::open_db(db_path, &cfg).expect("open db");
+    let conn = xlsxread::writer::open_db(db_path).expect("open db");
     conn.execute_batch("BEGIN").unwrap();
 
     for file in &files {
@@ -632,12 +631,7 @@ fn run_build_cmd(input_dir: &Path, db_path: &Path, config_name: &str) {
                 return;
             }
             let row = xlsxread::transform::transform_row(raw, &cfg, &patterns);
-            let _ = xlsxread::writer::insert_row(
-                &conn,
-                &cfg.insert.sql,
-                &row,
-                xlsxread::writer::SCORE_FIELDS,
-            );
+            let _ = xlsxread::writer::insert_row(&conn, &row);
         })
         .expect("process file");
     }

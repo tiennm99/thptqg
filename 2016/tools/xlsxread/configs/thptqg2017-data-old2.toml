@@ -1,0 +1,26 @@
+# thptqg2017 data-old2/ — 54 .xlsx files (corrected-export set).
+#
+# sheet_mode = "all": 24.HCM_UTLQ.xlsx overflows into Sheet2 (+6,446 rows).
+# SBD validation: require ^\d+$ (build-database-old2.js:57 guard).
+# strip_blank_rows = true: skip fully blank rows BEFORE counting sourceRows
+#   (build-database-old2.js:50-51 checks blank before sourceRows++).
+#
+# Table shape, INSERT and subject regexes are canonical — see src/schema.rs.
+
+[reader]
+sheet_mode = "all"
+strip_blank_rows = true
+
+[columns]
+ho_ten      = 0
+ngay_sinh   = 1
+so_bao_danh = 2
+diem_thi    = 3
+
+[validation]
+require_numeric_sbd   = true
+require_nonempty_name = true
+require_nonempty_sbd  = true
+
+[header]
+tokens = ["HO_TEN", "HỌ TÊN", "STT"]
