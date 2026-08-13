@@ -26,7 +26,6 @@ import (
 
 // Paths locates the pieces this package needs.
 type Paths struct {
-	Root string
 	// Web is the Vite project directory.
 	Web string
 	// Dist is where Vite emits, inside the web workspace.
@@ -39,7 +38,6 @@ type Paths struct {
 func DefaultPaths(root string) Paths {
 	web := filepath.Join(root, "web")
 	return Paths{
-		Root: root,
 		Web:  web,
 		Dist: filepath.Join(web, "dist"),
 		Site: filepath.Join(root, "_site"),

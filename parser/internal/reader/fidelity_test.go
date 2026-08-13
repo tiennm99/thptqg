@@ -30,7 +30,7 @@ import (
 // under -short, which is how to iterate without paying ~77s to re-read 418 MB.
 func TestReaderFidelity(t *testing.T) {
 	if testing.Short() {
-		t.Skip("-short: skipping the 299-file corpus sweep")
+		t.Skip("-short: skipping the full-corpus sweep")
 	}
 	root := repoRoot(t)
 	manifest := filepath.Join(root, "parser", "testdata", "reader-fidelity-hashes.tsv")

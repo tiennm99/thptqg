@@ -147,6 +147,12 @@ function DatasetApp({ dataset }) {
     writeUrlQuery("");
   }, []);
 
+  // The assembler copies one index.html to every route, so its static <title>
+  // cannot name a dataset. Set the real one once the route is resolved.
+  useEffect(() => {
+    document.title = dataset.title;
+  }, [dataset.title]);
+
   return (
     <div className="app">
       <header>

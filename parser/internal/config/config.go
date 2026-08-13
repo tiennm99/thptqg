@@ -2,8 +2,8 @@
 //
 // The config deliberately carries no SQL. The table shape, the INSERT and the
 // subject regexes are identical for every dataset and live in internal/schema;
-// keeping them here meant four copies of the same DDL, which is how the 2016 and
-// 2017 schemas drifted apart.
+// keeping them here meant one copy of the DDL per dataset, which is how the
+// 2016 and 2017 schemas drifted apart.
 package config
 
 import (

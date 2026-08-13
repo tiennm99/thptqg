@@ -1,8 +1,8 @@
 // Command xlsxread reads .xls/.xlsx files and builds SQLite databases for the
 // thptqg datasets.
 //
-// The CLI contract is fixed by parser/scripts/build-db.js and must match the
-// Rust binary exactly:
+// The CLI contract is fixed by the assembler, which drives this binary, and it
+// matched the Rust binary it replaced exactly:
 //
 //	xlsxread build --schema <config.yml> --input <dir> --output <db>
 //	xlsxread audit --schema <config.yml> --input <dir> --db <db>

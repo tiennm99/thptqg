@@ -1,6 +1,11 @@
-// Command dumpcells emits the canonical cell rendering of a spreadsheet, for
-// comparison against the Rust/calamine ground truth produced by
-// parser/examples/dump_cells.rs.
+// Command dumpcells emits the canonical cell rendering of a spreadsheet.
+//
+// It exists to diagnose a reader-fidelity failure. That suite compares a
+// SHA-256 per input file against a frozen oracle, so a mismatch says which file
+// changed but not which cell; this prints the stream the hash is taken over, so
+// two runs can be diffed. It was originally written to compare against the
+// Rust/calamine ground truth from parser/examples/dump_cells.rs, which was
+// removed with the Rust tree — the hashes it produced are what remains.
 //
 // The canonical stream carries geometry and rendered cell values only. The
 // calamine Data variant is deliberately excluded: Data::Empty and

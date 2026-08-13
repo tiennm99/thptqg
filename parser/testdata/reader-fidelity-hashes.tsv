@@ -5,7 +5,7 @@
 # FROZEN. These hashes were produced by the Rust/calamine parser, which has
 # since been removed, so they cannot be regenerated. They remain a real
 # regression guard: any change to the Go reader that alters a single cell of any
-# of the 299 input files fails the suite. If the inputs themselves ever change,
+# input file listed below fails the suite. If the inputs themselves ever change,
 # the affected rows must be re-derived deliberately and reviewed, not refreshed
 # in bulk.
 data/2016/023718c7d3cf7ace3a7116fabb12bd9cdhyduoccantho-1468920829104.xlsx	fc3afd8da9ed28b0fc177192fab7b19a06535cb45d86841835d8e8828fc61c1c

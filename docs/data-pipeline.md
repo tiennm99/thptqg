@@ -133,10 +133,22 @@ the 2017 configs listed 14. Neither list was complete: candidates could sit
 German, Japanese and Russian in both years, so 1,691 students ended up with **no
 foreign-language score at all**.
 
-Running all 16 patterns everywhere recovered them — 182 Russian in 2016, and
-German and Japanese across all three 2017 generations. See
-`plans/reports/parser-parity-result.md` for the evidence that these are real
-scores rather than false matches.
+Running all 16 patterns everywhere recovered them: 182 × `tieng_nga` in 2016,
+and 93 × `tieng_duc` plus 512 × `tieng_nhat` in 2017.
+
+Four things established that these are real scores and not false regex matches,
+checked when the change was made:
+
+- Every student holds zero or exactly one foreign language, never two, so
+  nothing was double-counted.
+- Each affected student had **all** language columns NULL beforehand — e.g. SBD
+  `01003198` went from all-NULL to `tieng_duc = 8`.
+- The counts tracked dataset size across the three 2017 publications that then
+  existed (93/85/22 German, 512/484/313 Japanese).
+- Every recovered value is an ordinary exam score in the 0–10 range.
+
+Row counts and the non-NULL counts of all 18 pre-existing columns were unchanged
+across every dataset; only the four language columns gained values.
 
 ## Per-dataset quirks
 
@@ -166,19 +178,26 @@ figure in the table above, and each `.db.gz` must be at least 90% of its usual
 size, or the build fails rather than publishing. That guard is the reason a
 truncated dataset cannot reach the site with a green pipeline.
 
-For a deeper check, `parser/scripts/differential-parity.mjs` compares two sets
-of databases field-by-field — row counts, per-column non-NULL counts, a
-full-table SHA-256 over every row ordered by `so_bao_danh`, schema metadata, and
-build stdout:
+For a deeper check, `assemble verify` compares two sets of built databases
+field by field — row counts, per-column non-NULL counts, schema metadata, and a
+full-table SHA-256 over every row ordered by `so_bao_danh`:
 
 ```bash
-node parser/scripts/differential-parity.mjs \
-  --rust /path/to/a-{id}.db --go /path/to/b-{id}.db
+cp -r .build/public/db /tmp/before      # keep the databases you have
+go -C assembler run ./cmd/assemble db   # rebuild
+go -C assembler run ./cmd/assemble verify /tmp/before .build/public/db
 ```
 
-It exits non-zero on any mismatch and fails loudly if a dataset is missing rather
-than skipping it. Written for the Rust-to-Go migration, it works for any two
-builds. Uses the built-in `node:sqlite`, so it needs no dependencies.
+Each side is a directory of `<id>.db.gz` (or `<id>.db`); compressed databases are
+expanded to a temporary file automatically. It exits non-zero on any mismatch,
+names the first differing rows and columns, and fails rather than skipping when a
+dataset is absent from either side — silently comparing one of two datasets is
+how a gate passes without proving anything.
+
+This is the only check on database *content*. The reader oracle below covers
+reading the spreadsheets and the row-count guard covers how many rows came out,
+but a change in transform or writer logic can alter what is in those rows while
+both of those still pass.
 
 `parser/internal/reader` additionally carries a frozen oracle of per-file
 cell-dump hashes covering all 182 inputs; `go -C parser test ./...` fails if any single
@@ -194,8 +213,8 @@ go -C assembler run ./cmd/assemble db 2017
 
 The row-count guard in `build:db` confirms the rebuild matches the expected
 total. That guard checks the count only, so if the crawl was expected to change
-the data, compare content with `differential-parity.mjs` against a copy of the
-previous database rather than trusting the count.
+the data, compare content with `assemble verify` against a copy of the previous
+database rather than trusting the count.
 
 ## Removed scripts
 
@@ -203,8 +222,12 @@ previous database rather than trusting the count.
 were dropped with the Rust parser. The first two had been broken since before the
 repo was unified (a hardcoded Windows path in one, an undeclared
 `better-sqlite3` dependency in the other) and neither had any automated caller.
-The latter two are superseded by `differential-parity.mjs`, which compares more
-and cannot silently skip a dataset.
+The latter two are superseded by `assemble verify`, which compares more and
+cannot silently skip a dataset. `differential-parity.mjs`, which was that
+comparator, has itself been folded into the assembler as
+`assembler/internal/verify` — the pipeline is Go outside `web/`, and the port
+also fixed a weakness: the JavaScript version hashed each row's fields joined
+bare, so a value shifted across a column boundary produced the same digest.
 
 `crawl-baotintuc.js` was not dropped but rewritten as the Go `crawler/` module,
 producing the same local filenames. Two changes beyond the port:
