@@ -125,7 +125,7 @@ fn write_xlsx(path: &Path, sheets: &[(String, Vec<XlsxRow>)]) {
             ws.push_str("    </row>\n");
         }
         ws.push_str("  </sheetData>\n</worksheet>");
-        zip.start_file(&format!("xl/worksheets/sheet{}.xml", i + 1), opts)
+        zip.start_file(format!("xl/worksheets/sheet{}.xml", i + 1), opts)
             .unwrap();
         zip.write_all(ws.as_bytes()).unwrap();
     }
@@ -165,7 +165,7 @@ fn header_row() -> XlsxRow {
 
 fn data_row(idx: usize, scores: &str) -> XlsxRow {
     // Anonymised: name uses sequential pattern, SBD is purely synthetic
-    let name = if idx % 2 == 0 {
+    let name = if idx.is_multiple_of(2) {
         format!("Nguyen Van Test {:03}", idx)
     } else {
         format!("Tran Thi Test {:03}", idx)

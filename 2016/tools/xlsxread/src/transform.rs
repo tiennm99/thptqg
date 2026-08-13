@@ -326,7 +326,7 @@ mod tests {
         let s = "Toán: 8.5";
         let scores = parse_scores(s, &p);
         assert_eq!(scores.get("toan"), Some(&8.5));
-        assert!(scores.get("ngu_van").is_none());
+        assert!(!scores.contains_key("ngu_van"));
     }
 
     #[test]

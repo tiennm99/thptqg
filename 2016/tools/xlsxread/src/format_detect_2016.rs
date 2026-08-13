@@ -7,7 +7,7 @@
 ///
 /// 1. `separate-scores`  — header row[0]=="SBD" && row[2]=="TOAN"
 ///    Columns: SBD(0) HOTEN(1) TOAN(2) VAN(3) LY(4) HOA(5) SINH(6) SU(7) DIA(8)
-///              NGOAINGUTN(9) NGOAINGUTL(10) NGOAINGU-total(11)
+///    NGOAINGUTN(9) NGOAINGUTL(10) NGOAINGU-total(11)
 ///    → maps col 11 → tieng_anh; no ngay_sinh / ten_cum_thi / gioi_tinh / DIEM_THI
 ///    → JS: build-database.js:90–116  (processSeparateScoresRow)
 ///
@@ -57,7 +57,7 @@ pub fn is_header_row_2016(row: &[Data]) -> bool {
         return false;
     }
     let first = row[0].to_string().trim().to_uppercase();
-    KNOWN_HEADERS.iter().any(|h| *h == first.as_str())
+    KNOWN_HEADERS.contains(&first.as_str())
 }
 
 // ---------------------------------------------------------------------------
@@ -217,6 +217,9 @@ pub fn process_separate_scores_row(row: &[Data], patterns: &CompiledPatterns) ->
 /// Mirrors `processMappedRow` at build-database.js:119–146.
 /// Gender is normalised: only "Nam" or "Nữ" are kept; everything else → None.
 /// (build-database.js:132: `(rawGioiTinh === "Nam" || rawGioiTinh === "Nữ") ? rawGioiTinh : null`)
+// Mirrors the JS column map one-for-one; grouping the indices into a struct
+// would obscure that correspondence for no benefit.
+#[allow(clippy::too_many_arguments)]
 pub fn process_mapped_row(
     row: &[Data],
     sbd_idx: usize,
@@ -237,8 +240,8 @@ pub fn process_mapped_row(
     // build-database.js:125–126: KNOWN_HEADERS.has(sbdUpper) || KNOWN_HEADERS.has(hoTenUpper)
     let sbd_upper = sbd.to_uppercase();
     let ho_ten_upper = ho_ten.to_uppercase();
-    if KNOWN_HEADERS.iter().any(|h| *h == sbd_upper.as_str())
-        || KNOWN_HEADERS.iter().any(|h| *h == ho_ten_upper.as_str())
+    if KNOWN_HEADERS.contains(&sbd_upper.as_str())
+        || KNOWN_HEADERS.contains(&ho_ten_upper.as_str())
     {
         return None;
     }
