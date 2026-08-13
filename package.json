@@ -9,6 +9,8 @@
     "build:db": "node parser/scripts/build-db.js",
     "dev": "vite",
     "build": "vite build",
+    "assemble": "node scripts/assemble-site.js",
+    "build:site": "npm run build && npm run assemble",
     "preview": "vite preview",
     "lint": "eslint ."
   },

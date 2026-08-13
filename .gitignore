@@ -19,3 +19,6 @@ dist/
 
 ### Rust build artefacts ###
 parser/target/
+
+### Assembled Pages artifact ###
+_site/

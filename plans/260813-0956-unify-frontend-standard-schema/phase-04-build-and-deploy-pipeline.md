@@ -130,11 +130,24 @@ Cache changes: `Swatinem/rust-cache` workspaces → `parser`; `setup-node` cache
 ## Related Code Files
 
 - Modify: `vite.config.js` — single build, `base: /thptqg/`, `.build/public` publicDir
-- Modify: `package.json` — replace the six `build:db*` and three `build:*` variant
-  scripts with one `build:db` (takes a dataset argument) and one `build`
-- Modify: `.github/workflows/deploy-pages.yml` — single toolchain setup, dataset
-  loop, npm caches, new assemble step
-- Modify: `.gitignore` — add `.build/`, `parser/target/`, keep `dist/`
+- Modify: `package.json` — the six `build:db*` and three `build:*` variant scripts
+  collapse to `build:db`, `build`, `assemble`, `build:site`
+- Create: `scripts/assemble-site.js` — copies the entry point to each route and
+  refuses to ship an uncompressed database
+- Modify: `.github/workflows/deploy-pages.yml` — single toolchain setup, npm
+  caches, new assemble step
+- Modify: `eslint.config.js` — Node globals for `scripts/**`, ignore `_site`
+- Modify: `.gitignore` — add `.build/`, `_site/`, `parser/target/`, keep `dist/`
+
+### Deviation: the dataset loop is a Node script, not workflow shell
+
+The plan sketched a `for ds in 2016 2017 …` loop inline in the workflow, with a
+note to hoist the list into a job-level env var. That would still have been a
+second copy of the dataset list. `parser/scripts/build-db.js` and
+`scripts/assemble-site.js` both import `DATASET_IDS` from `src/datasets.js`
+instead, so the four IDs are declared exactly once for the frontend, the
+database build and the site assembly. It also makes the whole pipeline runnable
+locally with `npm run build:site`, which is how it was verified.
 
 ## Implementation Steps
 
@@ -164,15 +177,27 @@ Cache changes: `Swatinem/rust-cache` workspaces → `parser`; `setup-node` cache
 
 ## Success Criteria
 
-- [ ] One `vite.config.js`, no build variants, no `DATASET` env
-- [ ] Workflow compiles Rust once, installs Node deps once, builds the site once
-- [ ] All five flat URLs live; deep links intact
-- [ ] Both legacy nested URLs resolve rather than 404
-- [ ] Dataset list written once in the workflow, not repeated per step
-- [ ] No SPA 404-redirect hack in the repo
-- [ ] No uncompressed DB anywhere in the artifact
-- [ ] Generated DBs live in gitignored `.build/`, not in source directories
-- [ ] Zero pnpm references in the workflow
+- [x] One `vite.config.js`, no build variants, no `DATASET` env
+- [x] Workflow compiles Rust once, installs Node deps once, builds the site once
+- [x] All five flat URLs served; deep links intact
+- [x] Both legacy nested URLs resolve rather than 404
+- [x] Dataset list written once (`src/datasets.js`), not repeated in the workflow
+- [x] No SPA 404-redirect hack in the repo
+- [x] No uncompressed DB anywhere in the artifact — enforced by the assemble step
+- [x] Generated DBs live in gitignored `.build/`, not in source directories
+- [x] Zero pnpm references in the workflow
+
+## Verification limits
+
+Route resolution is verified by serving the assembled artifact over HTTP and
+checking every published URL returns 200 with correct absolute asset
+references, plus that all entry points are byte-identical.
+
+The routing **JavaScript** has not been executed. This workspace is headless
+with no browser available, so hub-vs-dataset rendering and the legacy
+`/2017/old/` → `/2017-old/` rewrite are verified by construction and by unit
+tests of the pure functions, not by running in a browser. That check needs a
+real browser.
 
 ## Risk Assessment
 

@@ -1,25 +1,19 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-// VARIANT selects which dataset to ship:
-//   (unset)  → main site at /thptqg2017/ using public/
-//   old      → at /thptqg2017/old/ using public-old/
-//   old2     → at /thptqg2017/old2/ using public-old2/
-const VARIANT = process.env.VARIANT || "";
-const VARIANT_CONFIG = {
-  "":     { base: "/thptqg/2017/",      publicDir: "public",      outDir: "dist" },
-  old:    { base: "/thptqg/2017/old/",  publicDir: "public-old",  outDir: "dist/old" },
-  old2:   { base: "/thptqg/2017/old2/", publicDir: "public-old2", outDir: "dist/old2" },
-};
-const cfg = VARIANT_CONFIG[VARIANT];
-if (!cfg) throw new Error(`Unknown VARIANT: ${VARIANT}`);
-
+// One build serves every page. The app resolves which dataset to show from the
+// URL (src/router.js), so there are no per-dataset build variants.
+//
+// `base` is absolute, which is what lets the single emitted index.html work as
+// an entry point at any depth: it references /thptqg/assets/... regardless of
+// the directory it is served from. The deploy step copies it to each dataset
+// path, so every URL is a real static file and no SPA 404-fallback is needed —
+// and the existing ?q= deep links keep working, which that fallback would break.
+//
+// publicDir holds only the gzipped databases, staged there by
+// parser/scripts/build-db.js. Nothing uncompressed is ever placed in it.
 export default defineConfig({
   plugins: [react()],
-  base: cfg.base,
-  publicDir: cfg.publicDir,
-  build: {
-    outDir: cfg.outDir,
-    emptyOutDir: VARIANT === "",  // only main build wipes dist root
-  },
+  base: "/thptqg/",
+  publicDir: ".build/public",
 });
