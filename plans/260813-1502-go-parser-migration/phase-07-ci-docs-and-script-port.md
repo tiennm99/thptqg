@@ -1,10 +1,11 @@
 ---
 phase: 7
-title: "CI docs and cutover"
-status: pending
+title: CI docs and cutover
+status: completed
 priority: P2
-dependencies: [6]
-effort: ""
+dependencies:
+  - 6
+effort: ''
 ---
 
 # Phase 7: CI docs and cutover
@@ -171,16 +172,16 @@ Recommend keeping it and noting in the file header that it is frozen and why.
 
 ## Success Criteria
 
-- [ ] `build-db.js` guard fails the build on a truncated/empty DB (verified deliberately)
-- [ ] Go binary exits non-zero when `total_errors > 0`
-- [ ] Branch-verify CI path runs the build job without publishing; deploy job guarded to `main`
-- [ ] CI green with no Rust toolchain; `govulncheck` wired in; deploy succeeds
-- [ ] The 7c grep gate returns **zero rows**
-- [ ] `.gitignore` covers the Go binary; no build artifact committed
-- [ ] `npm run lint` still covers the relocated scripts
-- [ ] Frontend loads all 4 datasets; accent-insensitive search works (exercises `ho_ten_ascii`)
-- [ ] `pre-go-parser-removal` tag pushed before deletion; revert procedure written down
-- [ ] Rust removal confirmed with the user
+- [x] `build-db.js` guard fails the build on a truncated/empty DB (verified deliberately)
+- [x] Go binary exits non-zero when `total_errors > 0`
+- [x] Branch-verify CI path runs the build job without publishing; deploy job guarded to `main`
+- [x] CI green with no Rust toolchain; `govulncheck` wired in; deploy succeeds
+- [x] The 7c grep gate returns **zero rows**
+- [x] `.gitignore` covers the Go binary; no build artifact committed
+- [x] `npm run lint` still covers the relocated scripts
+- [x] Frontend loads all 4 datasets; accent-insensitive search works (exercises `ho_ten_ascii`)
+- [x] `pre-go-parser-removal` tag pushed before deletion; revert procedure written down
+- [x] Rust removal confirmed with the user
 
 ## Risk Assessment
 
@@ -192,3 +193,77 @@ Recommend keeping it and noting in the file header that it is frozen and why.
 | Lint coverage silently lost | `eslint.config.js:31` called out; explicit criterion |
 | Rust deleted before a latent bug surfaces | Tag + written revert procedure + user confirmation |
 | Effort spent porting dead scripts | Cut, with consumer counts recorded |
+
+## RESULT — 2026-08-13: **PASS**
+
+Go is the parser; Rust is gone. Full pipeline verified from a clean tree with no
+Rust present: all four datasets build, pass the row-count guard, gzip, and assemble
+into `_site/`.
+
+### 7a — deploy guard (the step that mattered most)
+
+`go-parser/scripts/build-db.js` now refuses to publish a database whose row count
+deviates from the known figure, or whose `.db.gz` is under 90% of its usual size.
+**Verified in both directions**: an expected count off by one exits 1, the correct
+count exits 0.
+
+Before this, nothing between the parser and the public site asserted a database had
+data — the parser logs a file failure and continues, returns success regardless,
+finishes cleanly at zero rows; the gzip step inspected nothing; and
+`assemble-site.js` only greps *filenames*. An under-producing reader would have
+published a truncated dataset with green CI.
+
+### 7b — CI
+
+`pull_request` trigger added and `deploy` guarded to `refs/heads/main`, so branch
+verification is now actually possible; previously a `workflow_dispatch` from any
+branch would have published that branch to the live site, with
+`cancel-in-progress` killing an in-flight good deploy on the way. Rust toolchain
+and cache actions removed, `actions/setup-go@v5` pinned to 1.26, `govulncheck`
+added, `npm run test:go` runs before anything is built, `CGO_ENABLED=0` set
+explicitly (the whole module is pure Go).
+
+### 7c — references
+
+The mechanical gate replaced the hand-written list, which was the right call: the
+`eslint.config.js:31` glob change silently dropped Node globals from the remaining
+scripts and produced 13 lint errors — exactly the breakage predicted. Also caught
+`package.json:9`, and comments in `src/datasets.js`, `src/lib/subjects.js` and
+`vite.config.js` that the plan had scoped out of `src/`.
+
+`docs/data-pipeline.md`'s "Verifying a rebuild" and "Legacy scripts" sections were
+rewritten rather than patched, since the tooling they described is gone.
+
+### 7d — removal
+
+Tagged **`pre-go-parser-removal`** (commit `0eb1747`) before deleting; the removal
+is `00a08d5`.
+
+Kept: `crawl-baotintuc.js` (moved to `go-parser/scripts/`) — the only way to refresh
+`data/2017`, with a live runbook. Configs moved to `go-parser/configs/`.
+
+Dropped: `check-duplicates.js` and `diff-datasets.js` (broken before the repo was
+unified — a hardcoded `D:/` path in one, an undeclared `better-sqlite3` in the
+other, zero callers either way), plus `db-stats.js` and `verify-parity.js` as
+superseded by `differential-parity.mjs`.
+
+The fidelity oracle is kept and marked **frozen** in its own header: produced by the
+Rust reader, so unregenerable, but still failing on any single-cell change across
+the 299 inputs. `regen-fidelity-hashes.sh` deleted, since it shelled out to cargo.
+
+### Revert procedure
+
+```bash
+git revert --no-commit 00a08d5   # restore parser/ and the removed scripts
+git checkout pre-go-parser-removal -- .   # or take the whole pre-removal tree
+git checkout pre-go-parser-removal        # or just inspect it
+```
+
+The tag is the recovery point: at `0eb1747` both parsers exist and both test suites
+pass, so the differential gate can be re-run at any time.
+
+## Unresolved
+
+- Nothing blocking. The branch `refactor/go-parser` is unpushed; CI has therefore
+  not run the new workflow yet, and the `pull_request` trigger it adds cannot be
+  exercised until a PR exists.

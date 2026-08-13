@@ -4,7 +4,7 @@ description: >-
   Build go-parser/ alongside the Rust parser/, validated by differential
   comparison against live Rust output. Rust stays working until parity is signed
   off.
-status: pending
+status: completed
 priority: P2
 branch: main
 tags:
@@ -63,7 +63,7 @@ renders to, so they can now be re-derived without guessing.
 | 4 | [Reader writer and CLI](./phase-04-reader-writer-and-cli.md) | Completed |
 | 5 | [2016 format detection](./phase-05-2016-format-detection.md) | Completed |
 | 6 | [Differential parity gate](./phase-06-differential-parity-gate.md) | Completed |
-| 7 | [CI docs and cutover](./phase-07-ci-docs-and-script-port.md) | Pending |
+| 7 | [CI docs and cutover](./phase-07-ci-docs-and-script-port.md) | Completed |
 
 Strictly sequential: 1 → 2 → 3 → 4 → 5 → 6 → 7. Phases 1 and 6 are hard gates.
 
@@ -95,17 +95,17 @@ data is untouched.
 
 ## Acceptance criteria
 
-- [ ] For all 4 datasets, Go-built and Rust-built DBs are **logically equivalent**: identical
+- [x] For all 4 datasets, Go-built and Rust-built DBs are **logically equivalent**: identical
       row counts, identical per-column non-NULL counts across all 22 columns, identical
       `PRAGMA table_info`/`index_list`, and identical sorted full-table SHA-256
-- [ ] Both binaries emit identical build stdout per dataset, modulo the `Size:` line
+- [x] Both binaries emit identical build stdout per dataset, modulo the `Size:` line
       (this is the only check that covers the `source_rows`/`skipped` counters)
-- [ ] Go tests pass, including reader-fidelity tests against real files
-- [ ] `npm run build:db` produces four `.db.gz` via the Go binary, with a **row-count guard**
+- [x] Go tests pass, including reader-fidelity tests against real files
+- [x] `npm run build:db` produces four `.db.gz` via the Go binary, with a **row-count guard**
       that fails the build on deviation
-- [ ] CI green with Go toolchain, Rust actions removed, and a branch-verify path that does not
+- [x] CI green with Go toolchain, Rust actions removed, and a branch-verify path that does not
       publish to production
-- [ ] Frontend loads all 4 datasets unchanged, including accent-insensitive search
+- [x] Frontend loads all 4 datasets unchanged, including accent-insensitive search
 
 **Explicitly not a criterion:** byte-identical databases. SQLite writes its own version number
 into header bytes 96-99, `VACUUM` rewrites page layout per-version, and `gzip -9` without `-n`
@@ -152,7 +152,7 @@ Inputs:
 | 4 | No deploy guard — empty/truncated DB ships with green CI | Critical | Accept | Completed |
 | 5 | "Verify on a branch" unexecutable; `workflow_dispatch` publishes to prod | Critical | Accept | Completed |
 | 6 | Counter divergence invisible; 63 trailing empty sheets in `data/2017` | Critical | Accept | Completed |
-| 7 | Phase 7e breaks `npm run build:db`; 33 refs vs 8 listed | High | Accept | Phase 7 |
+| 7 | Phase 7e breaks `npm run build:db`; 33 refs vs 8 listed | High | Accept | Completed |
 | 8 | "byte-equivalent databases" provably unachievable | High | Accept | plan.md |
 | 9 | Phase 3 cites 20 of 29 tests; omitted 9 are the flagged traps | High | Accept | Phase 3 |
 | 10 | Two incompatible reader contracts; `[][]string` lossy | High | Accept | Phase 1, 4 |
