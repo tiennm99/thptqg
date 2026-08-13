@@ -2,8 +2,8 @@
 /**
  * Build the SQLite database for one or all datasets, verify it, then gzip it.
  *
- * The dataset list comes from src/datasets.js so it is written in exactly one
- * place.
+ * The dataset list comes from web/src/datasets.js so it is written in exactly
+ * one place.
  *
  * Output goes to .build/public/db/ — the directory Vite copies as its publicDir.
  * Only the .gz survives: shipping a 100+ MB uncompressed database is made
@@ -14,7 +14,7 @@
  * Until now nothing between the parser and the public site asserted that a
  * database actually had data in it. The parser logs a file-level failure and
  * continues, returns success regardless, and finishes cleanly even at zero rows;
- * this script gzipped whatever it got; and scripts/assemble-site.js only greps
+ * this script gzipped whatever it got; and web/scripts/assemble-site.js greps
  * *filenames* for stray .db files. So a reader that silently under-produced
  * would publish a truncated dataset with green CI and no red signal anywhere.
  *
@@ -32,7 +32,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 
-import { DATASET_IDS, DATASETS } from "../../src/datasets.js";
+import { DATASET_IDS, DATASETS } from "../../web/src/datasets.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const BIN = resolve(ROOT, "go-parser/bin/xlsxread");
@@ -48,8 +48,6 @@ const OUT_DIR = resolve(ROOT, ".build/public/db");
 const EXPECTED_ROWS = {
   "2016": 877461,
   "2017": 861068,
-  "2017-old": 847348,
-  "2017-old2": 679764,
 };
 
 /** A gzipped database far below its usual size means a truncated build. */

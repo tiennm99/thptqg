@@ -4,7 +4,7 @@
 
 A public lookup tool for Vietnam's National High School Graduation Exam scores,
 running entirely in the browser and hosted for free on GitHub Pages. Covers the
-2016 and 2017 exams — 1.7 million candidates across four datasets.
+2016 and 2017 exams — 1.7 million candidates across two datasets.
 
 ## Scope
 
@@ -21,7 +21,7 @@ running entirely in the browser and hosted for free on GitHub Pages. Covers the
 
 ## Constraints
 
-- **Zero backend.** The full database (38–48 MB gzipped per dataset) is
+- **Zero backend.** The full database (44–48 MB gzipped per dataset) is
   downloaded to the browser and queried in-process.
 - **Read-only.** `INSERT`/`UPDATE`/`DELETE` are rejected, so nobody is misled
   into thinking edits persist. `sql.js` is in-memory anyway.
@@ -36,16 +36,17 @@ running entirely in the browser and hosted for free on GitHub Pages. Covers the
 | --- | --- | --- | --- |
 | `2016` | 2016 | 877,461 | 119 files, three column layouts |
 | `2017` | 2017 | 861,068 | current generation, reproducible from source |
-| `2017-old` | 2017 | 847,348 | pre-refresh archive |
-| `2017-old2` | 2017 | 679,764 | corrected re-export |
 
-The three 2017 datasets are kept side by side because they disagree, and the
-disagreement is itself informative. Only `2017` is re-fetchable; the rest exist
-solely as the copies committed here.
+Two further 2017 datasets (`2017-old`, `2017-old2`) were kept alongside these
+because the three publications disagreed. They have been removed; git history
+still has them.
 
-Original 2016 aggregator link
-(<https://dtntbacgiang.edu.vn/tin-tuc/tin-tuc-su-kien/cong-bo-diem-thi-thptqg-2016-toan-bo-120-cum-thi-da-co-diem.html>)
-is no longer accessible, which is why the raw files are mirrored in `data/2016/`.
+Both datasets now have a crawler source. 2017 comes from the baotintuc.vn CDN,
+which is still live. 2016 comes from an aggregator article whose original host
+(`dtntbacgiang.edu.vn`) no longer resolves — its link list was recovered from
+the Internet Archive and is pointed at a mirror that is still online. See
+[data-pipeline](./data-pipeline.md#sources) for what that does and does not
+guarantee.
 
 ## History
 
@@ -53,7 +54,7 @@ Each year began as a standalone repository (`thptqg2016`, `thptqg2017`), merged
 here with full history. They initially kept separate frontends and separate
 copies of the same Rust parser, synchronised by hand. That duplication was
 removed: there is now one frontend, one parser, and one canonical schema, with
-per-dataset differences confined to four small config files and one registry
+per-dataset differences confined to one small config file and one registry
 entry each.
 
 The unification also fixed a latent data-loss bug — neither year's parser

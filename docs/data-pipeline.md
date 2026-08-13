@@ -2,32 +2,63 @@
 
 From raw Excel files to a compressed SQLite file the browser can load.
 
-One Rust binary (`go-parser/`) builds every dataset. What differs per dataset is
+One Go binary (`go-parser/`) builds every dataset. What differs per dataset is
 parse rules only — sheet strategy, column layout, validation guards — declared
 in `go-parser/configs/<id>.yml`. The table shape, the INSERT and the subject
 regexes are canonical and live in `go-parser/internal/schema/schema.go`.
 
 ## Sources
 
-| id | Files | Reproducible | Origin |
+| id | Files | Origin | Host live? |
 | --- | --- | --- | --- |
-| `2016` | 4 `.xls` + 115 `.xlsx` | no | Bộ GD&ĐT, collected 2016 |
-| `2017` | 63 `.xls` | **yes** | baotintuc.vn CDN |
-| `2017-old` | 63 `.xlsx` | no | pre-refresh archive |
-| `2017-old2` | 54 `.xlsx` | no | corrected re-export |
+| `2016` | 4 `.xls` + 115 `.xlsx` | aggregator article, 119 exam clusters | unconfirmed |
+| `2017` | 63 `.xls` | baotintuc.vn CDN | **yes** |
 
-Only `2017` can be re-fetched:
+Crawling lives in `crawler/`, a separate Go module. It is never part of the
+build — the source files are committed, so a crawl only refreshes them. Both
+runs are idempotent: files already present are skipped.
 
 ```bash
-node go-parser/scripts/crawl-baotintuc.js
+npm run crawl:2016              # crawler/internal/sources/source_2016.go
+npm run crawl:2017              # crawler/internal/sources/source_2017.go
+npm run crawl:2017 -- --list    # show what would be downloaded, fetch nothing
 ```
 
-Idempotent — skips files already present, saves to `data/2017/`. Source article:
+**2017** comes from the article
 `https://baotintuc.vn/tuyen-sinh/tra-cuu-diem-thi-thpt-2017-cua-63-tinh-thanh-pho-tren-baotintucvn-20170706073512672.htm`
+and its CDN is still serving the files.
 
-The other three were collected from Vietnamese news sites at the time and the
-publisher URLs were not recorded. **The files committed in git are the only
-copy.**
+**2016** comes from the aggregator article
+`cong-bo-diem-thi-thptqg-2016-toan-bo-120-cum-thi-da-co-diem.html`. The site
+that originally published it (`dtntbacgiang.edu.vn`) no longer resolves, so the
+link list was read from the Internet Archive's copy of the page. Two caveats
+that matter:
+
+- **The list is verified; the host is not.** All 119 filenames match `data/2016/`
+  exactly in both directions, which is asserted by a test. But the Archive
+  captured only the article, not the spreadsheets, so the URLs themselves could
+  not be confirmed by fetching. `baseURL` in `source_2016.go` points at a mirror
+  of the same article that is still online; if it serves the files from a
+  different directory, `uploadPath` is the one constant to change.
+- **`data/2016/` is still the only confirmed copy.** Do not delete it on the
+  assumption that a crawl can restore it.
+
+### Local filenames are load-bearing
+
+`go-parser` sorts its input files and inserts with `INSERT OR REPLACE`, which is
+last-wins, so **filenames decide which row survives a duplicate exam number**. A
+re-crawl that names files differently can produce a database with the same row
+count and different content, which the row-count guard in `build-db.js` would
+not catch.
+
+Each source therefore pins its local names, and
+`crawler/internal/sources/sources_test.go` checks every source against its
+committed `data/<id>/` in both directions — every name it would write exists,
+and every file present is accounted for.
+
+2017 derives its names from the province (the CDN's own names are inconsistent:
+`Angiang.xls`, `1BaRiaVungTau.xls`, `23HaiPhong.xls`). 2016 keeps the
+server-assigned names verbatim, since it did not choose them.
 
 ## Source Excel shapes
 
@@ -41,7 +72,7 @@ The 2017 datasets share one layout:
 | 3 | DIEM_THI | concatenated per-subject scores, e.g. `"Toán: 6.80 Ngữ văn: 5.25 …"` |
 
 2016 has **three** layouts across its 119 files, chosen per file at runtime via
-`format_detection = "thptqg2016"` in its config:
+`format_detection: thptqg2016` in its config:
 
 | Format | Detected by | Notes |
 | --- | --- | --- |
@@ -95,8 +126,6 @@ scores rather than false matches.
 | --- | --- | --- |
 | `2016` | all sheets | per-file format detection; header-token rows rejected |
 | `2017` | all sheets — Hà Nội and HCM overflow | none |
-| `2017-old` | first sheet only | reject non-numeric SBD (rejects a header leak in this export) |
-| `2017-old2` | all sheets — HCM overflows | reject non-numeric SBD; skip blank rows before counting |
 
 ### Overflow-sheet gotcha
 
@@ -111,8 +140,6 @@ silently drops 13,720 students** (Hanoi +7,275, HCM +6,445). That is what
 | --- | --- | --- | --- |
 | `2016` | 877,464 | 3 duplicate SBDs collapsed | **877,461** |
 | `2017` | 861,068 | 0 | **861,068** |
-| `2017-old` | 847,349 | 1 header leak | **847,348** |
-| `2017-old2` | 679,764 | 0 | **679,764** |
 
 ## Verifying a rebuild
 
@@ -143,11 +170,14 @@ cell of any input file reads differently.
 
 ```bash
 rm data/2017/*.xls
-node go-parser/scripts/crawl-baotintuc.js
-node go-parser/scripts/build-db.js 2017
+npm run crawl:2017
+npm run build:db 2017
 ```
 
-The row-count guard in `build:db` confirms the rebuild matches the expected total.
+The row-count guard in `build:db` confirms the rebuild matches the expected
+total. That guard checks the count only, so if the crawl was expected to change
+the data, compare content with `differential-parity.mjs` against a copy of the
+previous database rather than trusting the count.
 
 ## Removed scripts
 
@@ -157,3 +187,9 @@ repo was unified (a hardcoded Windows path in one, an undeclared
 `better-sqlite3` dependency in the other) and neither had any automated caller.
 The latter two are superseded by `differential-parity.mjs`, which compares more
 and cannot silently skip a dataset.
+
+`crawl-baotintuc.js` was not dropped but rewritten in Go as
+`crawler/internal/sources/source_2017.go`, keeping the same link list and the same
+local filenames. The rewrite added a per-file timeout and made downloads land on
+a `.part` file first — writing straight to the destination meant an interrupted
+run left a truncated file that the skip check would then skip forever.

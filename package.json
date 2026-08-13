@@ -4,36 +4,33 @@
   "version": "1.0.0",
   "type": "module",
   "description": "Tra cứu điểm thi THPT Quốc gia — 2016 và 2017",
+  "workspaces": [
+    "web"
+  ],
   "scripts": {
+    "crawl:2016": "go -C crawler run ./cmd/crawl 2016",
+    "crawl:2017": "go -C crawler run ./cmd/crawl 2017",
+    "test:crawler": "go -C crawler test ./...",
     "build:go": "go -C go-parser build -o bin/xlsxread ./cmd/xlsxread",
     "build:db": "node go-parser/scripts/build-db.js",
-    "dev": "vite",
-    "build": "vite build",
-    "assemble": "node scripts/assemble-site.js",
+    "test:go": "go -C go-parser test ./...",
+    "dev": "npm run dev -w web",
+    "build": "npm run build -w web",
+    "preview": "npm run preview -w web",
+    "assemble": "node web/scripts/assemble-site.js",
     "build:site": "npm run build && npm run assemble",
-    "preview": "vite preview",
-    "lint": "eslint .",
-    "test:go": "go -C go-parser test ./..."
+    "lint": "eslint ."
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/tiennm99/thptqg.git"
   },
   "license": "ISC",
-  "dependencies": {
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "sql.js": "^1.14.1"
-  },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.1",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
-    "globals": "^17.4.0",
-    "vite": "^8.0.16"
+    "globals": "^17.4.0"
   }
 }

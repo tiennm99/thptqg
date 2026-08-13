@@ -135,9 +135,8 @@ header:
 	}
 }
 
-// TestLoadRealConfigs loads the four shipped configs — the Go binary reads the
-// same files as Rust, never a fork — and asserts the per-dataset differences
-// recorded during scouting.
+// TestLoadRealConfigs loads the shipped configs and asserts the per-dataset
+// differences recorded during scouting.
 func TestLoadRealConfigs(t *testing.T) {
 	root := repoRoot(t)
 	want := map[string]struct {
@@ -148,10 +147,8 @@ func TestLoadRealConfigs(t *testing.T) {
 		formatDet  string
 		tokenCount int
 	}{
-		"2016":      {SheetModeAll, false, false, false, "thptqg2016", 6},
-		"2017":      {SheetModeAll, false, false, true, "", 3},
-		"2017-old":  {SheetModeFirst, false, true, true, "", 3},
-		"2017-old2": {SheetModeAll, true, true, true, "", 3},
+		"2016": {SheetModeAll, false, false, false, "thptqg2016", 6},
+		"2017": {SheetModeAll, false, false, true, "", 3},
 	}
 	for id, w := range want {
 		t.Run(id, func(t *testing.T) {

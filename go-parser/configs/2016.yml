@@ -1,7 +1,7 @@
 # thptqg2016 data/ — 4 .xls + 115 .xlsx mixed files.
 #
 # Three column layouts exist across the 119 files; the binary selects the
-# right one per-file at runtime via format_detection = "thptqg2016":
+# right one per-file at runtime via format_detection: thptqg2016:
 #
 #   separate-scores  header SBD(0)/HOTEN(1)/TOAN(2)...  — dhhanghai files
 #   mapped           header SOBAODANH|SBD + DIEM_THI     — most provinces
@@ -13,7 +13,7 @@
 # sheet_mode = "all": several provinces overflow into Sheet2 (65k Excel row cap).
 # strip_blank_rows = false: no blank-row anomaly observed in this dataset.
 #
-# Table shape, INSERT and subject regexes are canonical — see src/schema.rs.
+# Table shape, INSERT and subject regexes are canonical — see go-parser/internal/schema/schema.go.
 
 format_detection: thptqg2016
 

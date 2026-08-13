@@ -5,7 +5,9 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', '.build', '_site']),
+  // '**/dist', not 'dist': the build output moved to web/dist when the app
+  // became a workspace, and a root-anchored pattern would stop matching it.
+  globalIgnores(['**/dist', '.build', '_site']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [
@@ -27,8 +29,9 @@ export default defineConfig([
     },
   },
   {
-    // Node-executed files (Vite config, parser tooling) run with Node globals.
-    files: ['vite.config.js', 'scripts/**/*.js', 'go-parser/scripts/**/*.js'],
+    // Node-executed files (Vite config, site assembly, parser tooling) run with
+    // Node globals. The crawler is Go, so it has nothing here.
+    files: ['web/vite.config.js', 'web/scripts/**/*.js', 'go-parser/scripts/**/*.js'],
     languageOptions: {
       globals: { ...globals.node },
     },

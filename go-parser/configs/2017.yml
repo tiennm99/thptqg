@@ -4,7 +4,7 @@
 # SBD validation: no numeric guard — build-database.js did not apply ^\d+$.
 # strip_blank_rows = false: no blank-row anomaly in this dataset.
 #
-# Table shape, INSERT and subject regexes are canonical — see src/schema.rs.
+# Table shape, INSERT and subject regexes are canonical — see go-parser/internal/schema/schema.go.
 
 reader:
   sheet_mode: all

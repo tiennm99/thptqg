@@ -1,7 +1,7 @@
 # Deployment Guide
 
 Deploys to GitHub Pages via `.github/workflows/deploy-pages.yml`. Every push to
-`main` rebuilds all four datasets and redeploys the whole site.
+`main` rebuilds both datasets and redeploys the whole site.
 
 One-time setup: **Settings → Pages → Source: GitHub Actions**.
 
@@ -9,9 +9,9 @@ One-time setup: **Settings → Pages → Source: GitHub Actions**.
 
 1. Checkout, Go toolchain, Node 24, `npm ci`
 2. `npm run build:go` — one parser binary
-3. `npm run build:db` — builds and gzips all four databases into
+3. `npm run build:db` — builds and gzips both databases into
    `.build/public/db/`
-4. `npm run build:site` — one Vite build, then `scripts/assemble-site.js`
+4. `npm run build:site` — one Vite build, then `web/scripts/assemble-site.js`
 5. `actions/upload-pages-artifact` + `actions/deploy-pages`
 
 The database build dominates the runtime: roughly 419 MB of Excel is parsed on
@@ -23,20 +23,18 @@ every deploy.
 https://<user>.github.io/thptqg/
 https://<user>.github.io/thptqg/2016/
 https://<user>.github.io/thptqg/2017/
-https://<user>.github.io/thptqg/2017-old/
-https://<user>.github.io/thptqg/2017-old2/
 ```
 
-`/thptqg/2017/old/` and `/thptqg/2017/old2/` were the pre-flattening URLs. They
-are still served, and the router rewrites them to the flat form with the query
-string intact.
+`/thptqg/2017/old/` and `/thptqg/2017/old2/` were the pre-flattening URLs for
+the two removed 2017 archives. They are no longer served; like any unknown path
+they now render the hub via `404.html`.
 
 ## Local reproduction
 
 ```bash
 npm ci
 npm run build:go
-npm run build:db      # all four; pass an id to build just one
+npm run build:db      # both; pass an id to build just one
 npm run build:site    # vite build + assemble into _site/
 npx serve _site
 ```
@@ -44,7 +42,7 @@ npx serve _site
 To rebuild a single dataset:
 
 ```bash
-node go-parser/scripts/build-db.js 2017-old
+npm run build:db 2017
 ```
 
 ## Base path
@@ -59,7 +57,7 @@ up as a blank page with 404s on `/assets/...`.
 2. Add `go-parser/configs/<id>.yml` with the parse rules — sheet mode, column
    indices, SBD validation, header tokens, blank-row stripping. No SQL: the
    schema is canonical and lives in `go-parser/internal/schema/schema.go`
-3. Add an entry to `DATASETS` in `src/datasets.js`
+3. Add an entry to `DATASETS` in `web/src/datasets.js`
 
 Nothing else. The build script, the site assembly and the router all read that
 one list, and the frontend adapts to whichever columns the dataset populates.
@@ -98,7 +96,7 @@ run rebuilds the older state. There is no data to migrate.
 | Symptom | Typical cause |
 | --- | --- |
 | Blank page, 404 on assets | `base` in `vite.config.js` does not match the repo name |
-| `Failed to fetch database: 404` | Dataset id in `src/datasets.js` does not match the file in `db/` |
+| `Failed to fetch database: 404` | Dataset id in `web/src/datasets.js` does not match the file in `db/` |
 | A route 404s | `assemble-site.js` did not run, or the id is missing from `DATASETS` |
 | WASM fails to load | `sql.js.org` unreachable — self-host `sql-wasm.wasm` and update `SQL_WASM_URL` in `use-sqlite.js` |
 | Deploy fails on assembly | An uncompressed database artefact reached the output; the error names the files |

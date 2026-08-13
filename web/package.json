@@ -1,0 +1,23 @@
+{
+  "name": "thptqg-web",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Frontend — one Vite app serving all four datasets and the hub",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "sql.js": "^1.14.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "vite": "^8.0.16"
+  }
+}

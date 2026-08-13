@@ -49,25 +49,33 @@ jobs:
       - name: Test parser
         run: npm run test:go
 
+      # The crawler is not part of the build — it only refreshes data/ by hand.
+      # It is still compiled and tested here so it cannot rot unnoticed, and
+      # because its filename test guards the parser: input filenames decide
+      # which row survives a duplicate exam number.
+      - name: Test crawler
+        run: npm run test:crawler
+
       # excelize carries an open advisory, and the 2017 refresh runbook feeds
       # network-downloaded spreadsheets straight into the parser.
       - name: Vulnerability scan
-        working-directory: go-parser
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
-          "$(go env GOPATH)/bin/govulncheck" ./...
+          GOVULNCHECK="$(go env GOPATH)/bin/govulncheck"
+          (cd go-parser && "$GOVULNCHECK" ./...)
+          (cd crawler && "$GOVULNCHECK" ./...)
 
       # One parser binary builds every dataset; build-db.js reads the dataset
-      # list from src/datasets.js, verifies each database against its known row
+      # list from web/src/datasets.js, verifies each database against its row
       # count, then gzips it in place leaving no uncompressed file behind.
       - name: Build databases
         run: |
           npm run build:go
           npm run build:db
 
-      # One Vite build produces every page. scripts/assemble-site.js copies the
-      # emitted index.html to each dataset path (and the legacy nested URLs),
-      # then fails the job if any uncompressed database reached the artifact.
+      # One Vite build produces every page. web/scripts/assemble-site.js copies
+      # the emitted index.html to each dataset path (and the legacy nested
+      # URLs), then fails the job if an uncompressed database reached _site.
       - name: Build and assemble site
         run: npm run build:site
 
