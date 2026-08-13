@@ -14,7 +14,7 @@ Fully static app running entirely in the browser (SQLite via `sql.js`). No backe
 
 ## Demo
 
-<https://tiennm99.github.io/thptqg2016/>
+<https://tiennm99.github.io/thptqg/2016/>
 
 ## Development
 
