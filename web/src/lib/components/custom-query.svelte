@@ -1,29 +1,24 @@
-<script lang="ts">
-  import { formatBytes, isBudgetError, type RemoteDatabase } from "$lib/sqlite.svelte";
-  import type { PresetGroup } from "$lib/types";
+<script>
+  import { formatBytes, isBudgetError } from "$lib/sqlite.svelte";
 
   const MAX_ROWS = 1000;
   const PLACEHOLDER = "Nhập truy vấn SQL...\nVí dụ: SELECT * FROM student WHERE toan >= 9 LIMIT 10";
 
-  let {
-    db,
-    disabled = false,
-    presets = [],
-  }: { db: RemoteDatabase | null; disabled?: boolean; presets?: PresetGroup[] } = $props();
+  let { db, disabled = false, presets = [] } = $props();
 
   // By convention every preset list ends with a "Hệ thống" group whose first
   // query dumps the table schema. See lib/sql-presets.ts.
   const schemaPreset = $derived(presets[presets.length - 1]?.queries[0]);
 
   let sql = $state("");
-  let columns = $state<string[]>([]);
-  let rows = $state<Record<string, unknown>[]>([]);
-  let queryError = $state<string | null>(null);
-  let execTime = $state<string | null>(null);
+  let columns = $state([]);
+  let rows = $state([]);
+  let queryError = $state(null);
+  let execTime = $state(null);
   let running = $state(false);
   let autoRan = false;
 
-  async function execute(queryStr: string) {
+  async function execute(queryStr) {
     const source = db;
     if (!source?.ready) return;
     queryError = null;
@@ -52,7 +47,7 @@
     running = true;
     const start = performance.now();
     try {
-      const result = await source.query<Record<string, unknown>>(finalSql, [], "SQL tab");
+      const result = await source.query(finalSql, [], "SQL tab");
       execTime = (performance.now() - start).toFixed(1);
       rows = result.slice(0, MAX_ROWS);
       columns = rows.length > 0 ? Object.keys(rows[0]) : [];
@@ -68,7 +63,7 @@
     }
   }
 
-  function runPreset(presetSql: string) {
+  function runPreset(presetSql) {
     sql = presetSql;
     void execute(presetSql);
   }

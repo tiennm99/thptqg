@@ -7,6 +7,6 @@ export default defineConfig({
   test: {
     // Only the framework-free modules are unit-tested: score tiers, query-mode
     // classification and the ASCII fold that has to match the Go parser.
-    include: ["src/lib/**/*.test.ts"],
+    include: ["src/lib/**/*.test.js"],
   },
 });

@@ -1,7 +1,5 @@
 import { normaliseExamId } from "./query-mode";
-import type { RemoteDatabase } from "./sqlite.svelte";
 import { toAscii } from "./to-ascii";
-import type { Student } from "./types";
 
 export const MAX_RESULTS = 100;
 
@@ -22,7 +20,7 @@ export const MAX_RESULTS = 100;
  *
  * Every step is an index seek. A search costs a few hundred KB.
  */
-export async function searchByName(db: RemoteDatabase, query: string): Promise<Student[]> {
+export async function searchByName(db, query) {
   const words = tokenise(query);
   if (words.length === 0) return [];
 
@@ -38,7 +36,7 @@ export async function searchByName(db: RemoteDatabase, query: string): Promise<S
     WHERE w.word >= ? AND w.word < ?${filters.length ? " AND " + filters.join(" AND ") : ""}
     LIMIT ${MAX_RESULTS}`;
 
-  return db.query<Student>(
+  return db.query(
     sql,
     [seek, upperBound(seek), ...others.map((w) => `% ${escapeLike(w)}%`)],
     `name ${JSON.stringify(words.join(" "))} seeking ${JSON.stringify(seek)}`,
@@ -46,8 +44,8 @@ export async function searchByName(db: RemoteDatabase, query: string): Promise<S
 }
 
 /** Exact lookup by exam number: a primary-key seek, a few pages. */
-export async function lookupExamId(db: RemoteDatabase, id: string): Promise<Student[]> {
-  return db.query<Student>(
+export async function lookupExamId(db, id) {
+  return db.query(
     "SELECT * FROM student WHERE so_bao_danh = ? LIMIT ?",
     [normaliseExamId(id), MAX_RESULTS],
     `exam id ${JSON.stringify(normaliseExamId(id))}`,
@@ -55,7 +53,7 @@ export async function lookupExamId(db: RemoteDatabase, id: string): Promise<Stud
 }
 
 /** Fold to ASCII and split into words, the same shape name_word was built in. */
-export function tokenise(query: string): string[] {
+export function tokenise(query) {
   return toAscii(query).split(/\s+/).filter(Boolean);
 }
 
@@ -63,7 +61,7 @@ export function tokenise(query: string): string[] {
  * The word whose prefix covers the fewest entries, which is the one worth
  * seeking on. One round trip for all of them.
  */
-async function rarest(db: RemoteDatabase, words: string[]): Promise<string> {
+async function rarest(db, words) {
   if (words.length === 1) return words[0];
 
   const sql = words
@@ -71,7 +69,7 @@ async function rarest(db: RemoteDatabase, words: string[]): Promise<string> {
     .join(" UNION ALL ");
   const params = words.flatMap((w) => [w, w, upperBound(w)]);
 
-  const counts = await db.query<{ word: string; n: number }>(sql, params, "word frequencies");
+  const counts = await db.query(sql, params, "word frequencies");
   let best = words[0];
   let bestN = Infinity;
   for (const { word, n } of counts) {
@@ -88,11 +86,11 @@ async function rarest(db: RemoteDatabase, words: string[]): Promise<string> {
  * that can follow the prefix, which is what turns "starts with" into a range
  * the index can seek.
  */
-function upperBound(prefix: string): string {
+function upperBound(prefix) {
   return prefix + "￿";
 }
 
 /** Escape the LIKE wildcards so a user typing % or _ searches for them. */
-function escapeLike(s: string): string {
+function escapeLike(s) {
   return s.replace(/[\\%_]/g, (c) => `\\${c}`);
 }

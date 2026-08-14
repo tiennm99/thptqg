@@ -1,4 +1,4 @@
-import { createDbWorker, type SqliteStats, type WorkerHttpvfs } from "sql.js-httpvfs";
+import { createDbWorker } from "sql.js-httpvfs";
 import workerUrl from "sql.js-httpvfs/dist/sqlite.worker.js?url";
 import wasmUrl from "sql.js-httpvfs/dist/sql-wasm.wasm?url";
 
@@ -25,8 +25,9 @@ export const SEARCH_BUDGET_BYTES = 25 * 1024 * 1024;
 /** What the SQL tab gets once the user has accepted the cost of a scan. */
 export const PLAYGROUND_BUDGET_BYTES = 250 * 1024 * 1024;
 
-/** What one query cost over the network. */
-export type QueryCost = { requests: number; bytes: number; ms: number };
+/**
+ * What one query cost over the network: `{ requests, bytes, ms }`.
+ */
 
 /**
  * One remotely-paged database, with the load state the UI needs.
@@ -37,28 +38,27 @@ export type QueryCost = { requests: number; bytes: number; ms: number };
  */
 export class RemoteDatabase {
   ready = $state(false);
-  error = $state<string | null>(null);
+  error = $state(null);
   /** Bytes fetched by this database so far, prefetch included. */
   bytesRead = $state(0);
   /** HTTP range requests issued so far. */
   requests = $state(0);
   /** What the most recent query cost on its own. */
-  lastCost = $state<QueryCost | null>(null);
+  lastCost = $state(null);
 
-  #worker: WorkerHttpvfs | null = null;
-  #opening: Promise<WorkerHttpvfs>;
+  #worker = null;
+  #opening;
   #closed = false;
   // Previous cumulative reading, so a query's own cost is a subtraction.
   #seen = { requests: 0, bytes: 0 };
 
-  constructor(
-    readonly url: string,
-    readonly budgetBytes: number = SEARCH_BUDGET_BYTES,
-  ) {
+  constructor(url, budgetBytes = SEARCH_BUDGET_BYTES) {
+    this.url = url;
+    this.budgetBytes = budgetBytes;
     this.#opening = this.#open();
   }
 
-  async #open(): Promise<WorkerHttpvfs> {
+  async #open() {
     const opened = performance.now();
     try {
       const worker = await createDbWorker(
@@ -90,14 +90,11 @@ export class RemoteDatabase {
    * search actually costs, since the byte count depends on how much the read
    * heads prefetched, not just on the pages the plan needed.
    */
-  async query<T>(sql: string, params: unknown[] = [], label?: string): Promise<T[]> {
+  async query(sql, params = [], label) {
     const worker = this.#worker ?? (await this.#opening);
-    // Comlink erases the generic when it proxies the method across the worker
-    // boundary, so the row type is asserted here rather than inferred.
-    const run = worker.db.query as unknown as (sql: string, ...params: unknown[]) => Promise<T[]>;
     const started = performance.now();
     try {
-      return await run(sql, ...params);
+      return await worker.db.query(sql, ...params);
     } finally {
       await this.#account(worker, label ?? firstLine(sql), performance.now() - started);
     }
@@ -110,12 +107,11 @@ export class RemoteDatabase {
    * counter and resets itself to zero when a query trips the ceiling, so it
    * would under-report exactly when the number matters most.
    */
-  async #account(worker: WorkerHttpvfs, label: string, ms: number) {
-    const read = worker.worker.getStats as unknown as () => Promise<SqliteStats | null>;
-    const stats = await read().catch(() => null);
+  async #account(worker, label, ms) {
+    const stats = await worker.worker.getStats().catch(() => null);
     if (!stats) return;
 
-    const cost: QueryCost = {
+    const cost = {
       requests: stats.totalRequests - this.#seen.requests,
       bytes: stats.totalFetchedBytes - this.#seen.bytes,
       ms,
@@ -146,20 +142,20 @@ export class RemoteDatabase {
 }
 
 /** True when a query failed because it would have exceeded the byte budget. */
-export function isBudgetError(err: unknown): boolean {
+export function isBudgetError(err) {
   return /maxBytesToRead|too much data|exceeded/i.test(message(err));
 }
 
-function message(err: unknown): string {
+function message(err) {
   return err instanceof Error ? err.message : String(err);
 }
 
 /** Enough of a query to recognise it in the console. */
-function firstLine(sql: string): string {
+function firstLine(sql) {
   const line = sql.trim().split("\n")[0];
   return line.length > 70 ? `${line.slice(0, 70)}…` : line;
 }
 
-export function formatBytes(n: number): string {
+export function formatBytes(n) {
   return n < 1024 * 1024 ? `${Math.round(n / 1024)} KB` : `${(n / 1048576).toFixed(1)} MB`;
 }

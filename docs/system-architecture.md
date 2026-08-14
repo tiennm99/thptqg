@@ -46,7 +46,7 @@ because the assembler is a Go program and the web app is not, and JSON is the
 only format both parse without a dependency.
 
 Presentation — titles, labels, search examples, SQL presets — stays in
-`web/src/lib/datasets.ts`, keyed by id. That file cross-checks the two: a registry
+`web/src/lib/datasets.js`, keyed by id. That file cross-checks the two: a registry
 entry with no content, or content for a dataset that was never built, throws at
 module load rather than rendering a page with no title or a link to a database
 that does not exist.
@@ -125,13 +125,13 @@ No component contains a per-dataset conditional. Two mechanisms do the work:
   self-exclude wherever those languages were not sat.
 
 Anything genuinely per-dataset — title, source, database size, search examples,
-SQL presets — lives in `web/src/lib/datasets.ts`.
+SQL presets — lives in `web/src/lib/datasets.js`.
 
 ## Exam ID formats
 
-`web/src/lib/query-mode.ts` decides whether a query is an exam ID or a name, and
+`web/src/lib/query-mode.js` decides whether a query is an exam ID or a name, and
 is shared by the dataset page and `search-form.svelte` (they previously held
-separate copies and had drifted apart on exactly this rule). `query-mode.test.ts`
+separate copies and had drifted apart on exactly this rule). `query-mode.test.js`
 covers every form in the table below.
 
 | Form | Example | Where |

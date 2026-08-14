@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { ADMISSION_BLOCKS, computeBlocks, scoreTier } from "./admission-blocks";
-import type { Student } from "./types";
 
 /** A row with every column NULL, so a test only states the scores it needs. */
-function student(scores: Partial<Student>): Student {
+function student(scores) {
   return {
     so_bao_danh: "49008235",
     ho_ten: "Nguyễn Văn A",

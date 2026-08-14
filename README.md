@@ -37,7 +37,7 @@ Each stage runs on its own and hands its output to the next through the stores.
 
 `datasets.json` is the contract between them. It is JSON because Go and the web
 app both read it and neither needs a dependency to do so; presentation stays in
-`web/src/lib/datasets.ts`, keyed by id, which fails loudly if the two disagree.
+`web/src/lib/datasets.js`, keyed by id, which fails loudly if the two disagree.
 
 The dataset id is one identifier end to end:
 
@@ -86,7 +86,7 @@ Pushing to `main` runs the same steps in
 2. Add `parser/configs/<id>.yml` — sheet mode, column indices, validation
    guards. No SQL; the schema is canonical.
 3. Add an entry to `datasets.json` with its expected row count and size
-4. Add the matching presentation to `CONTENT` in `web/src/lib/datasets.ts`
+4. Add the matching presentation to `CONTENT` in `web/src/lib/datasets.js`
 
 Everything else follows: the assembler, the router and the hub all read the
 registry, and the UI adapts to whichever columns the dataset fills. Steps 3 and 4

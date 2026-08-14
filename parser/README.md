@@ -41,7 +41,7 @@ reader independently verifiable against a hash oracle.
 
 - `ToAscii` strips combining marks in the literal range U+0300–U+036F rather
   than by Unicode category. That covers every Vietnamese diacritic and must
-  stay identical to `toAscii` in `web/src/lib/to-ascii.ts`, or accent-insensitive
+  stay identical to `toAscii` in `web/src/lib/to-ascii.js`, or accent-insensitive
   search misses rows.
 - Gender is normalised to `Nam`/`Nữ`; the Cần Thơ files write `0`/`1` instead
   and are translated. Anything else becomes NULL.

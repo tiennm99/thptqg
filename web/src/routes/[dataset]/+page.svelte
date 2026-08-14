@@ -1,4 +1,4 @@
-<script lang="ts">
+<script>
   import { browser } from "$app/environment";
   import { replaceState } from "$app/navigation";
   import { base, resolve } from "$app/paths";
@@ -11,15 +11,14 @@
   import { isExamId } from "$lib/query-mode";
   import { MAX_RESULTS, lookupExamId, searchByName } from "$lib/search";
   import { PLAYGROUND_BUDGET_BYTES, RemoteDatabase, SEARCH_BUDGET_BYTES } from "$lib/sqlite.svelte";
-  import type { Student } from "$lib/types";
 
   let { data } = $props();
   const dataset = $derived(data.dataset);
 
-  let db = $state<RemoteDatabase | null>(null);
-  let results = $state<Student[] | null>(null);
-  let searchError = $state<string | null>(null);
-  let activeTab = $state<"search" | "sql">("search");
+  let db = $state(null);
+  let results = $state(null);
+  let searchError = $state(null);
+  let activeTab = $state("search");
   let sqlWarningOpen = $state(false);
   // Raised once the user has accepted that a hand-written query may fetch a lot.
   let budget = $state(SEARCH_BUDGET_BYTES);
@@ -53,7 +52,7 @@
 
   // Sync the query to ?q= without adding a history entry, so back still leaves
   // the page and a copied URL still reproduces the search.
-  function writeUrlQuery(q: string) {
+  function writeUrlQuery(q) {
     const route = resolve("/[dataset]", { dataset: dataset.id });
     // The target IS resolve()'d; the lint rule cannot see through the template
     // literal that appends the query string.
@@ -61,7 +60,7 @@
     replaceState(q ? `${route}?q=${encodeURIComponent(q)}` : route, page.state);
   }
 
-  async function search(q: string) {
+  async function search(q) {
     const source = db;
     if (!source?.ready) return;
     searchError = null;
@@ -104,13 +103,13 @@
 
   // Global shortcuts: Ctrl+Enter submits the SQL query, "/" focuses the search
   // box unless the user is already typing somewhere.
-  function onKeydown(event: KeyboardEvent) {
+  function onKeydown(event) {
     if (event.key === "Escape" && sqlWarningOpen) {
       declineSqlWarning();
       return;
     }
     if (event.ctrlKey && event.key === "Enter" && activeTab === "sql") {
-      document.querySelector<HTMLFormElement>(".query-form")?.requestSubmit();
+      document.querySelector(".query-form")?.requestSubmit();
       return;
     }
     if (
@@ -211,6 +210,8 @@
   <footer class="mt-12 border-t border-line pt-4 text-center text-sm break-words text-ink-subtle">
     <p>
       Nguồn:
+      <!-- An off-site article URL, so there is no route for resolve() to take. -->
+      <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
       <a href={dataset.source} target="_blank" rel="noopener noreferrer">{dataset.source}</a>
       · {dataset.rows.toLocaleString("vi-VN")} thí sinh · Dữ liệu chỉ mang tính tham khảo
     </p>

@@ -24,7 +24,8 @@ Add the web checks when frontend files changed:
 (cd web && npm test && npm run lint && npm run build)
 ```
 
-`npm run lint` is ESLint plus `svelte-check`, so it is the type check too.
+`npm run lint` is ESLint. The web app is plain JavaScript — no TypeScript, no
+type-check step.
 
 **Do not run the crawler suite as part of routine verification.** The crawler is
 not part of the build — `data/<id>/` is committed and a crawl only refreshes it
@@ -44,8 +45,8 @@ hashes every real input file. That is the point of it; do not skip it.
   regenerated.** A mismatch is a reader bug until proven otherwise, never a cue
   to refresh the file. `parser/cmd/dumpcells` narrows a failure to the cell.
 - **`ToAscii` filters the literal range U+0300..U+036F, not `unicode.Mn`.** It
-  must match `toAscii` in `web/src/lib/to-ascii.ts`, or accent-insensitive search
-  silently misses rows. `to-ascii.test.ts` pins the pairs both sides must agree
+  must match `toAscii` in `web/src/lib/to-ascii.js`, or accent-insensitive search
+  silently misses rows. `to-ascii.test.js` pins the pairs both sides must agree
   on.
 - **The 2016 files use four different layouts, and detection is per sheet.**
   Two of them publish scores in one column per subject instead of a `DIEM_THI`

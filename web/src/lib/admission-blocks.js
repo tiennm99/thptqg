@@ -1,15 +1,3 @@
-import type { Student, SubjectKey } from "./types";
-
-export type AdmissionBlock = { code: string; subjects: SubjectKey[]; label: string };
-export type ComputedBlock = {
-  code: string;
-  label: string;
-  total: number;
-  parts: { key: SubjectKey; score: number }[];
-};
-export type TierKey = "common" | "uncommon" | "rare" | "epic" | "legendary" | "prismatic";
-export type Tier = { key: TierKey; symbol: string; label: string };
-
 // Vietnamese university admission-block ("khối thi") definitions, per Circular
 // 03/2017/TT-BGDĐT. Each block is the sum of exactly 3 subject scores.
 //
@@ -17,7 +5,7 @@ export type Tier = { key: TierKey; symbol: string; label: string };
 // skips any block with a missing subject score, so blocks needing GDCD
 // self-exclude on 2016 rows, and blocks needing a language the candidate did
 // not sit self-exclude row by row.
-export const ADMISSION_BLOCKS: AdmissionBlock[] = [
+export const ADMISSION_BLOCKS = [
   { code: "A00", subjects: ["toan", "vat_ly", "hoa_hoc"],     label: "Toán + Lý + Hóa" },
   { code: "A01", subjects: ["toan", "vat_ly", "tieng_anh"],   label: "Toán + Lý + Anh" },
   { code: "A02", subjects: ["toan", "vat_ly", "sinh_hoc"],    label: "Toán + Lý + Sinh" },
@@ -76,14 +64,13 @@ export const ADMISSION_BLOCKS: AdmissionBlock[] = [
 
 // Returns { code, label, total, parts:[{key,score}] } for every block where
 // the student has scores for all three subjects, sorted by total desc.
-export function computeBlocks(student: Student): ComputedBlock[] {
-  const out: ComputedBlock[] = [];
+export function computeBlocks(student) {
+  const out = [];
   for (const b of ADMISSION_BLOCKS) {
     const parts = b.subjects.map((k) => ({ key: k, score: student[k] }));
     if (parts.some((p) => p.score === null || p.score === undefined)) continue;
-    const whole = parts as { key: SubjectKey; score: number }[];
-    const total = whole.reduce((s, p) => s + p.score, 0);
-    out.push({ code: b.code, label: b.label, total, parts: whole });
+    const total = parts.reduce((s, p) => s + p.score, 0);
+    out.push({ code: b.code, label: b.label, total, parts });
   }
   return out.sort((a, b) => b.total - a.total);
 }
@@ -93,7 +80,7 @@ export function computeBlocks(student: Student): ComputedBlock[] {
 // whatever the other scores are, so that boundary is inclusive while the rest
 // are exclusive upper bounds. Every tier carries a unicode symbol as well as a
 // color, so the meaning is never conveyed by color alone.
-export function scoreTier(score: number | null | undefined): Tier | null {
+export function scoreTier(score) {
   if (score === null || score === undefined) return null;
   if (score <= 1) return { key: "common",      symbol: "·", label: "Điểm liệt" };
   if (score < 5)  return { key: "uncommon",    symbol: "○", label: "Chưa đạt" };

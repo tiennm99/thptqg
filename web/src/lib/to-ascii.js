@@ -12,7 +12,7 @@
  *
  * to-ascii.test.ts pins the pairs both sides have to agree on.
  */
-export function toAscii(str: string): string {
+export function toAscii(str) {
   return str
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
@@ -21,7 +21,7 @@ export function toAscii(str: string): string {
 }
 
 /** True when every character is ASCII, i.e. the query carries no diacritics. */
-export function isAsciiOnly(str: string): boolean {
+export function isAsciiOnly(str) {
   for (let i = 0; i < str.length; i++) {
     if (str.charCodeAt(i) > 127) return false;
   }

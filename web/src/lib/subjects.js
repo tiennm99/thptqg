@@ -1,5 +1,3 @@
-import type { IdentityKey, Student, SubjectKey } from "./types";
-
 /**
  * The 16 subject columns of the canonical schema, in display order. Mirrors
  * `ScoreFields` in parser/internal/schema/schema.go, and is the single list both
@@ -10,7 +8,7 @@ import type { IdentityKey, Student, SubjectKey } from "./types";
  * years without branching.
  */
 
-export const SUBJECTS: { key: SubjectKey; label: string }[] = [
+export const SUBJECTS = [
   { key: "toan", label: "Toán" },
   { key: "ngu_van", label: "Ngữ văn" },
   { key: "vat_ly", label: "Vật lí" },
@@ -34,12 +32,12 @@ export const SUBJECTS: { key: SubjectKey; label: string }[] = [
  * populates these; the same all-NULL filter that hides unused subjects hides
  * them elsewhere, so no per-dataset conditional is needed.
  */
-export const IDENTITY_COLUMNS: { key: IdentityKey; label: string }[] = [
+export const IDENTITY_COLUMNS = [
   { key: "ten_cum_thi", label: "Cụm thi" },
   { key: "gioi_tinh", label: "GT" },
 ];
 
 /** True when at least one row carries a value for `key`. */
-export function hasAnyValue(rows: Student[], key: SubjectKey | IdentityKey): boolean {
+export function hasAnyValue(rows, key) {
   return rows.some((row) => row[key] !== null && row[key] !== undefined);
 }
