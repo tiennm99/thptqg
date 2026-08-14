@@ -1,6 +1,6 @@
 module github.com/tiennm99/thptqg/parser
 
-go 1.26.5
+go 1.26.6
 
 require (
 	github.com/pbnjay/grate v0.0.0-20231006022435-3f8e65d74a14
