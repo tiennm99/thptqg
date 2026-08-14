@@ -204,10 +204,15 @@ total descending.
 - **Unindexed queries are expensive.** The SQL tab can express a query that
   walks the table, which over range requests means fetching 100+ MB. A byte
   budget stops one before it gets that far, and the tab warns before it opens.
-- **`Content-Encoding` breaks everything.** If the host ever compresses
-  `<id>.sqlite3` on the wire, ranges address compressed bytes and
-  `sql.js-httpvfs` refuses to open the file. Verify after a deploy:
-  `curl -sI …/db/2016.sqlite3` must show no `content-encoding`.
+- **`Content-Encoding` on a ranged response would break everything.** A range
+  of a compressed body addresses the wrong bytes. In practice browsers prevent
+  it: the Fetch standard requires `Accept-Encoding: identity` on any request
+  carrying a `Range` header. GitHub Pages *does* gzip the un-ranged response —
+  `application/octet-stream` is compressible in `mime-db` — which is why the
+  file length is probed with a range request and passed as `fileLength` rather
+  than left to the library's HEAD. `db-probe.js` checks the returned bytes
+  start with the SQLite magic, so a host that ever compresses a ranged response
+  fails loudly instead of returning nonsense.
 - **`sql.js-httpvfs` is unmaintained** (0.8.12, September 2022) and ships its
   own SQLite WASM. `sqlite-wasm-http`, on the official build, is the fallback.
 - **Hosted size.** 552 MB for both datasets against the 1 GB GitHub Pages

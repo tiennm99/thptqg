@@ -1,6 +1,7 @@
 import { createDbWorker } from "sql.js-httpvfs";
 import workerUrl from "sql.js-httpvfs/dist/sqlite.worker.js?url";
 import wasmUrl from "sql.js-httpvfs/dist/sql-wasm.wasm?url";
+import { probeDatabase } from "./db-probe.js";
 
 /**
  * The database is read where it lies. SQLite asks for pages, the virtual file
@@ -61,8 +62,17 @@ export class RemoteDatabase {
   async #open() {
     const opened = performance.now();
     try {
+      // Supplied rather than left to the library, which would size the file
+      // with a HEAD request. GitHub Pages compresses that response and reports
+      // the compressed length, which the library refuses to use. See db-probe.
+      const fileLength = await probeDatabase(this.url, CHUNK_BYTES);
       const worker = await createDbWorker(
-        [{ from: "inline", config: { serverMode: "full", url: this.url, requestChunkSize: CHUNK_BYTES } }],
+        [
+          {
+            from: "inline",
+            config: { serverMode: "full", url: this.url, requestChunkSize: CHUNK_BYTES, fileLength },
+          },
+        ],
         workerUrl,
         wasmUrl,
         this.budgetBytes,

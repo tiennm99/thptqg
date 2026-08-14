@@ -61,8 +61,15 @@ hashes every real input file. That is the point of it; do not skip it.
   assembler refuses to publish an artifact that falls below a ratio of it.
 - **The databases ship uncompressed, as `<id>.sqlite3`.** The browser reads
   byte ranges of them, and a range of a gzip stream is not a range of the
-  database. The host must not apply `Content-Encoding` either — check with
-  `curl -sI` after a deploy.
+  database.
+- **The file length comes from a range request, not from the host's HEAD.**
+  GitHub Pages gzips `application/octet-stream`, so a HEAD reports the
+  compressed size and `sql.js-httpvfs` refuses to open the file. Ranged reads
+  are unaffected — browsers must send `Accept-Encoding: identity` whenever a
+  request carries a `Range` header — so `web/src/lib/db-probe.js` reads the
+  header over a range and passes `fileLength`. Verify the way a browser asks:
+  `curl -sI -r 0-99 -H 'Accept-Encoding: identity' …`, never a bare `curl -sI`,
+  which advertises no encoding and hides the problem.
 - **Every query the site runs must be index-driven.** Over range requests an
   unindexed query fetches the whole table. Hence no index on `ho_ten` (nothing
   can use one), `name_word` for name search, partial indexes for the score

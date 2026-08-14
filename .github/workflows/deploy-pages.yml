@@ -121,3 +121,30 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v5
+
+      - uses: actions/checkout@v7
+
+      # The site reads the databases a page at a time over range requests, so
+      # what matters is not that the host leaves the file alone in general — it
+      # gzips the un-ranged response, and browsers work around that by sending
+      # Accept-Encoding: identity whenever a request carries a Range header —
+      # but that a ranged read returns raw database bytes. Checking headers is
+      # what missed this before: a bare `curl -sI` advertises no encoding and
+      # so passes whatever the host does. Check the bytes instead.
+      - name: Verify ranged reads return database bytes
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          for id in $(jq -r '.datasets[].id' datasets.json); do
+            url="${PAGE_URL%/}/db/${id}.sqlite3"
+            if ! magic=$(curl -sf -r 0-14 -H 'Accept-Encoding: identity;q=1, *;q=0' "$url"); then
+              echo "::error::$url is not fetchable"
+              exit 1
+            fi
+            if [ "$magic" != "SQLite format 3" ]; then
+              echo "::error::$url did not return database bytes over a range request"
+              exit 1
+            fi
+            echo "$url: SQLite format 3"
+          done

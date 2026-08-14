@@ -87,10 +87,23 @@ artifact — one missing line away from publishing it.
 - **Total artifact is about 552 MB**, inside the 1 GB site limit but with less
   headroom than before: a third dataset of this size would not fit. The fallback
   is `sql.js-httpvfs`'s chunked mode, which splits a database into parts.
-- **The server must not compress the databases.** Ranges of a compressed body
-  address the wrong bytes, and the library refuses to open a file whose HEAD
-  carries a `Content-Encoding`. `.sqlite3` is an unknown type to Pages, so it is
-  served as `application/octet-stream` and left alone — verify after a deploy.
+- **Pages does compress the databases, and that is survivable.** `.sqlite3` is
+  unknown to Pages, so it is served as `application/octet-stream`, which is
+  marked compressible in `mime-db` and gzipped: a plain request returns
+  `Content-Encoding: gzip` and the compressed length. Ranged reads are not
+  affected, because the Fetch standard makes browsers send
+  `Accept-Encoding: identity` on any request carrying a `Range` header. Only
+  the length probe breaks, and the site supplies `fileLength` itself instead of
+  trusting HEAD — see `web/src/lib/db-probe.js`.
+- **Verify the way a browser asks.** A bare `curl -sI` advertises no encoding
+  and so reports success whatever the host does; it is what let this reach
+  production. Check ranged reads instead, and check the bytes, not the headers:
+
+  ```bash
+  curl -s -r 0-15 -H 'Accept-Encoding: identity;q=1, *;q=0' \
+    https://<user>.github.io/thptqg/db/2016.sqlite3 | head -c 16
+  # must print: SQLite format 3
+  ```
 
 ## Rollback
 
@@ -104,7 +117,8 @@ run rebuilds the older state. There is no data to migrate.
 | Blank page, 404 on assets | `paths.base` in `svelte.config.js` does not match the repo name |
 | `Failed to fetch database: 404` | Dataset id in `datasets.json` does not match the file in `db/` |
 | A route 404s | The site step did not run, or the id is missing from `datasets.json` |
-| Database fails to open | The host compressed it. `curl -sI …/db/<id>.sqlite3` must show no `content-encoding`; ranges of a compressed body are unusable |
+| `Length of the file not known` | The host gzipped the un-ranged response, so HEAD reports the compressed size. The site supplies `fileLength` from a range probe; if this returns, that probe failed |
+| Database fails to open | A ranged read did not return raw database bytes. The range check above must print `SQLite format 3` |
 | Every query is slow or huge | It is not using an index. `EXPLAIN QUERY PLAN` it: a `SCAN` means the browser is fetching the whole table |
 | Deploy fails on assembly | An uncompressed database artefact reached the output; the error names the files |
 | Missing rows after a data update | Unknown Excel header — check the per-file row counts the parser prints |

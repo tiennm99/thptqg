@@ -50,8 +50,9 @@ func OpenDB(dbPath string) (*sql.DB, error) {
 	// file a page at a time over HTTP: a row fetched by index seek costs one
 	// page, so a search that returns 100 scattered rows transfers 100 KB
 	// instead of 400 KB. It costs about 5% file size, and both sql.js-httpvfs
-	// and sqlite-wasm-http recommend it. web/src/lib/sqlite.svelte.ts must
-	// request the same size.
+	// and sqlite-wasm-http recommend it. web/src/lib/sqlite.svelte.js must
+	// request the same size, and web/src/lib/db-probe.js warns when a published
+	// database disagrees with it.
 	if _, err := db.Exec("PRAGMA page_size = 1024"); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("set page size: %w", err)
