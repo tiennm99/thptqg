@@ -181,9 +181,10 @@ silently drops 13,720 students** (Hanoi +7,275, HCM +6,445). That is what
 
 ## Expected row counts
 
-The databases are written with 1 KiB pages (`PRAGMA page_size` in
+The databases are written with 4 KiB pages (`PRAGMA page_size` in
 `parser/internal/writer/writer.go`) because the browser fetches them a page per
-HTTP request. `CHUNK_BYTES` in `web/src/lib/sqlite.svelte.js` must match.
+HTTP request, and those requests are serial. `CHUNK_BYTES` in
+`web/src/lib/sqlite.svelte.js` must match.
 
 | id | Source rows | Skipped | DB rows |
 | --- | --- | --- | --- |

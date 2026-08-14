@@ -18,7 +18,10 @@ import { probeDatabase } from "./db-probe.js";
 // Must equal the page size the parser writes (PRAGMA page_size in
 // parser/internal/writer/writer.go), so one request is exactly one page. A
 // mismatch makes every logical page read span two requests.
-const CHUNK_BYTES = 1024;
+//
+// Reads are serial — the worker uses synchronous XHR — so the count of
+// requests, not their size, is what a search waits on.
+const CHUNK_BYTES = 4096;
 
 /** Generous for indexed work: a name search costs well under 1 MB. */
 export const SEARCH_BUDGET_BYTES = 25 * 1024 * 1024;

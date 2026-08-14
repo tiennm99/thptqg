@@ -46,14 +46,20 @@ func OpenDB(dbPath string) (*sql.DB, error) {
 	// Before the DDL, because a page size cannot change once a table exists —
 	// only the VACUUM in Finish could rewrite it, and only to this same value.
 	//
-	// 1 KiB rather than SQLite's 4 KiB default because the browser reads this
-	// file a page at a time over HTTP: a row fetched by index seek costs one
-	// page, so a search that returns 100 scattered rows transfers 100 KB
-	// instead of 400 KB. It costs about 5% file size, and both sql.js-httpvfs
-	// and sqlite-wasm-http recommend it. web/src/lib/sqlite.svelte.js must
-	// request the same size, and web/src/lib/db-probe.js warns when a published
-	// database disagrees with it.
-	if _, err := db.Exec("PRAGMA page_size = 1024"); err != nil {
+	// SQLite's default, kept because the browser reads this file a page at a
+	// time over HTTP and what costs time is the number of requests, not their
+	// size. The library reads with synchronous XHR, so requests are strictly
+	// serial at about 40 ms each; a name search that made 390 of them took 17
+	// seconds to move 608 KB. Four times the page size is a quarter of the
+	// pages for the same scan, and a shallower b-tree for each seek.
+	//
+	// The 1 KiB both sql.js-httpvfs and sqlite-wasm-http suggest optimises the
+	// other way — fewest bytes per seeked row — which is the wrong trade when
+	// one request costs more than the kilobyte it carries.
+	//
+	// web/src/lib/sqlite.svelte.js must request the same size, and
+	// web/src/lib/db-probe.js warns when a published database disagrees.
+	if _, err := db.Exec("PRAGMA page_size = 4096"); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("set page size: %w", err)
 	}
