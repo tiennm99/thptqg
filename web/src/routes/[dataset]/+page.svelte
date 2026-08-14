@@ -1,6 +1,5 @@
 <script>
   import { browser } from "$app/environment";
-  import { replaceState } from "$app/navigation";
   import { base, resolve } from "$app/paths";
   import { page } from "$app/state";
   import CustomQuery from "$lib/components/custom-query.svelte";
@@ -54,10 +53,13 @@
   // the page and a copied URL still reproduces the search.
   function writeUrlQuery(q) {
     const route = resolve("/[dataset]", { dataset: dataset.id });
-    // The target IS resolve()'d; the lint rule cannot see through the template
-    // literal that appends the query string.
-    // eslint-disable-next-line svelte/no-navigation-without-resolve
-    replaceState(q ? `${route}?q=${encodeURIComponent(q)}` : route, page.state);
+    // The native History API rather than SvelteKit's replaceState: that one
+    // reaches into the client router's root component, which is undefined
+    // until the router has initialized, and then fails inside its own
+    // internals (sveltejs/kit#12204). Passing the current history.state back
+    // unchanged leaves SvelteKit's history bookkeeping intact, and nothing
+    // here reads page.url after the initial deep link.
+    history.replaceState(history.state, "", q ? `${route}?q=${encodeURIComponent(q)}` : route);
   }
 
   async function search(q) {

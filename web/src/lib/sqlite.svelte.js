@@ -124,7 +124,12 @@ export class RemoteDatabase {
     const worker = this.#worker ?? (await this.#opening);
     const started = performance.now();
     try {
-      return await worker.db.query(sql, ...params);
+      // One array argument, never spread. The worker forwards its arguments to
+      // sql.js's exec(sql, params), which takes the whole parameter list as its
+      // second argument and ignores anything that is not an array — leaving
+      // every ? unbound, which reads as NULL. The library's own type says
+      // `...params`, and it is wrong.
+      return await worker.db.query(sql, params);
     } finally {
       await this.#account(worker, label ?? firstLine(sql), performance.now() - started);
     }
