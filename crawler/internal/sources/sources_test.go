@@ -13,11 +13,10 @@ import (
 // The fixtures are saved copies of the two source articles, kept so the link
 // extraction and the naming rules can be exercised without the network.
 //
-// article-2017 is the live page. article-2016 came from the Internet Archive's
-// copy of the site that first published that list (dtntbacgiang.edu.vn, which
-// no longer resolves); the mirror the crawler actually reads carries the same
-// article. Its hrefs are relative, so they resolve against whichever host the
-// source names, and the filenames are identical either way.
+// article-2017 is the live page. article-2016 came from an archived copy of the
+// same article the crawler reads. Its hrefs are relative, so they resolve
+// against whichever host the source names, and the filenames are identical
+// either way.
 func fixture(t *testing.T, id string) *gzip.Reader {
 	t.Helper()
 	f, err := os.Open(filepath.Join("testdata", "article-"+id+".html.gz"))

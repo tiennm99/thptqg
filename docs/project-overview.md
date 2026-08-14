@@ -35,18 +35,17 @@ running entirely in the browser and hosted for free on GitHub Pages. Covers the
 | id | Exam | Candidates | Notes |
 | --- | --- | --- | --- |
 | `2016` | 2016 | 877,461 | 119 files, three column layouts |
-| `2017` | 2017 | 861,068 | current generation, reproducible from source |
+| `2017` | 2017 | 861,068 | current generation of three publications |
 
 Two further 2017 datasets (`2017-old`, `2017-old2`) were kept alongside these
 because the three publications disagreed. They have been removed; git history
 still has them.
 
 Both datasets now have a crawler source. 2017 comes from the baotintuc.vn CDN,
-which is still live. 2016 comes from an aggregator article whose original host
-(`dtntbacgiang.edu.vn`) no longer resolves — its link list was recovered from
-the Internet Archive and is pointed at a mirror that is still online. See
-[data-pipeline](./data-pipeline.md#sources) for what that does and does not
-guarantee.
+which is still live. 2016 comes from an aggregator article on
+`dtnt.bacninh.edu.vn`, also still online. Both datasets have been crawled
+successfully, so either can be rebuilt from source — see
+[data-pipeline](./data-pipeline.md#sources) for the full article URLs.
 
 ## History
 

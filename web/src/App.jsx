@@ -236,7 +236,10 @@ function DatasetApp({ dataset }) {
 
       <footer>
         <p>
-          Nguồn: {dataset.source}
+          Nguồn:{" "}
+          <a href={dataset.source} target="_blank" rel="noopener noreferrer">
+            {dataset.source}
+          </a>
           {totalCount !== null && ` · ${totalCount.toLocaleString("vi-VN")} thí sinh`}
           {" · Dữ liệu chỉ mang tính tham khảo"}
         </p>

@@ -20,13 +20,23 @@ import { PRESETS_2016, PRESETS_2017 } from "./lib/sql-presets.js";
 
 const SUBTITLE = "Dữ liệu thí sinh toàn quốc · Hỗ trợ truy vấn SQL tùy chỉnh";
 
-/** Presentation, keyed by the ids declared in datasets.json. */
+/**
+ * Presentation, keyed by the ids declared in datasets.json.
+ *
+ * `source` is the full article URL the dataset's spreadsheets come from, shown
+ * in the footer as a link. The canonical copy of each URL is the crawler's
+ * `Article` field (crawler/internal/sources/source_<id>.go); it is repeated here
+ * because a Go module and a Vite app cannot share a constant.
+ */
 const CONTENT = {
   2016: {
     label: "Kỳ thi 2016",
     title: "Tra cứu điểm thi THPT Quốc gia 2016",
     subtitle: SUBTITLE,
-    source: "Bộ GD&ĐT",
+    // The article the 119 cluster spreadsheets are fetched from — a school
+    // site that aggregated every cluster's file, not the ministry.
+    source:
+      "https://dtnt.bacninh.edu.vn/tin-tuc/tin-tuc-su-kien/cong-bo-diem-thi-thptqg-2016-toan-bo-120-cum-thi-da-co-diem.html",
     examples: ["17006021", "Nguyễn Thị Hoa"],
     presets: PRESETS_2016,
   },
@@ -34,7 +44,8 @@ const CONTENT = {
     label: "Kỳ thi 2017",
     title: "Tra cứu điểm thi THPT Quốc gia 2017",
     subtitle: SUBTITLE,
-    source: "baotintuc.vn",
+    source:
+      "https://baotintuc.vn/tuyen-sinh/tra-cuu-diem-thi-thpt-2017-cua-63-tinh-thanh-pho-tren-baotintucvn-20170706073512672.htm",
     examples: ["49008235", "Nguyễn Minh Tiến"],
     presets: PRESETS_2017,
   },

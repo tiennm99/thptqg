@@ -2,7 +2,8 @@
 
 Tra cứu điểm thi THPT Quốc gia — exam-score lookup for Vietnam's national high
 school graduation exam. Client-side SQL (sql.js) over a SQLite database built
-from the ministry's raw `.xls` score files by the Go `xlsxread` parser.
+from the published `.xls`/`.xlsx` score files by the Go `parser` module. Where
+those files come from: [data pipeline](./docs/data-pipeline.md#sources).
 
 Live at **[tiennm99.github.io/thptqg](https://tiennm99.github.io/thptqg/)**.
 

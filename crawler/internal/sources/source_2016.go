@@ -9,8 +9,7 @@ import (
 // source2016 fetches the 2016 dataset: one spreadsheet per exam cluster
 // (cụm thi), 4 .xls and 115 .xlsx.
 //
-// The article is a mirror. The site that first published this list
-// (dtntbacgiang.edu.vn) no longer resolves; this copy of the same article is
+// The article is a school site that aggregated every cluster's file. It is
 // still online, and its links are read at crawl time like any other source.
 //
 // Dest keeps the server's own filename verbatim — a 32-hex content hash, the

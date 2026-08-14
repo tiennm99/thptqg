@@ -484,6 +484,9 @@ footer {
   border-top: 1px solid var(--border);
   color: var(--text-subtle);
   font-size: 0.85rem;
+  /* The source is a full article URL and some are long enough to overflow a
+     phone screen, which would scroll the whole page sideways. */
+  overflow-wrap: anywhere;
 }
 
 /* ---- Student detail card ---- */

@@ -11,8 +11,10 @@ regexes are canonical and live in `parser/internal/schema/schema.go`.
 
 | id | Files | Origin | Host live? |
 | --- | --- | --- | --- |
-| `2016` | 4 `.xls` + 115 `.xlsx` | aggregator article, 119 exam clusters | unconfirmed |
-| `2017` | 63 `.xls` | baotintuc.vn CDN | **yes** |
+| `2016` | 4 `.xls` + 115 `.xlsx` | `dtnt.bacninh.edu.vn` aggregator article, 119 exam clusters | **yes** |
+| `2017` | 63 `.xls` | `baotintuc.vn` article, files on its CDN | **yes** |
+
+Full article URLs are below.
 
 Crawling lives in `crawler/`, a separate Go module. It is never part of the
 build — the source files are committed, so a crawl only refreshes them. Both
@@ -29,15 +31,16 @@ go -C crawler run ./cmd/crawl 2017 --list   # list only, download nothing
 and its CDN is still serving the files.
 
 **2016** comes from the aggregator article
-`cong-bo-diem-thi-thptqg-2016-toan-bo-120-cum-thi-da-co-diem.html`, served from
-a mirror — the site that first published it (`dtntbacgiang.edu.vn`) no longer
-resolves.
+`https://dtnt.bacninh.edu.vn/tin-tuc/tin-tuc-su-kien/cong-bo-diem-thi-thptqg-2016-toan-bo-120-cum-thi-da-co-diem.html`,
+which lists one spreadsheet per exam cluster. A full crawl against it has been
+run successfully and reproduces `data/2016/`, so the dataset is recoverable from
+source like 2017 is.
 
-That mirror is **not reachable from every network.** It resolves to a Vietnamese
-address that times out from at least some hosts abroad, in which case the crawl
-stops with a connection error before downloading anything. `data/2016/` is
-therefore still the only confirmed copy: do not delete it on the assumption that
-a crawl can restore it.
+That host is **not reachable from every network**, though: it resolves to a
+Vietnamese address that times out from at least some hosts abroad, in which case
+the crawl stops with a connection error before downloading anything. That is a
+connectivity problem, not a missing dataset — retry from a network that can
+reach the host.
 
 ## How a source is defined
 

@@ -51,8 +51,11 @@ that does not exist.
 
 | id | Exam | Rows | Source |
 | --- | --- | --- | --- |
-| `2016` | 2016 | 877,461 | Bộ GD&ĐT |
-| `2017` | 2017 | 861,068 | baotintuc.vn |
+| `2016` | 2016 | 877,461 | `dtnt.bacninh.edu.vn` |
+| `2017` | 2017 | 861,068 | `baotintuc.vn` |
+
+Full source URLs are in [data-pipeline](./data-pipeline.md#sources); the web
+footer links to them per dataset.
 
 ## Canonical schema
 
@@ -182,6 +185,6 @@ total descending.
   run out.
 - **`sql.js.org` dependency.** If that CDN is unreachable, the WASM fails to
   load. Self-hosting `sql-wasm.wasm` and updating `SQL_WASM_URL` in
-  `use-sqlite.js` is the fix.
+  `web/src/hooks/use-sqlite.js` is the fix.
 - **Excel format drift.** A new source file with an unseen header layout needs a
   new branch in `parser/internal/ingest/detect2016.go` or a new config.
