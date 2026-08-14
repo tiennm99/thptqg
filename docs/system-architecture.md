@@ -181,6 +181,24 @@ total descending.
 | Routing | SvelteKit file routes, prerendered | Each dataset gets a real HTML file with its own title |
 | Styling | Tailwind, with tier colours as CSS variables | Tier classes are chosen at runtime, which no utility generator can see |
 
+### Considered and not taken
+
+- **Chunked `serverMode`.** `sql.js-httpvfs` can split a database into parts so
+  a CDN caches each one whole. GitHub Pages serves everything with
+  `Cache-Control: max-age=600`, and every rebuild relays SQLite's pages so the
+  file changes even when the data does not — the caching that mode buys is
+  cancelled by the host. Worth revisiting behind a CDN with long TTLs, and it is
+  also the fallback if a single 300 MB file ever becomes a problem.
+- **`sqlite-wasm-http`.** Maintained, and built on the official SQLite WASM
+  rather than a 2022 fork, which is the better long-term footing. Its
+  differentiator — a cache shared between workers — needs COOP/COEP headers that
+  GitHub Pages cannot send, so here it would buy maintenance alone. Deferred
+  until the current path has been verified in a browser, so that a swap changes
+  one variable rather than two.
+- **Substring name search.** `LIKE '%x%'` cannot use an index, so it read the
+  whole 127 MB table. `name_word` keeps search by any word of a name without
+  it.
+
 ## Risks and limitations
 
 - **Unindexed queries are expensive.** The SQL tab can express a query that
