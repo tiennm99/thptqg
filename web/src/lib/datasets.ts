@@ -10,9 +10,10 @@
  * dataset cannot be misconfigured into pointing at the wrong database.
  */
 
-import registry from "../../datasets.json";
+import registry from "../../../datasets.json";
 
-import { PRESETS_2016, PRESETS_2017 } from "./lib/sql-presets.js";
+import { PRESETS_2016, PRESETS_2017 } from "./sql-presets";
+import type { Dataset, PresetGroup } from "./types";
 
 const SUBTITLE = "Dữ liệu thí sinh toàn quốc · Hỗ trợ truy vấn SQL tùy chỉnh";
 
@@ -24,7 +25,9 @@ const SUBTITLE = "Dữ liệu thí sinh toàn quốc · Hỗ trợ truy vấn SQ
  * (crawler/internal/sources/source_<id>.go); it is duplicated here because a Go
  * module and a Vite app cannot share a constant. Keep the two in step.
  */
-const CONTENT = {
+type Content = Omit<Dataset, "id" | "dbSizeMb" | "blurb"> & { presets: PresetGroup[] };
+
+const CONTENT: Record<string, Content> = {
   2016: {
     label: "Kỳ thi 2016",
     title: "Tra cứu điểm thi THPT Quốc gia 2016",
@@ -61,7 +64,7 @@ for (const id of Object.keys(CONTENT)) {
   }
 }
 
-export const DATASETS = registry.datasets.map((d) => ({
+export const DATASETS: Dataset[] = registry.datasets.map((d) => ({
   id: d.id,
   dbSizeMb: d.dbSizeMb,
   // Derived from expectedRows so the count the hub shows is the same number the
@@ -70,12 +73,20 @@ export const DATASETS = registry.datasets.map((d) => ({
   ...CONTENT[d.id],
 }));
 
-/** Site path for a dataset, e.g. pathOf(d, "/thptqg/") → "/thptqg/2017/". */
-export function pathOf(dataset, base) {
-  return `${base}${dataset.id}/`;
+/** Look up a dataset by the route segment, or undefined for an unknown id. */
+export function datasetById(id: string): Dataset | undefined {
+  return DATASETS.find((d) => d.id === id);
 }
 
-/** Gzipped database URL, e.g. dbOf(d, "/thptqg/") → "/thptqg/db/2017.db.gz". */
-export function dbOf(dataset, base) {
-  return `${base}db/${dataset.id}.db.gz`;
+/**
+ * Site path for a dataset. `base` is SvelteKit's, which carries no trailing
+ * slash: pathOf(d, "/thptqg") → "/thptqg/2017/".
+ */
+export function pathOf(dataset: Dataset, base: string): string {
+  return `${base}/${dataset.id}/`;
+}
+
+/** Gzipped database URL, e.g. dbOf(d, "/thptqg") → "/thptqg/db/2017.db.gz". */
+export function dbOf(dataset: Dataset, base: string): string {
+  return `${base}/db/${dataset.id}.db.gz`;
 }

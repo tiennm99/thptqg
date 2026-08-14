@@ -11,7 +11,7 @@ One-time setup: **Settings → Pages → Source: GitHub Actions**.
 2. Parser, crawler and assembler test suites, web lint, `govulncheck` over all three modules
 3. `go -C assembler run ./cmd/assemble` — the whole pipeline: compile the
    parser, build and verify each database, compress it into `.build/public/db/`,
-   run the Vite build, assemble `_site/`
+   run the web build, assemble `_site/`
 4. `actions/upload-pages-artifact` + `actions/deploy-pages`
 
 The database build dominates the runtime: roughly 348 MB of Excel is parsed on
@@ -46,9 +46,9 @@ go -C assembler run ./cmd/assemble site
 
 ## Base path
 
-`vite.config.js` sets `base: "/thptqg/"`. If you fork under a different repo
-name, update it to match — assets are referenced absolutely, so a mismatch shows
-up as a blank page with 404s on `/assets/...`.
+`svelte.config.js` sets `paths.base: "/thptqg"`. If you fork under a different
+repo name, update it to match — assets are referenced absolutely, so a mismatch
+shows up as a blank page with 404s on `/_app/...`.
 
 ## Adding a dataset
 
@@ -96,9 +96,9 @@ run rebuilds the older state. There is no data to migrate.
 
 | Symptom | Typical cause |
 | --- | --- |
-| Blank page, 404 on assets | `base` in `vite.config.js` does not match the repo name |
+| Blank page, 404 on assets | `paths.base` in `svelte.config.js` does not match the repo name |
 | `Failed to fetch database: 404` | Dataset id in `datasets.json` does not match the file in `db/` |
 | A route 404s | The site step did not run, or the id is missing from `datasets.json` |
-| WASM fails to load | `sql.js.org` unreachable — self-host `sql-wasm.wasm` and update `SQL_WASM_URL` in `use-sqlite.js` |
+| WASM fails to load | `sql.js.org` unreachable — self-host `sql-wasm.wasm` and update `SQL_WASM_URL` in `lib/sqlite.svelte.ts` |
 | Deploy fails on assembly | An uncompressed database artefact reached the output; the error names the files |
 | Missing rows after a data update | Unknown Excel header — check the per-file row counts the parser prints |

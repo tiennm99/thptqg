@@ -1,14 +1,16 @@
+import type { IdentityKey, Student, SubjectKey } from "./types";
+
 /**
  * The 16 subject columns of the canonical schema, in display order. Mirrors
  * `ScoreFields` in parser/internal/schema/schema.go, and is the single list both
- * score-table.jsx and student-detail.jsx render from.
+ * score-table.svelte and student-detail.svelte render from.
  *
  * Nothing here is dataset-specific. Columns an exam year has no data for are
  * NULL on every row, and the UI hides all-NULL columns, so one list serves both
  * years without branching.
  */
 
-export const SUBJECTS = [
+export const SUBJECTS: { key: SubjectKey; label: string }[] = [
   { key: "toan", label: "Toán" },
   { key: "ngu_van", label: "Ngữ văn" },
   { key: "vat_ly", label: "Vật lí" },
@@ -32,12 +34,12 @@ export const SUBJECTS = [
  * populates these; the same all-NULL filter that hides unused subjects hides
  * them elsewhere, so no per-dataset conditional is needed.
  */
-export const IDENTITY_COLUMNS = [
+export const IDENTITY_COLUMNS: { key: IdentityKey; label: string }[] = [
   { key: "ten_cum_thi", label: "Cụm thi" },
   { key: "gioi_tinh", label: "GT" },
 ];
 
 /** True when at least one row carries a value for `key`. */
-export function hasAnyValue(rows, key) {
+export function hasAnyValue(rows: Student[], key: SubjectKey | IdentityKey): boolean {
   return rows.some((row) => row[key] !== null && row[key] !== undefined);
 }

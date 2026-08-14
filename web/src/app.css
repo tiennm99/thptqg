@@ -1,0 +1,221 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens. Everything the utilities reference lives here, so dark mode is
+ * one block of variable overrides rather than a `dark:` variant on every class.
+ */
+@theme {
+  --color-bg: #f7f7fb;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f0f0f5;
+  --color-line: #e2e2eb;
+  --color-line-strong: #d0d0dc;
+  --color-ink: #1a1a2e;
+  --color-ink-muted: #5c6072;
+  --color-ink-subtle: #868a99;
+  --color-primary: #3b4fe4;
+  --color-primary-hover: #2d3ec9;
+  --color-primary-ink: #ffffff;
+  --color-error-bg: #fdecea;
+  --color-error-ink: #a51f1f;
+  --color-warning-bg: #fff3e0;
+  --color-warning-ink: #8a4a00;
+
+  --font-sans: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Fira Code", monospace;
+
+  --shadow-card: 0 6px 20px rgba(15, 20, 40, 0.08);
+}
+
+/*
+ * Score tier palette — a TFT rarity ladder (white → green → blue → purple →
+ * gold → prismatic), each pair picked for AA contrast (≥4.5:1) of ink on bg.
+ * Kept outside @theme because tier classes are applied from a runtime value
+ * (`tier-{key}`), which no utility generator can see.
+ */
+:root {
+  --tier-common-bg: #f3f4f6;
+  --tier-common-ink: #4a5163;
+  --tier-common-accent: #b5b9c5;
+  --tier-uncommon-bg: #e6f6ec;
+  --tier-uncommon-ink: #196a36;
+  --tier-uncommon-accent: #2e9e55;
+  --tier-rare-bg: #e8f0fe;
+  --tier-rare-ink: #1f4abf;
+  --tier-rare-accent: #3b73e8;
+  --tier-epic-bg: #f1e6fc;
+  --tier-epic-ink: #6420b8;
+  --tier-epic-accent: #9b59e8;
+  --tier-legendary-bg: #fff4cc;
+  --tier-legendary-ink: #6b4500;
+  --tier-legendary-accent: #d4a015;
+  --tier-prismatic-bg: linear-gradient(135deg, #ffd7f0 0%, #d7e1ff 33%, #d7ffe8 66%, #fff3c8 100%);
+  --tier-prismatic-ink: #1a1a2e;
+  --tier-prismatic-accent: #b455e8;
+
+  --focus-ring: 0 0 0 3px rgba(59, 79, 228, 0.35);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0f1220;
+    --color-surface: #171a2b;
+    --color-surface-alt: #1e2236;
+    --color-line: #2a2e44;
+    --color-line-strong: #3a3f58;
+    --color-ink: #eaeaf0;
+    --color-ink-muted: #b0b4c7;
+    --color-ink-subtle: #8a8fa4;
+    --color-primary: #6d82ff;
+    --color-primary-hover: #879aff;
+    --color-primary-ink: #0f1220;
+    --color-error-bg: #3a1717;
+    --color-error-ink: #ff9b9b;
+    --color-warning-bg: #3a2a0d;
+    --color-warning-ink: #ffc980;
+
+    --shadow-card: 0 6px 20px rgba(0, 0, 0, 0.55);
+    --focus-ring: 0 0 0 3px rgba(109, 130, 255, 0.45);
+
+    --tier-common-bg: #242838;
+    --tier-common-ink: #c5cad8;
+    --tier-common-accent: #4a5163;
+    --tier-uncommon-bg: #0f2e1b;
+    --tier-uncommon-ink: #9ee3b5;
+    --tier-uncommon-accent: #55c47a;
+    --tier-rare-bg: #14244a;
+    --tier-rare-ink: #a9c0ff;
+    --tier-rare-accent: #7a96ff;
+    --tier-epic-bg: #2a1a45;
+    --tier-epic-ink: #cbb0ff;
+    --tier-epic-accent: #a779e8;
+    --tier-legendary-bg: #332a0a;
+    --tier-legendary-ink: #ffd76a;
+    --tier-legendary-accent: #f0bd3b;
+    --tier-prismatic-bg: linear-gradient(135deg, #5a2d4d 0%, #2d4d6e 33%, #2d6e4d 66%, #6e5a2d 100%);
+    --tier-prismatic-ink: #ffffff;
+    --tier-prismatic-accent: #e8a0ff;
+  }
+}
+
+@layer base {
+  html {
+    background: var(--color-bg);
+    color: var(--color-ink);
+  }
+
+  body {
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  *:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+    border-radius: 6px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /*
+   * Each tier class only sets the trio of variables; `tier-surface` paints with
+   * them. One rule per tier instead of one per tier per element type.
+   */
+  .tier-common {
+    --tier-bg: var(--tier-common-bg);
+    --tier-ink: var(--tier-common-ink);
+    --tier-accent: var(--tier-common-accent);
+  }
+  .tier-uncommon {
+    --tier-bg: var(--tier-uncommon-bg);
+    --tier-ink: var(--tier-uncommon-ink);
+    --tier-accent: var(--tier-uncommon-accent);
+  }
+  .tier-rare {
+    --tier-bg: var(--tier-rare-bg);
+    --tier-ink: var(--tier-rare-ink);
+    --tier-accent: var(--tier-rare-accent);
+  }
+  .tier-epic {
+    --tier-bg: var(--tier-epic-bg);
+    --tier-ink: var(--tier-epic-ink);
+    --tier-accent: var(--tier-epic-accent);
+  }
+  .tier-legendary {
+    --tier-bg: var(--tier-legendary-bg);
+    --tier-ink: var(--tier-legendary-ink);
+    --tier-accent: var(--tier-legendary-accent);
+  }
+  .tier-prismatic {
+    --tier-bg: var(--tier-prismatic-bg);
+    --tier-ink: var(--tier-prismatic-ink);
+    --tier-accent: var(--tier-prismatic-accent);
+  }
+
+  .tier-surface {
+    background: var(--tier-bg);
+    color: var(--tier-ink);
+    border-color: var(--tier-accent);
+  }
+
+  /* Tier weight rises with rarity, so a top score reads as heavier at a glance. */
+  .tier-epic.tier-surface {
+    font-weight: 600;
+  }
+  .tier-legendary.tier-surface,
+  .tier-prismatic.tier-surface {
+    font-weight: 700;
+  }
+
+  .btn-primary {
+    @apply min-h-11 cursor-pointer rounded-[10px] border-0 px-6 py-3 font-semibold
+      text-[color:var(--color-primary-ink)] transition-colors;
+    background: var(--color-primary);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--color-primary-hover);
+  }
+  .btn-primary:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+  .btn-primary:disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
+
+  /* Pill-shaped secondary action: examples, presets, copy. */
+  .btn-chip {
+    @apply cursor-pointer rounded-full border border-line bg-surface-alt px-2 py-0.5
+      text-xs text-ink transition-colors;
+  }
+  .btn-chip:hover:not(:disabled) {
+    background: var(--color-primary);
+    color: var(--color-primary-ink);
+    border-color: var(--color-primary);
+  }
+  .btn-chip:disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
+
+  .field {
+    @apply w-full rounded-[10px] border-2 border-line bg-surface px-4 py-3 text-ink
+      outline-none transition-colors;
+  }
+  .field:focus {
+    border-color: var(--color-primary);
+  }
+
+  .notice {
+    @apply my-4 rounded-lg p-4 text-center;
+  }
+}

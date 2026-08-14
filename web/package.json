@@ -3,27 +3,33 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Frontend — one Vite app serving every dataset and the hub",
+  "description": "Frontend — one SvelteKit app serving every dataset and the hub",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint ."
+    "test": "vitest run",
+    "lint": "eslint . && svelte-check --tsconfig ./tsconfig.json"
   },
   "dependencies": {
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
     "sql.js": "^1.14.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.1",
+    "@sveltejs/adapter-static": "^3.0.10",
+    "@sveltejs/kit": "^2.70.2",
+    "@sveltejs/vite-plugin-svelte": "^6.2.1",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/sql.js": "^1.4.9",
     "eslint": "^9.39.4",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.5.2",
+    "eslint-plugin-svelte": "^3.14.0",
     "globals": "^17.4.0",
-    "vite": "^8.0.16"
+    "svelte": "^5.56.9",
+    "svelte-check": "^4.4.3",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.48.2",
+    "vite": "^7.1.14",
+    "vitest": "^4.1.10"
   }
 }

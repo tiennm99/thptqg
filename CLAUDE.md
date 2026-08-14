@@ -3,9 +3,10 @@
 Exam-score lookup for Vietnam's national high school graduation exam. Four
 stages, each independent: `crawler/` (Go) fetches spreadsheets into `data/<id>/`,
 `parser/` (Go) turns them into `<id>.db`, `assembler/` (Go) verifies, compresses
-and builds `_site/`, and `web/` (Vite + React) serves every dataset from one app.
+and builds `_site/`, and `web/` (SvelteKit + Tailwind) serves every dataset from
+one app.
 
-`datasets.json` at the root is the registry the Go stages and the Vite app both
+`datasets.json` at the root is the registry the Go stages and the web app both
 read. See [`docs/`](./docs/) for architecture, pipeline and deployment.
 
 ## Verifying a change
@@ -20,8 +21,10 @@ go -C assembler test ./...
 Add the web checks when frontend files changed:
 
 ```bash
-(cd web && npm run lint && npm run build)
+(cd web && npm test && npm run lint && npm run build)
 ```
+
+`npm run lint` is ESLint plus `svelte-check`, so it is the type check too.
 
 **Do not run the crawler suite as part of routine verification.** The crawler is
 not part of the build — `data/<id>/` is committed and a crawl only refreshes it
@@ -41,16 +44,18 @@ hashes every real input file. That is the point of it; do not skip it.
   regenerated.** A mismatch is a reader bug until proven otherwise, never a cue
   to refresh the file. `parser/cmd/dumpcells` narrows a failure to the cell.
 - **`ToAscii` filters the literal range U+0300..U+036F, not `unicode.Mn`.** It
-  must match `toAscii` in `web/src/App.jsx`, or accent-insensitive search
-  silently misses rows.
+  must match `toAscii` in `web/src/lib/to-ascii.ts`, or accent-insensitive search
+  silently misses rows. `to-ascii.test.ts` pins the pairs both sides must agree
+  on.
 - **The 2016 files use four different layouts, and detection is per sheet.**
   Two of them publish scores in one column per subject instead of a `DIEM_THI`
   sentence, and one puts a three-row ministry title block above its header.
   `parser/internal/ingest/detect2016.go` holds the header tables; they are
   observations about 119 specific files, not a rule to generalise.
-- **`base` in `web/vite.config.js` is absolute.** One emitted `index.html` is
-  copied to every dataset path, so every URL is a real static file and no SPA
-  404-fallback is needed — a fallback would break the `?q=` deep links.
+- **`paths.relative` is false in `web/svelte.config.js`.** Every route is
+  prerendered to its own file and asset URLs stay absolute, so the copy of
+  `index.html` serving as `404.html` works at any depth. No SPA 404-fallback is
+  used — a fallback would break the `?q=` deep links.
 - **`dbSizeMb` in `datasets.json` is a build guard, not just a label.** The
   assembler refuses to publish an artifact that falls below a ratio of it.
 

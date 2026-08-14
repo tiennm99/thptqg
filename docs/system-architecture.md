@@ -20,7 +20,7 @@ data/<id>/*.xls(x)
         ▼  assembler/ — row count must match datasets.json, then gzip
    .build/public/db/<id>.db.gz      (the raw .db does not survive)
         │
-        ▼  assembler/ → vite build   (root = web/, publicDir = .build/public)
+        ▼  assembler/ → npm run build (SvelteKit static, assets = .build/public)
    web/dist/
         │
         ▼  assembler/ — one index.html per dataset; every database must be present
@@ -40,7 +40,7 @@ data/2017/  →  parser/configs/2017.yml  →  db/2017.db.gz  →  /thptqg/2017/
 
 `datasets.json` at the repository root declares the ids once, with the row count
 and artifact size the assembler enforces. It is JSON rather than a module
-because the assembler is a Go program and the Vite app is not, and JSON is the
+because the assembler is a Go program and the web app is not, and JSON is the
 only format both parse without a dependency.
 
 Presentation — titles, labels, search examples, SQL presets — stays in
@@ -100,23 +100,21 @@ URLs are flat, one segment per dataset, and the segment is the id:
 /thptqg/2017/
 ```
 
-`web/src/router.js` is an exact match on that segment. The nested form used
-before (`/thptqg/2017/old/`) would have needed longest-prefix matching, since it
-also starts with `/thptqg/2017/`. Both of those URLs addressed the two removed
-2017 archives, so the rewrite that kept them working has gone with them; they
-fall through to the hub like any other unknown path.
+The route is `web/src/routes/[dataset]/`, and its entry generator reads the same
+`datasets.json` the assembler does, so the set of pages and the set of databases
+cannot drift apart. Unknown paths fall through to the hub.
 
-A single Vite build emits one `index.html`. Because `base` is absolute
-(`/thptqg/`), that file references `/thptqg/assets/...` regardless of the
-directory it is served from, so the assemble step copies it to every route and
-each URL is a real static file. **No SPA 404-fallback redirect is used** — the
-usual hack rewrites URLs and would interfere with the deep links.
+SvelteKit prerenders one HTML file per route, each with its own `<title>`.
+Asset URLs stay absolute (`paths.relative: false`), so the copy of the hub that
+serves as `404.html` resolves its assets from any depth. **No SPA 404-fallback
+redirect is used** — the usual hack rewrites URLs and would interfere with the
+deep links.
 
 ## Serving both exam years without branching
 
 No component contains a per-dataset conditional. Two mechanisms do the work:
 
-- **All-NULL columns are hidden.** `score-table.jsx` drops any column where
+- **All-NULL columns are hidden.** `score-table.svelte` drops any column where
   every row in the result set is NULL, so 2016 rows surface Cụm thi / GT / Đức /
   Nhật and 2017 rows surface KHTN / KHXH / GDCD / Nga.
 - **Incomplete admission blocks are skipped.** `computeBlocks()` only returns a
@@ -125,13 +123,14 @@ No component contains a per-dataset conditional. Two mechanisms do the work:
   self-exclude wherever those languages were not sat.
 
 Anything genuinely per-dataset — title, source, database size, search examples,
-SQL presets — lives in `web/src/datasets.js`.
+SQL presets — lives in `web/src/lib/datasets.ts`.
 
 ## Exam ID formats
 
-`web/src/lib/query-mode.js` decides whether a query is an exam ID or a name, and is
-shared by `App.jsx` and `search-form.jsx` (they previously held separate copies
-and had drifted apart on exactly this rule).
+`web/src/lib/query-mode.ts` decides whether a query is an exam ID or a name, and
+is shared by the dataset page and `search-form.svelte` (they previously held
+separate copies and had drifted apart on exactly this rule). `query-mode.test.ts`
+covers every form in the table below.
 
 | Form | Example | Where |
 | --- | --- | --- |
@@ -175,16 +174,17 @@ total descending.
 | Diacritics search | Pre-computed `ho_ten_ascii` | `LOWER(REPLACE(...))` at query time defeats the index |
 | SQL safety | Leading-keyword allowlist | `sql.js` is in-memory so writes cannot persist; the allowlist prevents confusion |
 | Row caps | 100 (lookup), 1000 (SQL) | Keeps DOM render sizes reasonable |
-| Routing | Hand-rolled, ~15 lines | Three static routes do not justify a router dependency |
+| Routing | SvelteKit file routes, prerendered | Each dataset gets a real HTML file with its own title |
+| Styling | Tailwind, with tier colours as CSS variables | Tier classes are chosen at runtime, which no utility generator can see |
 
 ## Risks and limitations
 
-- **Database size.** 44–48 MB gzipped per dataset; slow links wait, mitigated by
+- **Database size.** 45–48 MB gzipped per dataset; slow links wait, mitigated by
   a progress bar.
 - **Browser memory.** The full database lives in RAM; older mobile devices may
   run out.
 - **`sql.js.org` dependency.** If that CDN is unreachable, the WASM fails to
   load. Self-hosting `sql-wasm.wasm` and updating `SQL_WASM_URL` in
-  `web/src/hooks/use-sqlite.js` is the fix.
+  `web/src/lib/sqlite.svelte.ts` is the fix.
 - **Excel format drift.** A new source file with an unseen header layout needs a
   new branch in `parser/internal/ingest/detect2016.go` or a new config.

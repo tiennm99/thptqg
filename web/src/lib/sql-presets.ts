@@ -1,3 +1,5 @@
+import type { PresetGroup } from "./types";
+
 /**
  * SQL presets shown in the "Truy vấn SQL" tab, per dataset.
  *
@@ -11,7 +13,7 @@
  * before the user writes anything.
  */
 
-export const PRESETS_2017 = [
+export const PRESETS_2017: PresetGroup[] = [
   {
     category: "Xếp hạng môn",
     queries: [
@@ -179,7 +181,7 @@ FROM student`,
     ],
   },
 ];
-export const PRESETS_2016 = [
+export const PRESETS_2016: PresetGroup[] = [
   {
     category: "Xếp hạng môn",
     queries: [
