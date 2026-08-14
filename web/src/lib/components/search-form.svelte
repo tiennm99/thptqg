@@ -1,8 +1,6 @@
 <script>
   import { detectMode } from "$lib/query-mode";
 
-  const DEBOUNCE_MS = 300;
-
   let { value = "", onSearch, onClear, disabled = false, examples = [] } = $props();
 
   // A writable derived: it follows the owner's value — which is bound to the
@@ -10,39 +8,24 @@
   // until the next external change.
   let query = $derived(value);
   let input = $state(null);
-  let timer;
 
   const detected = $derived(detectMode(query));
   const canSearch = $derived(detected.mode === "sbd" || detected.mode === "name");
 
-  // Debounced live search.
-  $effect(() => {
-    const q = query;
-    const mode = detected.mode;
-    clearTimeout(timer);
-
-    if (mode !== "sbd" && mode !== "name") {
-      if (mode === "empty") onClear?.();
-      return;
-    }
-    // Already showing results for this query — happens when the value flows in
-    // from URL hydration.
-    if (q.trim() === value.trim() && q.trim() !== "") return;
-
-    timer = setTimeout(() => onSearch(q.trim()), DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  });
-
+  // Searching only on submit, never while typing. A name search seeks on the
+  // rarest word the query contains, and a half-typed word is a wide prefix:
+  // "bu" covers every Bùi, Bửu and Bưu in the dataset, and each partial
+  // keystroke used to pay for that in full over the network.
   function submit(event) {
     event.preventDefault();
     if (!canSearch) return;
-    clearTimeout(timer);
     onSearch(query.trim());
   }
 
   function clear() {
     query = "";
     input?.focus();
+    onClear?.();
   }
 </script>
 

@@ -9,7 +9,12 @@
   import { dbSourceOf } from "$lib/datasets";
   import { isExamId } from "$lib/query-mode";
   import { MAX_RESULTS, lookupExamId, searchByName } from "$lib/search";
-  import { PLAYGROUND_BUDGET_BYTES, RemoteDatabase, SEARCH_BUDGET_BYTES } from "$lib/sqlite.svelte";
+  import {
+    PLAYGROUND_BUDGET_BYTES,
+    RemoteDatabase,
+    SEARCH_BUDGET_BYTES,
+    formatBytes,
+  } from "$lib/sqlite.svelte";
 
   let { data } = $props();
   const dataset = $derived(data.dataset);
@@ -17,6 +22,10 @@
   let db = $state(null);
   let results = $state(null);
   let searchError = $state(null);
+  let searching = $state(false);
+  let elapsedMs = $state(0);
+  /** What the last search cost over the network, for the line under the results. */
+  let cost = $state(null);
   let activeTab = $state("search");
   let sqlWarningOpen = $state(false);
   // Raised once the user has accepted that a hand-written query may fetch a lot.
@@ -69,17 +78,46 @@
     query = q;
     writeUrlQuery(q);
 
+    // Counted across the whole search rather than per query: a name search runs
+    // two, one for the word frequencies and one for the rows.
+    const before = { requests: source.requests, bytes: source.bytesRead };
+    const startedAt = performance.now();
+    searching = true;
+    cost = null;
+    // The worker reads pages with synchronous XHR, so it cannot answer while a
+    // query runs and there is no request count to show until it finishes.
+    // Elapsed time is the one honest live signal.
+    elapsedMs = 0;
+    const ticking = setInterval(() => (elapsedMs = performance.now() - startedAt), 100);
+
     try {
       results = isExamId(q) ? await lookupExamId(source, q) : await searchByName(source, q);
     } catch (err) {
       searchError = err instanceof Error ? err.message : String(err);
+    } finally {
+      clearInterval(ticking);
+      searching = false;
+      cost = {
+        requests: source.requests - before.requests,
+        bytes: source.bytesRead - before.bytes,
+        ms: performance.now() - startedAt,
+        sessionRequests: source.requests,
+        sessionBytes: source.bytesRead,
+      };
     }
   }
 
   function clearSearch() {
     results = null;
     query = "";
+    cost = null;
+    searchError = null;
     writeUrlQuery("");
+  }
+
+  /** "16,9 giây", or "0,4 giây" — one decimal is enough to compare searches. */
+  function seconds(ms) {
+    return `${(ms / 1000).toLocaleString("vi-VN", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} giây`;
   }
 
   function openSqlTab() {
@@ -185,9 +223,20 @@
         value={query}
         onSearch={search}
         onClear={clearSearch}
-        disabled={busy}
+        disabled={busy || searching}
         examples={dataset.examples}
       />
+
+      {#if searching}
+        <p class="notice flex items-center justify-center gap-2 bg-surface-alt" aria-live="polite">
+          <span
+            class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-line
+                   border-t-primary"
+            aria-hidden="true"
+          ></span>
+          Đang tra cứu… {seconds(elapsedMs)}
+        </p>
+      {/if}
 
       {#if searchError}
         <p class="notice bg-error-bg text-error-ink">Lỗi truy vấn: {searchError}</p>
@@ -202,6 +251,16 @@
       {#if results && results.length >= MAX_RESULTS}
         <p class="notice bg-warning-bg text-sm text-warning-ink">
           Hiển thị tối đa {MAX_RESULTS} kết quả. Vui lòng tìm kiếm cụ thể hơn.
+        </p>
+      {/if}
+
+      {#if cost && !searching}
+        <p class="mt-2 text-center text-xs text-ink-subtle">
+          Mạng: {cost.requests.toLocaleString("vi-VN")} yêu cầu · {formatBytes(cost.bytes)} · {seconds(
+            cost.ms,
+          )} · Cả phiên: {cost.sessionRequests.toLocaleString("vi-VN")} yêu cầu · {formatBytes(
+            cost.sessionBytes,
+          )}
         </p>
       {/if}
     {:else}
