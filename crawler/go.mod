@@ -1,6 +1,6 @@
 module github.com/tiennm99/thptqg/crawler
 
-go 1.26.5
+go 1.26.6
 
 require (
 	golang.org/x/net v0.58.0

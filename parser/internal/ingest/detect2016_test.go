@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/tiennm99/thptqg/parser/internal/reader"
@@ -31,20 +32,45 @@ func TestIsHeaderRow2016(t *testing.T) {
 	}
 }
 
-// TestKnownHeadersHasTrailingSpaceToken pins the "SINH " literal. Trimming it
-// would silently change which rows count as headers.
-func TestKnownHeadersHasTrailingSpaceToken(t *testing.T) {
-	var found bool
+// TestKnownHeadersAreTrimmed: the cell is trimmed before comparison, so a token
+// carrying surrounding space could never match anything.
+func TestKnownHeadersAreTrimmed(t *testing.T) {
 	for _, h := range KnownHeaders {
-		if h == "SINH " {
-			found = true
+		if h != strings.TrimSpace(h) {
+			t.Errorf("KnownHeaders token %q has surrounding space and can never match", h)
 		}
 	}
-	if !found {
-		t.Error(`KnownHeaders must contain "SINH " WITH its trailing space`)
+}
+
+// TestSheetFormatSkipsTitleBlock: one file opens with a ministry title block
+// above its header row, and the rows above the header are not data.
+func TestSheetFormatSkipsTitleBlock(t *testing.T) {
+	rows := [][]reader.Cell{
+		cells("BỘ GIÁO DỤC VÀ ĐÀO TẠO", "", ""),
+		cells("ĐƠN VỊ:", "TRƯỜNG ĐẠI HỌC X", ""),
+		cells("DANH SÁCH ĐIỂM THÍ SINH", "", ""),
+		cells("STT", "SBD", "Họ tên", "Ngày sinh", "Giới tính", "CMND", "Tỉnh", "TO", "VA", "LI"),
+		cells("1", "DCT000001", "Nguyễn Văn A", "01/01/1998", "Nam", "123", "46", "8", "7", "6"),
 	}
-	if len(KnownHeaders) != 17 {
-		t.Errorf("KnownHeaders has %d tokens, want 17", len(KnownHeaders))
+	f, start := sheetFormat(rows)
+	if start != 4 {
+		t.Errorf("data starts at row %d, want 4", start)
+	}
+	if f.Kind != FormatSubjectColumns {
+		t.Errorf("Kind = %v, want FormatSubjectColumns", f.Kind)
+	}
+}
+
+// TestSheetFormatHeaderlessSheet: a sheet whose first row is already data keeps
+// the positional layout and starts at row 0.
+func TestSheetFormatHeaderlessSheet(t *testing.T) {
+	rows := [][]reader.Cell{
+		cells("YTB000001", "PHẠM THỊ HỒNG ÁI", "21/08/1998", "Y Dược Thái Bình", "Nữ", "Toán: 7.75"),
+		cells("YTB000002", "TRẦN VĂN B", "22/08/1998", "Y Dược Thái Bình", "Nam", "Toán: 5"),
+	}
+	f, start := sheetFormat(rows)
+	if start != 0 || f.Kind != FormatDefault {
+		t.Errorf("got kind=%v start=%d, want FormatDefault at 0", f.Kind, start)
 	}
 }
 
@@ -133,36 +159,37 @@ func TestProcessSeparateScoresRow(t *testing.T) {
 	}
 }
 
-// TestZeroScoreBecomesNull pins the quirk that a literal 0 is indistinguishable
-// from "no score".
-func TestZeroScoreBecomesNull(t *testing.T) {
+// TestZeroScoreIsKept: a candidate who sat a paper and scored nothing has a
+// score of 0, not a missing one.
+func TestZeroScoreIsKept(t *testing.T) {
 	row := cells("1000", "A", "0", "0.0", "1", "", "", "", "", "", "", "")
 	got := ProcessRow2016(row, Format{Kind: FormatSeparateScores})
 	if got == nil {
 		t.Fatal("row rejected")
 	}
-	if _, ok := got.Scores["toan"]; ok {
-		t.Error(`a "0" score must become NULL, not 0`)
+	for field, want := range map[string]float64{"toan": 0, "ngu_van": 0, "vat_ly": 1} {
+		v, ok := got.Scores[field]
+		if !ok || v != want {
+			t.Errorf("%s = %v (present=%v), want %v", field, v, ok, want)
+		}
 	}
-	if _, ok := got.Scores["ngu_van"]; ok {
-		t.Error(`a "0.0" score must become NULL, not 0`)
-	}
-	if got.Scores["vat_ly"] != 1 {
-		t.Error("a non-zero score must survive")
+	if _, ok := got.Scores["hoa_hoc"]; ok {
+		t.Error("an empty cell must stay absent")
 	}
 }
 
-// TestGenderAllowlist: exactly two accepted values, matched case-sensitively.
-func TestGenderAllowlist(t *testing.T) {
+// TestGenderNormalisation: "Nam"/"Nữ" verbatim, the Cần Thơ files' 1/0 encoding
+// translated, everything else NULL.
+func TestGenderNormalisation(t *testing.T) {
 	f := defaultFormat()
-	for in, want := range map[string]string{"Nam": "Nam", "Nữ": "Nữ"} {
+	for in, want := range map[string]string{"Nam": "Nam", "Nữ": "Nữ", "1": "Nữ", "0": "Nam"} {
 		row := cells("1", "A", "", "", in, "")
 		got := ProcessRow2016(row, f)
 		if got == nil || got.GioiTinh == nil || *got.GioiTinh != want {
-			t.Errorf("gioi_tinh for %q not preserved", in)
+			t.Errorf("gioi_tinh for %q = %v, want %q", in, got.GioiTinh, want)
 		}
 	}
-	for _, in := range []string{"nam", "NAM", "Unknown", "M", "F", "nữ", ""} {
+	for _, in := range []string{"nam", "NAM", "Unknown", "M", "F", "nữ", "", "2"} {
 		row := cells("1", "A", "", "", in, "")
 		got := ProcessRow2016(row, f)
 		if got == nil {
@@ -171,6 +198,131 @@ func TestGenderAllowlist(t *testing.T) {
 		if got.GioiTinh != nil {
 			t.Errorf("gioi_tinh for %q = %q, want nil", in, *got.GioiTinh)
 		}
+	}
+}
+
+// TestBirthDateExpandsCompactForm: ddmmyy becomes dd/mm/19yy so the column
+// holds one format; anything else is passed through.
+func TestBirthDateExpandsCompactForm(t *testing.T) {
+	f := defaultFormat()
+	for in, want := range map[string]string{
+		"140798":     "14/07/1998",
+		"01/01/1998": "01/01/1998",
+		"1998":       "1998",
+	} {
+		got := ProcessRow2016(cells("1", "A", in, "", "", ""), f)
+		if got == nil || got.NgaySinh == nil || *got.NgaySinh != want {
+			t.Errorf("ngay_sinh for %q = %v, want %q", in, got.NgaySinh, want)
+		}
+	}
+}
+
+// --- per-subject score columns ---
+
+// TestDetectFormatSubjectColumnsTwoLetter covers the two-letter subject columns,
+// whose foreign-language score is filed under the subject its code names.
+func TestDetectFormatSubjectColumnsTwoLetter(t *testing.T) {
+	header := cells("STT", "SBD", "Họ tên", "Ngày sinh", "Giới tính", "CMND", "Tỉnh",
+		"TO", "VA", "LI", "HO", "SI", "SU", "DI", "NN", "Môn NN")
+	f := DetectFormat(header)
+	if f.Kind != FormatSubjectColumns {
+		t.Fatalf("Kind = %v, want FormatSubjectColumns", f.Kind)
+	}
+	if f.Sbd != 1 || f.HoTen != 2 {
+		t.Errorf("identity: sbd=%d ho_ten=%d", f.Sbd, f.HoTen)
+	}
+	if f.NgaySinh == nil || *f.NgaySinh != 3 || f.GioiTinh == nil || *f.GioiTinh != 4 {
+		t.Error("accented identity headers not resolved")
+	}
+	if f.Subjects["toan"] != 7 || f.Subjects["dia_ly"] != 13 {
+		t.Errorf("subject columns = %v", f.Subjects)
+	}
+
+	row := cells("1", "DCT000073", "Trần Thị Phước An", "23/11/1998", "Nữ", "291183999", "46",
+		"6.25", "4.5", "5.8", "", "", "", "", "5.38", "N1")
+	got := ProcessRow2016(row, f)
+	if got == nil {
+		t.Fatal("row rejected")
+	}
+	if got.SoBaoDanh != "DCT000073" || got.HoTen != "Trần Thị Phước An" {
+		t.Errorf("identity = %q / %q", got.SoBaoDanh, got.HoTen)
+	}
+	want := map[string]float64{"toan": 6.25, "ngu_van": 4.5, "vat_ly": 5.8, "tieng_anh": 5.38}
+	if len(got.Scores) != len(want) {
+		t.Errorf("scores = %v, want %v", got.Scores, want)
+	}
+	for k, v := range want {
+		if got.Scores[k] != v {
+			t.Errorf("%s = %v, want %v", k, got.Scores[k], v)
+		}
+	}
+}
+
+// TestDetectFormatSubjectColumnsCanTho covers the CDIEM<n> columns, which are
+// numbered in exam-timetable order rather than named.
+func TestDetectFormatSubjectColumnsCanTho(t *testing.T) {
+	header := cells("sbd", "hoten", "ho", "ten", "phai", "ngaysinh", "socmnd",
+		"cdiem1", "cdiem2", "cdiem3", "cdiem4", "cdiem5", "cdiem6", "cdiem7", "cdiem8", "ngoaingu")
+	f := DetectFormat(header)
+	if f.Kind != FormatSubjectColumns {
+		t.Fatalf("Kind = %v, want FormatSubjectColumns", f.Kind)
+	}
+	// "ho" is the surname column here, and must not be read as hoa_hoc.
+	if got, ok := f.Subjects["hoa_hoc"]; ok && got == 2 {
+		t.Error("surname column resolved as a score column")
+	}
+	if f.Subjects["toan"] != 7 || f.Subjects["ngu_van"] != 9 || f.Subjects["sinh_hoc"] != 14 {
+		t.Errorf("subject columns = %v", f.Subjects)
+	}
+	if f.LangScore == nil || *f.LangScore != 8 || f.LangCode == nil || *f.LangCode != 15 {
+		t.Error("language score/code columns not resolved")
+	}
+
+	row := cells("TCT000001", "Dương Diễm ái", "Dương Diễm", "ái", "1", "140798", "362539228",
+		"07.50", "05.60", "06.50", "", "", "08.20", "", "07.60", "N3")
+	got := ProcessRow2016(row, f)
+	if got == nil {
+		t.Fatal("row rejected")
+	}
+	if got.GioiTinh == nil || *got.GioiTinh != "Nữ" {
+		t.Errorf("gioi_tinh = %v, want Nữ", got.GioiTinh)
+	}
+	if got.NgaySinh == nil || *got.NgaySinh != "14/07/1998" {
+		t.Errorf("ngay_sinh = %v", got.NgaySinh)
+	}
+	want := map[string]float64{"toan": 7.5, "tieng_phap": 5.6, "ngu_van": 6.5, "hoa_hoc": 8.2, "sinh_hoc": 7.6}
+	if len(got.Scores) != len(want) {
+		t.Errorf("scores = %v, want %v", got.Scores, want)
+	}
+	for k, v := range want {
+		if got.Scores[k] != v {
+			t.Errorf("%s = %v, want %v", k, got.Scores[k], v)
+		}
+	}
+}
+
+// TestSubjectColumnsUnknownLanguageCode: an unrecognised code drops the score
+// rather than filing it under a guess.
+func TestSubjectColumnsUnknownLanguageCode(t *testing.T) {
+	header := cells("sbd", "hoten", "ho", "ten", "phai", "ngaysinh", "socmnd",
+		"cdiem1", "cdiem2", "cdiem3", "cdiem4", "cdiem5", "cdiem6", "cdiem7", "cdiem8", "ngoaingu")
+	f := DetectFormat(header)
+	row := cells("TCT000002", "B", "", "", "0", "", "", "5", "6", "", "", "", "", "", "", "N9")
+	got := ProcessRow2016(row, f)
+	if got == nil {
+		t.Fatal("row rejected")
+	}
+	if len(got.Scores) != 1 || got.Scores["toan"] != 5 {
+		t.Errorf("scores = %v, want only toan", got.Scores)
+	}
+}
+
+// TestSubjectColumnsNeedsThreeSubjects: a stray two-letter header elsewhere must
+// not turn an unrelated file into this layout.
+func TestSubjectColumnsNeedsThreeSubjects(t *testing.T) {
+	f := DetectFormat(cells("SBD", "HOTEN", "DI", "SU"))
+	if f.Kind == FormatSubjectColumns {
+		t.Error("two subject columns must not be enough to select the layout")
 	}
 }
 

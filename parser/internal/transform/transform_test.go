@@ -242,10 +242,10 @@ func TestTransformRowShortRowYieldsEmptyFields(t *testing.T) {
 	}
 }
 
-// TestTransformRowDiemThiIsNotTrimmed pins an asymmetry that is easy to
-// "tidy away": ho_ten, ngay_sinh and so_bao_danh are trimmed, but diem_thi is
-// read raw.
-func TestTransformRowDiemThiIsNotTrimmed(t *testing.T) {
+// TestTransformRowTrimsEveryField: every column is read trimmed, diem_thi
+// included. Source cells routinely carry padding — 850k of the 861k 2017 rows
+// have whitespace around their score cell.
+func TestTransformRowTrimsEveryField(t *testing.T) {
 	row := cells("  A  ", "  01/01/2000  ", "  123  ", "   Toán: 5   ")
 	got, err := TransformRow(row, fixedColumnCfg())
 	if err != nil {
@@ -257,7 +257,6 @@ func TestTransformRowDiemThiIsNotTrimmed(t *testing.T) {
 	if got.NgaySinh == nil || *got.NgaySinh != "01/01/2000" {
 		t.Errorf("ngay_sinh = %v, want trimmed", got.NgaySinh)
 	}
-	// Untrimmed diem_thi still parses — the regexes are unanchored.
 	if got.Scores["toan"] != 5 {
 		t.Errorf("scores = %v", got.Scores)
 	}

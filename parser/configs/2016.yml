@@ -1,10 +1,11 @@
 # thptqg2016 data/ — 4 .xls + 115 .xlsx mixed files.
 #
-# Three column layouts exist across the 119 files; the binary selects the
-# right one per-file at runtime via format_detection: thptqg2016:
+# Four column layouts exist across the 119 files; the binary selects the
+# right one per-sheet at runtime via format_detection: thptqg2016:
 #
 #   separate-scores  header SBD(0)/HOTEN(1)/TOAN(2)...  — dhhanghai files
 #   mapped           header SOBAODANH|SBD + DIEM_THI     — most provinces
+#   subject-columns  header names >=3 subject columns    — dhcantho, dhcnthucpham
 #   default          no header; positional 6-col layout  — remaining files
 #
 # This is the only dataset that populates ten_cum_thi and gioi_tinh, and the

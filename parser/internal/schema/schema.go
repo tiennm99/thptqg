@@ -5,9 +5,9 @@
 //
 // Column provenance:
 //
-//	ten_cum_thi, gioi_tinh, tieng_duc, tieng_nhat  -> 2016 only
-//	khtn, khxh, gdcd, tieng_nga                    -> 2017 datasets only
-//	everything else                                -> both
+//	ten_cum_thi, gioi_tinh  -> 2016 only
+//	khtn, khxh, gdcd        -> 2017 only
+//	everything else         -> both, all six languages included
 //
 // The DDL, the INSERT and the subject regexes belong here and nowhere else. One
 // copy per dataset is what let the 2016 and 2017 schemas drift apart; the
@@ -109,8 +109,8 @@ VALUES
 // the source files — copy them, never retype them.
 //
 // Every pattern runs against every dataset. A subject absent from a given exam
-// year simply never matches and stays NULL: 2016 files contain no "KHTN:" or
-// "Tiếng Nga:" tokens, and 2017 files contain no "Tiếng Đức:" or "Tiếng Nhật:".
+// year simply never matches and stays NULL: 2016 files contain no "KHTN:",
+// "KHXH:" or "GDCD:" tokens, since those combined papers did not exist yet.
 var scorePatternSources = map[string]string{
 	"toan":        `Toán:\s*(\d+(?:\.\d+)?)`,
 	"ngu_van":     `Ngữ văn:\s*(\d+(?:\.\d+)?)`,

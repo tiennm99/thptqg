@@ -34,7 +34,7 @@ running entirely in the browser and hosted for free on GitHub Pages. Covers the
 
 | id | Exam | Candidates | Notes |
 | --- | --- | --- | --- |
-| `2016` | 2016 | 877,461 | 119 files, three column layouts |
+| `2016` | 2016 | 877,460 | 119 files, four column layouts |
 | `2017` | 2017 | 861,068 | current generation of three publications |
 
 Two further 2017 datasets (`2017-old`, `2017-old2`) were kept alongside these

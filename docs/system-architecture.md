@@ -51,7 +51,7 @@ that does not exist.
 
 | id | Exam | Rows | Source |
 | --- | --- | --- | --- |
-| `2016` | 2016 | 877,461 | `dtnt.bacninh.edu.vn` |
+| `2016` | 2016 | 877,460 | `dtnt.bacninh.edu.vn` |
 | `2017` | 2017 | 861,068 | `baotintuc.vn` |
 
 Full source URLs are in [data-pipeline](./data-pipeline.md#sources); the web
@@ -139,9 +139,9 @@ and had drifted apart on exactly this rule).
 | 9 digits with leading zero | `017006021` | 2016 |
 | 2-4 letters then digits | `BAL000001` | 2016 — exam cluster code |
 
-The letter-prefixed form is the majority case for 2016: 616,593 of 877,461
-candidates (70.3%). Letter prefixes are upper-cased before lookup, so
-`bal000001` resolves.
+The letter-prefixed form is the majority case for 2016: 624,424 of 877,460
+candidates (71.2%); the remaining 253,036 are all 9-digit. Letter prefixes are
+upper-cased before lookup, so `bal000001` resolves.
 
 ## Score tiers
 

@@ -18,8 +18,8 @@
   "datasets": [
     {
       "id": "2016",
-      "expectedRows": 877461,
-      "dbSizeMb": 44
+      "expectedRows": 877460,
+      "dbSizeMb": 45
     },
     {
       "id": "2017",
