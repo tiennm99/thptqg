@@ -17,10 +17,10 @@ through. `assembler/` sequences everything from the parser onwards.
 data/<id>/*.xls(x)
         │
         ▼  parser/    (Go, one binary, one config per dataset)
-   .build/public/db/<id>.sqlite3
+   .build/public/db/<id>.sqlite30
         │
         ▼  assembler/ — row count and size must match datasets.json
-   .build/public/db/<id>.sqlite3    (uncompressed: ranges of a gzip stream
+   .build/public/db/<id>.sqlite30   (uncompressed: ranges of a gzip stream
         │                            are not ranges of the database)
         ▼  assembler/ → npm run build (SvelteKit static, assets = .build/public)
    web/dist/
@@ -37,7 +37,7 @@ data/<id>/*.xls(x)
 One identifier ties the whole pipeline together:
 
 ```
-data/2017/  →  parser/configs/2017.yml  →  db/2017.sqlite3  →  /thptqg/2017/
+data/2017/  →  parser/configs/2017.yml  →  db/2017.sqlite30  →  /thptqg/2017/
 ```
 
 `datasets.json` at the repository root declares the ids once, with the row count
@@ -171,6 +171,7 @@ total descending.
 | Concern | Choice | Rationale |
 | --- | --- | --- |
 | Storage | Static SQLite file, read by range request | No backend; the datasets are frozen, and a lookup needs a few pages of them |
+| Reading mode | `serverMode: "chunked"` over a single chunk | The only mode whose config accepts the file length. In full mode the worker hardcodes it to `undefined` and falls back to a HEAD request, which Pages answers with the gzipped size. One chunk means the index is always 0, hence the published name `<id>.sqlite30` |
 | Compression | None | A byte range of a gzip stream is not a byte range of the database |
 | WASM hosting | Bundled with the app | `sql.js-httpvfs` ships its own build; one less third-party runtime dependency |
 | Diacritics search | Pre-computed `ho_ten_ascii`, indexed word by word | `LOWER(REPLACE(...))` at query time defeats the index, and `LIKE '%x%'` reads the whole table |
@@ -183,18 +184,21 @@ total descending.
 
 ### Considered and not taken
 
-- **Chunked `serverMode`.** `sql.js-httpvfs` can split a database into parts so
-  a CDN caches each one whole. GitHub Pages serves everything with
-  `Cache-Control: max-age=600`, and every rebuild relays SQLite's pages so the
-  file changes even when the data does not — the caching that mode buys is
-  cancelled by the host. Worth revisiting behind a CDN with long TTLs, and it is
-  also the fallback if a single 300 MB file ever becomes a problem.
+- **Splitting the database into several chunks.** The site uses chunked mode,
+  but over one chunk (see above). Real splitting would let a CDN cache each part
+  whole; GitHub Pages serves everything with `Cache-Control: max-age=600`, and
+  every rebuild relays SQLite's pages so the file changes even when the data
+  does not, so that caching is cancelled by the host. Worth revisiting behind a
+  CDN with long TTLs, and it is the fallback if a single 300 MB file ever
+  becomes a problem.
 - **`sqlite-wasm-http`.** Maintained, and built on the official SQLite WASM
-  rather than a 2022 fork, which is the better long-term footing. Its
-  differentiator — a cache shared between workers — needs COOP/COEP headers that
-  GitHub Pages cannot send, so here it would buy maintenance alone. Deferred
-  until the current path has been verified in a browser, so that a swap changes
-  one variable rather than two.
+  rather than a 2022 fork, which is the better long-term footing. It does not
+  help here: its worker sizes the file from a HEAD request's `Content-Length`
+  exactly as `sql.js-httpvfs` does, and its `Options` has no field for the
+  length, so on Pages it would silently take the gzipped size instead of
+  failing. Its shared-cache backend needs COOP/COEP, which Pages cannot send,
+  but it ships a fallback backend that does not — so isolation is not the
+  blocker, the missing length option is.
 - **Substring name search.** `LIKE '%x%'` cannot use an index, so it read the
   whole 127 MB table. `name_word` keeps search by any word of a name without
   it.
@@ -209,8 +213,9 @@ total descending.
   it: the Fetch standard requires `Accept-Encoding: identity` on any request
   carrying a `Range` header. GitHub Pages *does* gzip the un-ranged response —
   `application/octet-stream` is compressible in `mime-db` — which is why the
-  file length is probed with a range request and passed as `fileLength` rather
-  than left to the library's HEAD. `db-probe.js` checks the returned bytes
+  file length is probed with a range request and passed as
+  `databaseLengthBytes` rather than left to the library's HEAD.
+  `db-probe.js` checks the returned bytes
   start with the SQLite magic, so a host that ever compresses a ranged response
   fails loudly instead of returning nonsense.
 - **`sql.js-httpvfs` is unmaintained** (0.8.12, September 2022) and ships its

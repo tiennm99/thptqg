@@ -39,7 +39,7 @@ func write(t *testing.T, path, body string) {
 }
 
 func TestAssembleProducesAPageForEveryDataset(t *testing.T) {
-	p := fakeBuild(t, "2016.sqlite3", "2017.sqlite3")
+	p := fakeBuild(t, "2016.sqlite30", "2017.sqlite30")
 	if err := Assemble(p, datasets); err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +49,7 @@ func TestAssembleProducesAPageForEveryDataset(t *testing.T) {
 		filepath.Join("2016", "index.html"),
 		filepath.Join("2017", "index.html"),
 		filepath.Join("_app", "immutable", "entry.js"),
-		filepath.Join("db", "2016.sqlite3"),
+		filepath.Join("db", "2016.sqlite30"),
 	} {
 		if _, err := os.Stat(filepath.Join(p.Site, want)); err != nil {
 			t.Errorf("missing from the artifact: %s", want)
@@ -61,7 +61,7 @@ func TestAssembleProducesAPageForEveryDataset(t *testing.T) {
 // entry generator, which reads the same registry this does. If the two fall out
 // of step, that dataset's URL 404s — so the build stops instead.
 func TestMissingDatasetPageFailsTheBuild(t *testing.T) {
-	p := fakeBuild(t, "2016.sqlite3", "2017.sqlite3")
+	p := fakeBuild(t, "2016.sqlite30", "2017.sqlite30")
 	if err := os.RemoveAll(filepath.Join(p.Dist, "2017")); err != nil {
 		t.Fatal(err)
 	}
@@ -80,12 +80,12 @@ func TestMissingDatasetPageFailsTheBuild(t *testing.T) {
 // renders, every query 404s, and CI stays green. The row-count and size guards
 // cannot catch this — they only run when a database was built at all.
 func TestMissingDatabaseFailsTheBuild(t *testing.T) {
-	p := fakeBuild(t, "2016.sqlite3") // 2017 never built
+	p := fakeBuild(t, "2016.sqlite30") // 2017 never built
 	err := Assemble(p, datasets)
 	if err == nil {
 		t.Fatal("expected an error when a database is missing")
 	}
-	if !strings.Contains(err.Error(), "2017.sqlite3") {
+	if !strings.Contains(err.Error(), "2017.sqlite30") {
 		t.Errorf("the error should name the missing database, got: %v", err)
 	}
 }
@@ -93,22 +93,25 @@ func TestMissingDatabaseFailsTheBuild(t *testing.T) {
 // TestEmptyDatabaseFailsTheBuild: a zero-byte file satisfies "exists" but is
 // not a database.
 func TestEmptyDatabaseFailsTheBuild(t *testing.T) {
-	p := fakeBuild(t, "2016.sqlite3", "2017.sqlite3")
-	write(t, filepath.Join(p.Dist, "db", "2017.sqlite3"), "")
+	p := fakeBuild(t, "2016.sqlite30", "2017.sqlite30")
+	write(t, filepath.Join(p.Dist, "db", "2017.sqlite30"), "")
 	if err := Assemble(p, datasets); err == nil {
 		t.Fatal("expected an error for a zero-byte database")
 	}
 }
 
-// TestStrayArtifactFailsTheBuild: a journal means an interrupted run, a .db
-// means the old naming, a .gz means a database the site could not read a range
-// of — and each is 100+ MB.
+// TestStrayArtifactFailsTheBuild: a journal means an interrupted run, a .db or
+// a chunk-index-less .sqlite3 means an older naming the client no longer asks
+// for, a .gz means a database the site could not read a range of — and each is
+// 100+ MB.
 func TestStrayArtifactFailsTheBuild(t *testing.T) {
 	for _, name := range []string{
-		"2016.db", "2016.sqlite3-journal", "2016.sqlite3-wal", "2016.sqlite3-shm", "2016.sqlite3.gz",
+		"2016.db", "2016.sqlite3",
+		"2016.sqlite3-journal", "2016.sqlite3-wal", "2016.sqlite3-shm", "2016.sqlite3.gz",
+		"2016.sqlite30-journal", "2016.sqlite30-wal", "2016.sqlite30-shm",
 	} {
 		t.Run(name, func(t *testing.T) {
-			p := fakeBuild(t, "2016.sqlite3", "2017.sqlite3")
+			p := fakeBuild(t, "2016.sqlite30", "2017.sqlite30")
 			write(t, filepath.Join(p.Dist, "db", name), "raw sqlite")
 			err := Assemble(p, datasets)
 			if err == nil {
@@ -124,11 +127,12 @@ func TestStrayArtifactFailsTheBuild(t *testing.T) {
 // TestPublishedDatabaseIsNotMistakenForStray: the pattern must pass the one
 // file the site is built to serve. Getting this wrong would fail every build.
 func TestPublishedDatabaseIsNotMistakenForStray(t *testing.T) {
-	if strayArtifact.MatchString("2016.sqlite3") {
+	if strayArtifact.MatchString("2016.sqlite30") {
 		t.Error("the published database must not be treated as a stray artifact")
 	}
 	for _, name := range []string{
-		"2016.db", "x.sqlite3-journal", "x.sqlite3-wal", "x.sqlite3-shm", "x.sqlite3.gz", "x.db.gz",
+		"2016.db", "x.sqlite3", "x.sqlite3-journal", "x.sqlite3-wal", "x.sqlite3-shm",
+		"x.sqlite30-journal", "x.sqlite30-wal", "x.sqlite30-shm", "x.sqlite3.gz", "x.db.gz",
 	} {
 		if !strayArtifact.MatchString(name) {
 			t.Errorf("%s should be rejected", name)
@@ -147,7 +151,7 @@ func TestAssembleRejectsAMissingBuild(t *testing.T) {
 // TestAssembleIsIdempotent: the site directory is rebuilt from scratch, so a
 // previous run's leftovers cannot survive into the artifact.
 func TestAssembleIsIdempotent(t *testing.T) {
-	p := fakeBuild(t, "2016.sqlite3", "2017.sqlite3")
+	p := fakeBuild(t, "2016.sqlite30", "2017.sqlite30")
 	if err := Assemble(p, datasets); err != nil {
 		t.Fatal(err)
 	}
