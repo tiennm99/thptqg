@@ -3,18 +3,14 @@
   import { base, resolve } from "$app/paths";
   import { page } from "$app/state";
   import CustomQuery from "$lib/components/custom-query.svelte";
+  import DownloadGate from "$lib/components/download-gate.svelte";
   import ScoreTable from "$lib/components/score-table.svelte";
   import SearchForm from "$lib/components/search-form.svelte";
   import StudentDetail from "$lib/components/student-detail.svelte";
-  import { dbSourceOf } from "$lib/datasets";
+  import { LocalDatabase, weigh } from "$lib/database.svelte";
+  import { dbOf } from "$lib/datasets";
   import { isExamId } from "$lib/query-mode";
   import { MAX_RESULTS, lookupExamId, searchByName } from "$lib/search";
-  import {
-    PLAYGROUND_BUDGET_BYTES,
-    RemoteDatabase,
-    SEARCH_BUDGET_BYTES,
-    formatBytes,
-  } from "$lib/sqlite.svelte";
 
   let { data } = $props();
   const dataset = $derived(data.dataset);
@@ -23,27 +19,25 @@
   let results = $state(null);
   let searchError = $state(null);
   let searching = $state(false);
-  let elapsedMs = $state(0);
-  /** What the last search cost over the network, for the line under the results. */
-  let cost = $state(null);
+  /** How long the last search took, in ms. */
+  let searchMs = $state(null);
   let activeTab = $state("search");
-  let sqlWarningOpen = $state(false);
-  // Raised once the user has accepted that a hand-written query may fetch a lot.
-  let budget = $state(SEARCH_BUDGET_BYTES);
+  /** Compressed size of the download, as the server reports it. */
+  let transferBytes = $state(null);
   // Owned here, not in SearchForm, so it can be bound to the URL both ways.
   // The query string is unreadable while prerendering — there is no request —
   // so a deep link is picked up on the client only.
   let query = $state(browser ? (page.url.searchParams.get("q") ?? "") : "");
 
-  const opening = $derived(db !== null && !db.ready && db.error === null);
-  const loadError = $derived(db?.error ?? null);
   const busy = $derived(!db?.ready);
 
-  // Opened in the browser only: $effect does not run while prerendering. A new
-  // budget means a new worker, which costs only the header pages.
+  // Created in the browser only: $effect does not run while prerendering. The
+  // download itself waits for the visitor to accept it.
   $effect(() => {
-    const opened = new RemoteDatabase(dbSourceOf(dataset, base), budget);
+    const url = dbOf(dataset, base);
+    const opened = new LocalDatabase(url, dataset.dbSizeMb * 1024 * 1024);
     db = opened;
+    void weigh(url).then((bytes) => (transferBytes = bytes));
     return () => {
       opened.close();
       db = null;
@@ -78,76 +72,34 @@
     query = q;
     writeUrlQuery(q);
 
-    // Counted across the whole search rather than per query: a name search runs
-    // two, one for the word frequencies and one for the rows.
-    const before = { requests: source.requests, bytes: source.bytesRead };
-    const startedAt = performance.now();
+    // A name search scans every row, which is a few hundred milliseconds of
+    // blocked main thread. Yielding a frame first lets the spinner paint.
     searching = true;
-    cost = null;
-    // The worker reads pages with synchronous XHR, so it cannot answer while a
-    // query runs and there is no request count to show until it finishes.
-    // Elapsed time is the one honest live signal.
-    elapsedMs = 0;
-    const ticking = setInterval(() => (elapsedMs = performance.now() - startedAt), 100);
+    searchMs = null;
+    const startedAt = performance.now();
+    await new Promise(requestAnimationFrame);
 
     try {
-      results = isExamId(q) ? await lookupExamId(source, q) : await searchByName(source, q);
+      results = isExamId(q) ? lookupExamId(source, q) : searchByName(source, q);
     } catch (err) {
       searchError = err instanceof Error ? err.message : String(err);
     } finally {
-      clearInterval(ticking);
+      searchMs = performance.now() - startedAt;
       searching = false;
-      cost = {
-        requests: source.requests - before.requests,
-        bytes: source.bytesRead - before.bytes,
-        ms: performance.now() - startedAt,
-        sessionRequests: source.requests,
-        sessionBytes: source.bytesRead,
-      };
     }
   }
 
   function clearSearch() {
     results = null;
     query = "";
-    cost = null;
+    searchMs = null;
     searchError = null;
     writeUrlQuery("");
-  }
-
-  /** "16,9 giây", or "0,4 giây" — one decimal is enough to compare searches. */
-  function seconds(ms) {
-    return `${(ms / 1000).toLocaleString("vi-VN", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} giây`;
-  }
-
-  function openSqlTab() {
-    if (budget >= PLAYGROUND_BUDGET_BYTES) {
-      activeTab = "sql";
-      return;
-    }
-    sqlWarningOpen = true;
-  }
-
-  function acceptSqlWarning() {
-    sqlWarningOpen = false;
-    // Reopening with the larger budget throws away the current worker, and with
-    // it the pages it had cached — a few hundred KB, refetched on demand.
-    budget = PLAYGROUND_BUDGET_BYTES;
-    activeTab = "sql";
-  }
-
-  function declineSqlWarning() {
-    sqlWarningOpen = false;
-    activeTab = "search";
   }
 
   // Global shortcuts: Ctrl+Enter submits the SQL query, "/" focuses the search
   // box unless the user is already typing somewhere.
   function onKeydown(event) {
-    if (event.key === "Escape" && sqlWarningOpen) {
-      declineSqlWarning();
-      return;
-    }
     if (event.ctrlKey && event.key === "Enter" && activeTab === "sql") {
       document.querySelector(".query-form")?.requestSubmit();
       return;
@@ -183,13 +135,8 @@
   </header>
 
   <main>
-    {#if opening}
-      <p class="my-4 text-center text-ink-muted">Đang mở cơ sở dữ liệu…</p>
-    {/if}
-
-    {#if loadError}
-      <p class="notice bg-error-bg text-error-ink">Lỗi: {loadError}</p>
-    {/if}
+    <!-- Load state belongs to the gate: until the database is here there is
+         nothing behind it to report on. -->
 
     <div class="mx-auto mb-6 flex max-w-[600px] border-b-2 border-line">
       <button
@@ -212,7 +159,7 @@
         class:border-primary={activeTab === "sql"}
         class:text-primary={activeTab === "sql"}
         class:font-semibold={activeTab === "sql"}
-        onclick={openSqlTab}
+        onclick={() => (activeTab = "sql")}
       >
         Truy vấn SQL
       </button>
@@ -234,7 +181,7 @@
                    border-t-primary"
             aria-hidden="true"
           ></span>
-          Đang tra cứu… {seconds(elapsedMs)}
+          Đang tra cứu…
         </p>
       {/if}
 
@@ -254,13 +201,9 @@
         </p>
       {/if}
 
-      {#if cost && !searching}
+      {#if searchMs !== null && !searching}
         <p class="mt-2 text-center text-xs text-ink-subtle">
-          Mạng: {cost.requests.toLocaleString("vi-VN")} yêu cầu · {formatBytes(cost.bytes)} · {seconds(
-            cost.ms,
-          )} · Cả phiên: {cost.sessionRequests.toLocaleString("vi-VN")} yêu cầu · {formatBytes(
-            cost.sessionBytes,
-          )}
+          Truy vấn tại chỗ trong {Math.round(searchMs)} ms
         </p>
       {/if}
     {:else}
@@ -281,35 +224,6 @@
   </footer>
 </div>
 
-{#if sqlWarningOpen}
-  <!--
-    The SQL tab is the one place a user can write a query that reads the whole
-    database. Everything else here is a seek; this is not, so it is opt-in.
-  -->
-  <div
-    class="fixed inset-0 z-10 flex items-center justify-center bg-black/50 p-4"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="sql-warning-title"
-  >
-    <div class="max-w-[520px] rounded-xl border border-line bg-surface p-6 shadow-card">
-      <h2 id="sql-warning-title" class="mb-3 text-lg font-semibold">Truy vấn SQL tốn dữ liệu mạng</h2>
-      <p class="mb-3 text-sm text-ink-muted">
-        Tra cứu thường chỉ tải vài trăm KB. Truy vấn SQL tự viết có thể quét toàn bộ bảng và tải tới
-        hàng trăm MB — tốn dữ liệu di động và có thể rất chậm.
-      </p>
-      <p class="mb-5 text-sm text-ink-muted">
-        Cơ sở dữ liệu này nặng {dataset.dbSizeMb} MB. Số byte đã tải sẽ hiển thị bên cạnh thời gian
-        chạy để bạn theo dõi.
-      </p>
-      <div class="flex flex-wrap justify-end gap-3">
-        <button type="button" class="btn-chip" onclick={declineSqlWarning}>
-          Quay lại tra cứu
-        </button>
-        <button type="button" class="btn-primary" onclick={acceptSqlWarning}>
-          Tôi hiểu, tiếp tục
-        </button>
-      </div>
-    </div>
-  </div>
+{#if db && !db.ready}
+  <DownloadGate {db} {transferBytes} onDownload={() => db.open()} />
 {/if}

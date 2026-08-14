@@ -1,9 +1,13 @@
 # System Architecture
 
-Static site, no backend. The SQLite file stays on the server and the browser
-reads the pages a query touches over HTTP range requests, via `sql.js-httpvfs`
-(SQLite compiled to WebAssembly behind a virtual file system). A lookup costs a
-few hundred KB; nothing downloads the database.
+Static site, no backend. The browser downloads the whole SQLite file once and
+queries it in memory with `sql.js` (SQLite compiled to WebAssembly). A dataset
+costs about 31 MB to fetch and 142 MB of memory to hold; every query after that
+is local — an exam-number lookup is immediate, and a name search scans all
+877,460 rows in a few hundred milliseconds.
+
+That is a reversal of the previous design, which read the file where it lay
+over HTTP range requests. See [Considered and not taken](#considered-and-not-taken).
 
 One frontend, one parser, one schema, two datasets.
 
@@ -17,11 +21,11 @@ through. `assembler/` sequences everything from the parser onwards.
 data/<id>/*.xls(x)
         │
         ▼  parser/    (Go, one binary, one config per dataset)
-   .build/public/db/<id>.sqlite30
+   .build/public/db/<id>.sqlite3
         │
         ▼  assembler/ — row count and size must match datasets.json
-   .build/public/db/<id>.sqlite30   (uncompressed: ranges of a gzip stream
-        │                            are not ranges of the database)
+   .build/public/db/<id>.sqlite3    (uncompressed: the host gzips it on the
+        │                            wire, so a .gz would decompress twice)
         ▼  assembler/ → npm run build (SvelteKit static, assets = .build/public)
    web/dist/
         │
@@ -29,7 +33,7 @@ data/<id>/*.xls(x)
    _site/   →  GitHub Pages
         │
         ▼  browser
-   sql.js-httpvfs asks for pages → HTTP range requests → results client-side
+   download gate → whole file → sql.js in memory → queries never leave the tab
 ```
 
 ## The dataset id
@@ -37,7 +41,7 @@ data/<id>/*.xls(x)
 One identifier ties the whole pipeline together:
 
 ```
-data/2017/  →  parser/configs/2017.yml  →  db/2017.sqlite30  →  /thptqg/2017/
+data/2017/  →  parser/configs/2017.yml  →  db/2017.sqlite3   →  /thptqg/2017/
 ```
 
 `datasets.json` at the repository root declares the ids once, with the row count
@@ -170,56 +174,51 @@ total descending.
 
 | Concern | Choice | Rationale |
 | --- | --- | --- |
-| Storage | Static SQLite file, read by range request | No backend; the datasets are frozen, and a lookup needs a few pages of them |
-| Reading mode | `serverMode: "chunked"` over a single chunk | The only mode whose config accepts the file length. In full mode the worker hardcodes it to `undefined` and falls back to a HEAD request, which Pages answers with the gzipped size. One chunk means the index is always 0, hence the published name `<id>.sqlite30` |
-| Compression | None | A byte range of a gzip stream is not a byte range of the database |
-| WASM hosting | Bundled with the app | `sql.js-httpvfs` ships its own build; one less third-party runtime dependency |
-| Diacritics search | Pre-computed `ho_ten_ascii`, indexed word by word | `LOWER(REPLACE(...))` at query time defeats the index, and `LIKE '%x%'` reads the whole table |
-| Row count in the footer | Read from `datasets.json` | `COUNT(*)` scans an index — 20 MB over range requests |
-| Page size | 4 KiB, matched by `requestChunkSize` | One HTTP request is one page, and the worker issues them serially over synchronous XHR at ~40 ms each. Request count, not size, is what a search waits on: 390 requests moved 608 KB in 17 s. Four times the page is a quarter of the pages per scan. The 1 KiB both httpvfs libraries suggest optimises bytes per seek instead |
-| SQL safety | Leading-keyword allowlist | `sql.js` is in-memory so writes cannot persist; the allowlist prevents confusion |
+| Storage | Static SQLite file, downloaded whole | No backend; the datasets are frozen, and one large transfer is something browsers and CDNs are both good at |
+| Download gate | Blocking, no dismiss | The page has no answers before the file arrives, and 31 MB of someone's mobile data should be asked for rather than spent silently |
+| Compression | None published | The host gzips on the wire, so a `.gz` artifact would only be decompressed twice |
+| WASM hosting | Bundled with the app | `sql.js` ships its own build; one less third-party runtime dependency |
+| Diacritics search | Pre-computed `ho_ten_ascii` | `LOWER(REPLACE(...))` at query time is far slower over 877,460 rows than a column computed once at build |
+| Secondary indexes | None | In memory a full scan costs a few hundred milliseconds; an index costs every visitor megabytes of download. The name index alone was 146 MB |
+| Row count in the footer | Read from `datasets.json` | Costs nothing and is the same number the assembler enforces |
+| Page size | 4 KiB | SQLite's default, and nothing on the client depends on it any more |
+| SQL safety | Leading-keyword allowlist | The copy is the visitor's own, so this guards their session against a typo rather than protecting data |
 | Row caps | 100 (lookup), 1000 (SQL) | Keeps DOM render sizes reasonable |
 | Routing | SvelteKit file routes, prerendered | Each dataset gets a real HTML file with its own title |
 | Styling | Tailwind, with tier colours as CSS variables | Tier classes are chosen at runtime, which no utility generator can see |
 
 ### Considered and not taken
 
-- **Splitting the database into several chunks.** The site uses chunked mode,
-  but over one chunk (see above). Real splitting would let a CDN cache each part
-  whole; GitHub Pages serves everything with `Cache-Control: max-age=600`, and
-  every rebuild relays SQLite's pages so the file changes even when the data
-  does not, so that caching is cancelled by the host. Worth revisiting behind a
-  CDN with long TTLs, and it is the fallback if a single 288 MB file ever
-  becomes a problem.
-- **`sqlite-wasm-http`.** Maintained, and built on the official SQLite WASM
-  rather than a 2022 fork, which is the better long-term footing. It does not
-  help here: its worker sizes the file from a HEAD request's `Content-Length`
-  exactly as `sql.js-httpvfs` does, and its `Options` has no field for the
-  length, so on Pages it would silently take the gzipped size instead of
-  failing. Its shared-cache backend needs COOP/COEP, which Pages cannot send,
-  but it ships a fallback backend that does not — so isolation is not the
-  blocker, the missing length option is.
-- **Substring name search.** `LIKE '%x%'` cannot use an index, so it read the
-  whole student table. `name_word` keeps search by any word of a name without
-  it.
+- **Reading the file over HTTP range requests** (`sql.js-httpvfs`), which this
+  site did until it was measured. Two costs killed it. Reads are serial —
+  the worker uses synchronous XHR — so a name search that touched 390 pages
+  waited 17 seconds to move 608 KB, and roughly one request per result row is a
+  floor no page size removes. And the first visitor after each deploy waited
+  ~26 s for the CDN to fill its cache with a 288 MB object. The download pays
+  once, up front, visibly.
+- **`sqlite-wasm-http`.** Built on the official SQLite WASM and maintained,
+  but it sizes the file from a HEAD request's `Content-Length` and exposes no
+  option to override it, so on a host that gzips it would silently use the
+  compressed size. Same class of problem, less recourse.
+- **DuckDB-WASM over Parquet.** Genuinely maintained, async, parallel range
+  requests. Its binaries are 32–37 MB before the Parquet extension, which is
+  more than the entire database download for a phone looking up one score.
+- **Static pre-generated shards**, one file per exam-number bucket. The most
+  robust option and the fastest single lookup, but it cannot answer arbitrary
+  SQL, and a static file cannot stop early the way `LIMIT` does — a common
+  Vietnamese surname would mean fetching a very large posting list.
 
 ## Risks and limitations
 
-- **Unindexed queries are expensive.** The SQL tab can express a query that
-  walks the table, which over range requests means fetching 100+ MB. A byte
-  budget stops one before it gets that far, and the tab warns before it opens.
-- **`Content-Encoding` on a ranged response would break everything.** A range
-  of a compressed body addresses the wrong bytes. In practice browsers prevent
-  it: the Fetch standard requires `Accept-Encoding: identity` on any request
-  carrying a `Range` header. GitHub Pages *does* gzip the un-ranged response —
-  `application/octet-stream` is compressible in `mime-db` — which is why the
-  file length is probed with a range request and passed as
-  `databaseLengthBytes` rather than left to the library's HEAD.
-  `db-probe.js` checks the returned bytes
-  start with the SQLite magic, so a host that ever compresses a ranged response
-  fails loudly instead of returning nonsense.
-- **`sql.js-httpvfs` is unmaintained** (0.8.12, September 2022) and ships its
-  own SQLite WASM. `sqlite-wasm-http`, on the official build, is the fallback.
+- **Memory is the binding constraint.** The database lives in the tab's
+  WebAssembly memory for as long as the page is open: 142 MB for 2016, 119 MB
+  for 2017. A low-memory phone may have the tab killed, which is why the gate
+  states the figure before the download starts.
+- **The download is repeated every visit.** Nothing is persisted — a reload
+  fetches the file again. Caching it in IndexedDB or the Cache API would fix
+  that and has not been done.
+- **A visitor who will not download cannot use the site.** That is the
+  deliberate shape of the gate, and it makes the first impression a 31 MB ask.
 - **Hosted size.** 526 MB for both datasets against the 1 GB GitHub Pages
   limit; a third dataset of this size would not fit.
 - **Excel format drift.** A new source file with an unseen header layout needs a

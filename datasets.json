@@ -9,9 +9,9 @@
     "               means something changed unintentionally and the assembler",
     "               refuses to publish.",
     "  dbSizeMb     usual size of the published database. Required and non-zero:",
-    "               the assembler rejects a build that comes out far smaller. The",
-    "               file is served uncompressed and read a page at a time over",
-    "               HTTP range requests, so nothing downloads it whole.",
+    "               the assembler rejects a build that comes out far smaller. It",
+    "               is also the memory figure the download gate shows, since the",
+    "               browser holds the whole file while the tab is open.",
     "",
     "Presentation (titles, labels, SQL presets) lives in web/src/datasets.js keyed",
     "by id; that file throws at load if the two lists disagree."
@@ -20,12 +20,12 @@
     {
       "id": "2016",
       "expectedRows": 877460,
-      "dbSizeMb": 288
+      "dbSizeMb": 142
     },
     {
       "id": "2017",
       "expectedRows": 861068,
-      "dbSizeMb": 237
+      "dbSizeMb": 119
     }
   ]
 }

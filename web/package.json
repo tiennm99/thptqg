@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Frontend — one SvelteKit app serving every dataset and the hub",
+  "description": "Frontend \u2014 one SvelteKit app serving every dataset and the hub",
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
@@ -12,7 +12,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "sql.js-httpvfs": "^0.8.12"
+    "sql.js": "^1.14.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

@@ -109,50 +109,18 @@ CREATE TABLE student (
   tieng_nhat    REAL,
   tieng_trung   REAL
 );
-CREATE INDEX idx_ten_cum_thi  ON student(ten_cum_thi) WHERE ten_cum_thi IS NOT NULL;
-
-CREATE TABLE name_word (
-  word          TEXT NOT NULL,
-  so_bao_danh   TEXT NOT NULL,
-  ho_ten_ascii  TEXT NOT NULL,
-  PRIMARY KEY (word, so_bao_danh)
-) WITHOUT ROWID;
-
-CREATE TABLE name_word_freq (
-  word TEXT PRIMARY KEY,
-  n    INTEGER NOT NULL
-) WITHOUT ROWID;
 `
 	if DDL != want {
 		t.Errorf("DDL changed\n--- got ---\n%s\n--- want ---\n%s", DDL, want)
 	}
 }
 
-// TestNoIndexOnNameColumns: the databases are read over HTTP range requests, so
-// an index that no query can use is dead weight in a file the browser pages
-// through. Neither substring nor prefix LIKE can use one on these columns —
-// name_word is what serves name search.
-func TestNoIndexOnNameColumns(t *testing.T) {
-	for _, dead := range []string{"idx_ho_ten ", "idx_ho_ten_ascii"} {
-		if strings.Contains(DDL, dead) {
-			t.Errorf("DDL creates %q, which no query plan can use", dead)
-		}
-	}
-}
-
-// TestPostLoadBuildsTheSearchTables: the frequency table is what lets a search
-// pick which word to seek on, and the score indexes are what keep the SQL
-// presets off a full scan.
-func TestPostLoadBuildsTheSearchTables(t *testing.T) {
-	for _, want := range []string{
-		"INSERT INTO name_word_freq",
-		"CREATE INDEX idx_toan",
-		"CREATE INDEX idx_khtn",
-		"CREATE INDEX idx_khxh",
-	} {
-		if !strings.Contains(PostLoadSQL, want) {
-			t.Errorf("PostLoadSQL is missing %q", want)
-		}
+// TestNoSecondaryIndexes: the browser downloads this file whole and queries it
+// in memory, where a scan of 877,460 rows takes a few hundred milliseconds. An
+// index would save that and cost every visitor tens of megabytes of download.
+func TestNoSecondaryIndexes(t *testing.T) {
+	if strings.Contains(DDL, "CREATE INDEX") {
+		t.Error("DDL creates an index; every one of them is paid for on the network")
 	}
 }
 

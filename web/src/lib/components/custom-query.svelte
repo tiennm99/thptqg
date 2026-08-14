@@ -1,7 +1,5 @@
 <script>
-  import { formatBytes, isBudgetError } from "$lib/sqlite.svelte";
-
-  const MAX_ROWS = 1000;
+  import { MAX_ROWS } from "$lib/database.svelte";
   const PLACEHOLDER = "Nhập truy vấn SQL...\nVí dụ: SELECT * FROM student WHERE toan >= 9 LIMIT 10";
 
   let { db, disabled = false, presets = [] } = $props();
@@ -29,8 +27,8 @@
     const trimmed = queryStr.trim();
     if (!trimmed) return;
 
-    // Read-only statements only. The database is remote and read-only anyway,
-    // so this guards the user's own session against a typo.
+    // Read-only statements only. The copy in memory is the visitor's own, so
+    // this guards their session against a typo rather than protecting data.
     const upper = trimmed.toUpperCase();
     if (!["SELECT", "PRAGMA", "EXPLAIN", "WITH"].some((kw) => upper.startsWith(kw))) {
       queryError = "Chỉ hỗ trợ truy vấn đọc (SELECT, PRAGMA, EXPLAIN, WITH).";
@@ -47,17 +45,12 @@
     running = true;
     const start = performance.now();
     try {
-      const result = await source.query(finalSql, [], "SQL tab");
+      const result = source.query(finalSql);
       execTime = (performance.now() - start).toFixed(1);
       rows = result.slice(0, MAX_ROWS);
       columns = rows.length > 0 ? Object.keys(rows[0]) : [];
     } catch (err) {
-      queryError = isBudgetError(err)
-        ? "Truy vấn này phải đọc quá nhiều dữ liệu và đã bị dừng. Hãy thêm điều kiện lọc, " +
-          "hoặc dùng cột đã có chỉ mục (so_bao_danh, toan, khtn, khxh, ten_cum_thi)."
-        : err instanceof Error
-          ? err.message
-          : String(err);
+      queryError = err instanceof Error ? err.message : String(err);
     } finally {
       running = false;
     }
@@ -124,13 +117,6 @@
       </button>
       {#if execTime !== null}
         <span class="text-sm text-ink-muted">{rows.length} kết quả · {execTime}ms</span>
-      {/if}
-      {#if db?.lastCost}
-        <!-- What this query cost, then what the session has cost so far. -->
-        <span class="text-sm text-ink-subtle">
-          Truy vấn này: {db.lastCost.requests} yêu cầu · {formatBytes(db.lastCost.bytes)}
-          · Phiên: {db.requests} yêu cầu · {formatBytes(db.bytesRead)}
-        </span>
       {/if}
     </div>
   </form>

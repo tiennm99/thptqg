@@ -83,26 +83,18 @@ artifact — one missing line away from publishing it.
   files committed to a repository; the databases are built in CI and uploaded
   as a Pages artifact, and the documented Pages limits are a 1 GB published
   site and 100 GB/month of bandwidth, with no per-file figure. The two
-  databases are 288 MB and 238 MB.
-- **Total artifact is about 526 MB**, inside the 1 GB site limit but with less
-  headroom than before: a third dataset of this size would not fit. The fallback
-  is `sql.js-httpvfs`'s chunked mode, which splits a database into parts.
-- **Pages does compress the databases, and that is survivable.** The extension
-  is unknown to Pages, so the file is served as `application/octet-stream`,
-  which is marked compressible in `mime-db` and gzipped: a plain request
-  returns `Content-Encoding: gzip` and the compressed length. Ranged reads are
-  not affected, because the Fetch standard makes browsers send
-  `Accept-Encoding: identity` on any request carrying a `Range` header. Only
-  the length probe breaks, so the site supplies the length itself instead of
-  trusting HEAD — see `web/src/lib/db-probe.js` and the chunked-mode note in
-  [system-architecture](./system-architecture.md).
-- **Verify the way a browser asks.** A bare `curl -sI` advertises no encoding
-  and so reports success whatever the host does; it is what let this reach
-  production. Check ranged reads instead, and check the bytes, not the headers:
+  databases are 142 MB and 119 MB.
+- **Total artifact is about 262 MB**, comfortably inside the 1 GB site limit.
+  Dropping the search index the range-request design needed halved both files.
+- **Pages compresses the databases on the wire, which is a benefit here.** The
+  extension is unknown to Pages, so the file is served as
+  `application/octet-stream`, which `mime-db` marks compressible: 142 MB stored
+  becomes about 31 MB delivered, and the browser decompresses it transparently.
+- **Verify the bytes, not the headers.** A bare `curl -sI` reports success
+  whatever the host does. Read the file's first bytes instead:
 
   ```bash
-  curl -s -r 0-15 -H 'Accept-Encoding: identity;q=1, *;q=0' \
-    https://<user>.github.io/thptqg/db/2016.sqlite30 | head -c 16
+  curl -s -r 0-15 https://<user>.github.io/thptqg/db/2016.sqlite3 | head -c 16
   # must print: SQLite format 3
   ```
 
@@ -118,8 +110,7 @@ run rebuilds the older state. There is no data to migrate.
 | Blank page, 404 on assets | `paths.base` in `svelte.config.js` does not match the repo name |
 | `Failed to fetch database: 404` | Dataset id in `datasets.json` does not match the file in `db/` |
 | A route 404s | The site step did not run, or the id is missing from `datasets.json` |
-| `Length of the file not known` | The host gzipped the un-ranged response, so HEAD reports the compressed size. The site supplies `databaseLengthBytes` from a range probe; if this returns, the config is no longer reaching the worker in chunked mode |
-| Database fails to open | A ranged read did not return raw database bytes. The range check above must print `SQLite format 3` |
-| Every query is slow or huge | It is not using an index. `EXPLAIN QUERY PLAN` it: a `SCAN` means the browser is fetching the whole table |
-| Deploy fails on assembly | An uncompressed database artefact reached the output; the error names the files |
+| Download gate never finishes | The file is not being served, or the tab ran out of memory holding it. The check above must print `SQLite format 3` |
+| Tab crashes on a phone | The database needs 142 MB of memory for 2016, 119 MB for 2017; a low-memory device may have the tab killed |
+| Deploy fails on assembly | A stray database artefact reached the output — a journal, a `.gz`, or a name from an earlier design; the error names the files |
 | Missing rows after a data update | Unknown Excel header — check the per-file row counts the parser prints |
