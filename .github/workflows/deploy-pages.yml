@@ -26,18 +26,24 @@ jobs:
       # explicitly rather than relying on the default.
       CGO_ENABLED: '0'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      # The version comes from go.mod rather than a literal here. setup-go sets
+      # GOTOOLCHAIN=local, so Go will not fetch the toolchain a module asks for
+      # — the one installed has to satisfy it. A literal '1.26' resolves to
+      # whatever patch the runner manifest has, which was 1.26.5 against a
+      # go.mod requiring 1.26.6, and the build stopped there. All three modules
+      # are bumped together, so parser/go.mod speaks for them.
+      - uses: actions/setup-go@v7
         with:
-          go-version: '1.26'
+          go-version-file: parser/go.mod
           cache-dependency-path: |
             parser/go.sum
             crawler/go.sum
             assembler/go.sum
 
       # web/ is the only npm project in the repository; the other stages are Go.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: 'npm'
@@ -91,7 +97,7 @@ jobs:
       - name: Build site
         run: go -C assembler run ./cmd/assemble
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
 
@@ -108,4 +114,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
