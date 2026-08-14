@@ -92,17 +92,29 @@ server-assigned names verbatim, since it did not choose them.
 | 2 | SOBAODANH | 8-digit string, first 2 digits = province |
 | 3 | DIEM_THI | concatenated per-subject scores, e.g. `"Toán: 6.80 Ngữ văn: 5.25 …"` |
 
-2016 has **three** layouts across its 119 files, chosen per file at runtime via
+2016 has **four** layouts across its 119 files, chosen per sheet at runtime via
 `format_detection: thptqg2016` in its config:
 
 | Format | Detected by | Notes |
 | --- | --- | --- |
 | `separate-scores` | `row[0] == "SBD"` and `row[2] == "TOAN"` | one column per subject; scores read directly, no regex |
 | `mapped` | header contains `SOBAODANH`/`SBD` plus `DIEM_THI` | column indices derived from the header |
+| `subject-columns` | header names three or more subject columns | university-cluster files; identity and scores both resolved by header name |
 | `default` | no recognised header | positional 6-column layout |
 
-The `mapped` and `default` layouts also carry `TEN_CUMTHI` and `GIOI_TINH`,
-which is why only 2016 populates those columns.
+The header may sit below a title block, so the first five rows are searched for
+it; rows above it are not data.
+
+`subject-columns` covers two spellings. The ĐH Công nghiệp Thực phẩm file names
+its columns `TO VA LI HO SI SU DI NN` with the language code in `Môn NN`; the
+three ĐH Cần Thơ files publish `cdiem1..cdiem8`, numbered in the order the 2016
+exam was sat — Toán, Ngoại ngữ, Ngữ văn, Vật lí, Địa lí, Hóa học, Lịch sử, Sinh
+học — with the language code in `ngoaingu`. The language score is filed under
+the subject its `N1`..`N6` code names.
+
+The `mapped`, `default` and `subject-columns` layouts also carry `GIOI_TINH`
+(and `mapped`/`default` `TEN_CUMTHI`), which is why only 2016 populates those
+columns.
 
 ## Score text parsing
 
@@ -171,7 +183,7 @@ silently drops 13,720 students** (Hanoi +7,275, HCM +6,445). That is what
 
 | id | Source rows | Skipped | DB rows |
 | --- | --- | --- | --- |
-| `2016` | 877,464 | 3 duplicate SBDs collapsed | **877,461** |
+| `2016` | 877,460 | 0 | **877,460** |
 | `2017` | 861,068 | 0 | **861,068** |
 
 ## Verifying a rebuild

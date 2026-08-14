@@ -9,7 +9,7 @@ Live at **[tiennm99.github.io/thptqg](https://tiennm99.github.io/thptqg/)**.
 
 | Dataset | Exam | Candidates | Site |
 | --- | --- | --- | --- |
-| `2016` | 2016 | 877,461 | [/2016/](https://tiennm99.github.io/thptqg/2016/) |
+| `2016` | 2016 | 877,460 | [/2016/](https://tiennm99.github.io/thptqg/2016/) |
 | `2017` | 2017 | 861,068 | [/2017/](https://tiennm99.github.io/thptqg/2017/) |
 
 Two earlier 2017 publications (`2017-old`, `2017-old2`) were kept for a while

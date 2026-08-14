@@ -174,15 +174,7 @@ func Standard(cfg *config.DatasetConfig, inputDir, outputPath string) error {
 				soBaoDanh = cellAt(row, cols.SoBaoDanh)
 			}
 
-			switch transform.ValidateRow(hoTen, soBaoDanh, &cfg.Validation, stripBlank, allBlank) {
-			case transform.SkipBlankRow:
-				// Falls through to transform and insert. Unreachable here:
-				// BlankRow requires stripBlank && allBlank, which returned
-				// above. Kept so the two call sites with opposite outcomes stay
-				// visibly distinct.
-			case transform.SkipNone:
-				// proceed
-			default:
+			if transform.ValidateRow(hoTen, soBaoDanh, &cfg.Validation, stripBlank, allBlank) != transform.SkipNone {
 				fileSkipped++
 				return
 			}

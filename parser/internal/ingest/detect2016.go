@@ -14,14 +14,11 @@ import (
 )
 
 // The 2016 dataset's 119 files were produced by inconsistent tooling and use
-// three different column layouts, chosen per sheet at runtime. The literals
+// four different column layouts, chosen per sheet at runtime. The literals
 // below are institutional knowledge about those files, with no rule to derive
 // them from — extend them, but do not tidy them into something more regular.
 
 // KnownHeaders are the upper-cased first-cell values that identify a header row.
-//
-// NOTE "SINH " carries a TRAILING SPACE. Trimming it would change which rows
-// are recognised as headers.
 var KnownHeaders = []string{
 	"SOBAODANH",
 	"SBD",
@@ -37,7 +34,7 @@ var KnownHeaders = []string{
 	"VAN",
 	"LY",
 	"HOA",
-	"SINH ",
+	"SINH",
 	"SU",
 	"DIA",
 }
@@ -61,7 +58,7 @@ func IsHeaderRow2016(row []reader.Cell) bool {
 	return isKnownHeader(strings.ToUpper(strings.TrimSpace(row[0].Str)))
 }
 
-// FormatKind is one of the three 2016 layouts.
+// FormatKind is one of the 2016 layouts.
 type FormatKind int
 
 const (
@@ -73,9 +70,13 @@ const (
 	// FormatDefault is the positional 6-column layout used when no header is
 	// recognised. It is FormatMapped with fixed indices, not a separate path.
 	FormatDefault
+	// FormatSubjectColumns resolves BOTH identity and one score column per
+	// subject from the header by name — the university-cluster files, which
+	// publish scores in columns instead of a DIEM_THI sentence.
+	FormatSubjectColumns
 )
 
-// Format is a detected layout plus, for the mapped case, its column indices.
+// Format is a detected layout plus its resolved column indices.
 type Format struct {
 	Kind      FormatKind
 	Sbd       int
@@ -84,6 +85,14 @@ type Format struct {
 	TenCumThi *int
 	GioiTinh  *int
 	DiemThi   int
+
+	// Subjects maps a schema score field to its column, for
+	// FormatSubjectColumns only.
+	Subjects map[string]int
+	// LangScore is the foreign-language score column; the subject it counts
+	// towards is named by the code in LangCode.
+	LangScore *int
+	LangCode  *int
 }
 
 // defaultFormat is FormatMapped with the fixed positional indices.
@@ -93,6 +102,90 @@ func defaultFormat() Format {
 		Kind: FormatDefault, Sbd: 0, HoTen: 1,
 		NgaySinh: &two, TenCumThi: &three, GioiTinh: &four, DiemThi: 5,
 	}
+}
+
+// identity holds the identity columns resolved from a header row. A nil field
+// means the header does not name that column.
+type identity struct {
+	Sbd, HoTen, NgaySinh, TenCumThi, GioiTinh, DiemThi *int
+}
+
+// resolveIdentity maps header names to identity columns, order-independent.
+// Each column has several spellings across the corpus, including the accented
+// and unseparated ones the university files use.
+func resolveIdentity(cols []string) identity {
+	var id identity
+	for i := range cols {
+		idx := i
+		switch cols[i] {
+		case "SOBAODANH", "SBD":
+			id.Sbd = &idx
+		case "HO_TEN", "HOTEN", "HỌ TÊN":
+			id.HoTen = &idx
+		case "NGAY_SINH", "NGAYSINH", "NGÀY SINH":
+			id.NgaySinh = &idx
+		case "TEN_CUMTHI":
+			id.TenCumThi = &idx
+		case "GIOI_TINH", "GIỚI TÍNH", "PHAI":
+			id.GioiTinh = &idx
+		case "DIEM_THI":
+			id.DiemThi = &idx
+		}
+	}
+	return id
+}
+
+// subjectColumnFamily is one university-cluster spelling of the per-subject
+// score columns. The two families are told apart by which names resolve.
+type subjectColumnFamily struct {
+	scores    map[string]string // header name -> schema score field
+	langScore string            // header of the foreign-language score column
+	langCode  string            // header of the N1..N6 language code column
+}
+
+// subjectColumnFamilies are tried in order. The Cần Thơ family goes first
+// because its CDIEM<n> names are unambiguous, while the two-letter family
+// shares "HO" with that layout's surname column.
+var subjectColumnFamilies = []subjectColumnFamily{
+	{scores: canThoScoreHeaders, langScore: "CDIEM2", langCode: "NGOAINGU"},
+	{scores: subjectCodeHeaders, langScore: "NN", langCode: "MÔN NN"},
+}
+
+// canThoScoreHeaders maps the Cần Thơ cluster's published-score columns to
+// schema fields. The columns are numbered in the order the 2016 exam was sat —
+// each morning an essay paper (quarter-point scores), each afternoon a
+// multiple-choice one — which is what identifies them: CDIEM1/3/5/7 quantise to
+// 0.25 and CDIEM2/4/6/8 do not, and the per-column means match the published
+// national averages for those subjects.
+var canThoScoreHeaders = map[string]string{
+	"CDIEM1": "toan",
+	"CDIEM3": "ngu_van",
+	"CDIEM4": "vat_ly",
+	"CDIEM5": "dia_ly",
+	"CDIEM6": "hoa_hoc",
+	"CDIEM7": "lich_su",
+	"CDIEM8": "sinh_hoc",
+}
+
+// subjectCodeHeaders maps the two-letter subject columns to schema fields.
+var subjectCodeHeaders = map[string]string{
+	"TO": "toan",
+	"VA": "ngu_van",
+	"LI": "vat_ly",
+	"HO": "hoa_hoc",
+	"SI": "sinh_hoc",
+	"SU": "lich_su",
+	"DI": "dia_ly",
+}
+
+// languageFields maps the ministry's foreign-language codes to schema fields.
+var languageFields = map[string]string{
+	"N1": "tieng_anh",
+	"N2": "tieng_nga",
+	"N3": "tieng_phap",
+	"N4": "tieng_trung",
+	"N5": "tieng_duc",
+	"N6": "tieng_nhat",
 }
 
 // DetectFormat inspects a header row and decides which layout applies.
@@ -107,54 +200,85 @@ func DetectFormat(headerRow []reader.Cell) Format {
 		return Format{Kind: FormatSeparateScores}
 	}
 
-	// Format 2: resolve indices by header name, order-independent.
-	var sbdIdx, hoTenIdx, ngaySinhIdx, tenCumThiIdx, gioiTinhIdx, diemThiIdx *int
-	for i := range cols {
-		idx := i
-		switch cols[i] {
-		case "SOBAODANH", "SBD":
-			sbdIdx = &idx
-		case "HO_TEN", "HOTEN", "HỌ TÊN":
-			hoTenIdx = &idx
-		case "NGAY_SINH":
-			ngaySinhIdx = &idx
-		case "TEN_CUMTHI":
-			tenCumThiIdx = &idx
-		case "GIOI_TINH":
-			gioiTinhIdx = &idx
-		case "DIEM_THI":
-			diemThiIdx = &idx
+	id := resolveIdentity(cols)
+
+	// Format 2: a free-text DIEM_THI cell alongside an SBD.
+	if id.Sbd != nil && id.DiemThi != nil {
+		hoTen := 1 // fallback: col 1, present in all known files
+		if id.HoTen != nil {
+			hoTen = *id.HoTen
+		}
+		return Format{
+			Kind: FormatMapped, Sbd: *id.Sbd, HoTen: hoTen,
+			NgaySinh: id.NgaySinh, TenCumThi: id.TenCumThi, GioiTinh: id.GioiTinh,
+			DiemThi: *id.DiemThi,
 		}
 	}
 
-	if sbdIdx != nil && diemThiIdx != nil {
-		hoTen := 1 // fallback: col 1, present in all known files
-		if hoTenIdx != nil {
-			hoTen = *hoTenIdx
-		}
-		return Format{
-			Kind: FormatMapped, Sbd: *sbdIdx, HoTen: hoTen,
-			NgaySinh: ngaySinhIdx, TenCumThi: tenCumThiIdx, GioiTinh: gioiTinhIdx,
-			DiemThi: *diemThiIdx,
-		}
+	// Format 3: one column per subject.
+	if f, ok := subjectColumnsFormat(cols, id); ok {
+		return f
 	}
 
 	// Unrecognised header, or none at all.
 	return defaultFormat()
 }
 
-// parseFloatCell parses a per-subject score cell.
+// subjectColumnsFormat resolves a per-subject-column layout, if the header
+// names one.
 //
-// A parsed 0.0 becomes "no score", so a genuine zero is indistinguishable from
-// a blank. Not obviously correct, but it is the shipped behaviour and the
-// published data depends on it.
-func parseFloatCell(row []reader.Cell, idx int) (float64, bool) {
+// Three resolved subjects are required: a stray one- or two-letter header in an
+// unrelated file must not turn that file into this layout.
+func subjectColumnsFormat(cols []string, id identity) (Format, bool) {
+	if id.Sbd == nil {
+		return Format{}, false
+	}
+	for _, fam := range subjectColumnFamilies {
+		subjects := make(map[string]int)
+		for i, name := range cols {
+			if field, ok := fam.scores[name]; ok {
+				subjects[field] = i
+			}
+		}
+		if len(subjects) < 3 {
+			continue
+		}
+		hoTen := 1
+		if id.HoTen != nil {
+			hoTen = *id.HoTen
+		}
+		return Format{
+			Kind: FormatSubjectColumns, Sbd: *id.Sbd, HoTen: hoTen,
+			NgaySinh: id.NgaySinh, TenCumThi: id.TenCumThi, GioiTinh: id.GioiTinh,
+			DiemThi:   -1,
+			Subjects:  subjects,
+			LangScore: indexOf(cols, fam.langScore),
+			LangCode:  indexOf(cols, fam.langCode),
+		}, true
+	}
+	return Format{}, false
+}
+
+// indexOf returns the column holding name, or nil when the header lacks it.
+func indexOf(cols []string, name string) *int {
+	for i := range cols {
+		if cols[i] == name {
+			idx := i
+			return &idx
+		}
+	}
+	return nil
+}
+
+// parseScoreCell parses a per-subject score cell. A parsed 0 is a real score:
+// the candidate sat the paper and scored nothing.
+func parseScoreCell(row []reader.Cell, idx int) (float64, bool) {
 	s := cellAt(row, idx)
 	if s == "" {
 		return 0, false
 	}
 	v, err := strconv.ParseFloat(s, 64)
-	if err != nil || v == 0.0 {
+	if err != nil {
 		return 0, false
 	}
 	return v, true
@@ -182,7 +306,7 @@ func processSeparateScoresRow(row []reader.Cell) *transform.ParsedRow {
 		"sinh_hoc": 6, "lich_su": 7, "dia_ly": 8,
 		"tieng_anh": 11, // NGOAINGU total
 	} {
-		if v, ok := parseFloatCell(row, idx); ok {
+		if v, ok := parseScoreCell(row, idx); ok {
 			scores[field] = v
 		}
 	}
@@ -209,47 +333,146 @@ func processMappedRow(row []reader.Cell, f Format) *transform.ParsedRow {
 		return nil
 	}
 
-	optional := func(idx *int) *string {
-		if idx == nil {
-			return nil
-		}
-		if s := cellAt(row, *idx); s != "" {
-			return &s
-		}
+	return &transform.ParsedRow{
+		SoBaoDanh:  sbd,
+		HoTen:      hoTen,
+		HoTenAscii: transform.ToAscii(hoTen),
+		NgaySinh:   birthDate(row, f.NgaySinh),
+		TenCumThi:  optionalCell(row, f.TenCumThi),
+		GioiTinh:   gender(row, f.GioiTinh),
+		Scores:     transform.ParseScores(cellAt(row, f.DiemThi)),
+	}
+}
+
+// processSubjectColumnsRow reads a row whose scores sit in one column per
+// subject, with the foreign language filed under the subject its code names.
+func processSubjectColumnsRow(row []reader.Cell, f Format) *transform.ParsedRow {
+	sbd := cellAt(row, f.Sbd)
+	hoTen := cellAt(row, f.HoTen)
+	if sbd == "" || hoTen == "" {
+		return nil
+	}
+	if isKnownHeader(strings.ToUpper(sbd)) || isKnownHeader(strings.ToUpper(hoTen)) {
 		return nil
 	}
 
-	// Gender is a two-value allowlist, not a general enum: anything other than
-	// exactly "Nam" or "Nữ" becomes nil.
-	var gioiTinh *string
-	if f.GioiTinh != nil {
-		if s := cellAt(row, *f.GioiTinh); s == "Nam" || s == "Nữ" {
-			gioiTinh = &s
+	scores := make(map[string]float64)
+	for field, idx := range f.Subjects {
+		if v, ok := parseScoreCell(row, idx); ok {
+			scores[field] = v
 		}
 	}
-
-	// The free-text score cell is read untrimmed, unlike every other cell here.
-	diemThi := ""
-	if f.DiemThi >= 0 && f.DiemThi < len(row) {
-		diemThi = row[f.DiemThi].Str
+	if f.LangScore != nil {
+		if v, ok := parseScoreCell(row, *f.LangScore); ok {
+			code := "N1" // an unlabelled language paper is English in this corpus
+			if f.LangCode != nil {
+				if c := strings.ToUpper(cellAt(row, *f.LangCode)); c != "" {
+					code = c
+				}
+			}
+			// An unknown code is left out rather than guessed at.
+			if field, ok := languageFields[code]; ok {
+				scores[field] = v
+			}
+		}
 	}
 
 	return &transform.ParsedRow{
 		SoBaoDanh:  sbd,
 		HoTen:      hoTen,
 		HoTenAscii: transform.ToAscii(hoTen),
-		NgaySinh:   optional(f.NgaySinh),
-		TenCumThi:  optional(f.TenCumThi),
-		GioiTinh:   gioiTinh,
-		Scores:     transform.ParseScores(diemThi),
+		NgaySinh:   birthDate(row, f.NgaySinh),
+		TenCumThi:  optionalCell(row, f.TenCumThi),
+		GioiTinh:   gender(row, f.GioiTinh),
+		Scores:     scores,
 	}
+}
+
+// optionalCell returns the trimmed cell at idx, or nil when the column is
+// absent or its cell empty.
+func optionalCell(row []reader.Cell, idx *int) *string {
+	if idx == nil {
+		return nil
+	}
+	if s := cellAt(row, *idx); s != "" {
+		return &s
+	}
+	return nil
+}
+
+// gender normalises the gender cell to "Nam"/"Nữ", or nil when it says neither.
+//
+// The Cần Thơ files encode it numerically instead: of the rows marked 1, 53%
+// carry the female marker "Thị" in the name, against 1% of those marked 0.
+func gender(row []reader.Cell, idx *int) *string {
+	s := optionalCell(row, idx)
+	if s == nil {
+		return nil
+	}
+	switch *s {
+	case "Nam", "Nữ":
+		return s
+	case "0":
+		nam := "Nam"
+		return &nam
+	case "1":
+		nu := "Nữ"
+		return &nu
+	}
+	return nil
+}
+
+// birthDate returns the birth-date cell as dd/mm/yyyy.
+//
+// Most files already write it that way; the Cần Thơ ones use a compact ddmmyy,
+// expanded here so the column holds one format. The century is always 19xx: a
+// 2016 candidate born after 1999 would have sat the exam under age.
+func birthDate(row []reader.Cell, idx *int) *string {
+	s := optionalCell(row, idx)
+	if s == nil || len(*s) != 6 || !allDigits(*s) {
+		return s
+	}
+	out := (*s)[0:2] + "/" + (*s)[2:4] + "/19" + (*s)[4:6]
+	return &out
+}
+
+func allDigits(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+// headerScanRows is how far into a sheet the header may sit. One file opens
+// with a three-row ministry title block above its header; a sheet with no
+// header at all has data from row 0 and simply finds nothing in that window.
+const headerScanRows = 5
+
+// sheetFormat picks the layout for one sheet and returns the row its data
+// starts on. Rows above the header are a title block and are not data.
+func sheetFormat(rows [][]reader.Cell) (Format, int) {
+	limit := headerScanRows
+	if len(rows) < limit {
+		limit = len(rows)
+	}
+	for i := 0; i < limit; i++ {
+		if IsHeaderRow2016(rows[i]) {
+			return DetectFormat(rows[i]), i + 1
+		}
+	}
+	return defaultFormat(), 0
 }
 
 // ProcessRow2016 dispatches a data row through the detected layout. A nil return
 // means the row is empty or invalid and should be skipped.
 func ProcessRow2016(row []reader.Cell, f Format) *transform.ParsedRow {
-	if f.Kind == FormatSeparateScores {
+	switch f.Kind {
+	case FormatSeparateScores:
 		return processSeparateScoresRow(row)
+	case FormatSubjectColumns:
+		return processSubjectColumnsRow(row, f)
 	}
 	// FormatMapped and FormatDefault share one implementation; Default is just a
 	// fixed index tuple.
@@ -336,12 +559,7 @@ func processFile2016(path string, cfg *config.DatasetConfig, ins *writer.Inserte
 			continue
 		}
 
-		f := defaultFormat()
-		startIdx := 0
-		if IsHeaderRow2016(rows[0]) {
-			f = DetectFormat(rows[0])
-			startIdx = 1
-		}
+		f, startIdx := sheetFormat(rows)
 
 		for _, row := range rows[startIdx:] {
 			// Rows shorter than 2 cells are dropped BEFORE the counter, so they

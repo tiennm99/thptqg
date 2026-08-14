@@ -34,16 +34,20 @@ hashes every real input file. That is the point of it; do not skip it.
 ## Things that look wrong but are not
 
 - **`data/2016/` filenames are content hashes and must stay verbatim.** The
-  parser sorts inputs bytewise and inserts last-wins, so filenames decide which
-  row survives a duplicate exam number — 877,464 source rows collapse to
-  877,461. Renaming them also breaks `parser/testdata/reader-fidelity-hashes.tsv`,
-  which is keyed by full path.
+  parser sorts inputs bytewise and inserts last-wins, so filenames would decide
+  which row survives a duplicate exam number. Renaming them also breaks
+  `parser/testdata/reader-fidelity-hashes.tsv`, which is keyed by full path.
 - **`parser/testdata/reader-fidelity-hashes.tsv` is frozen and cannot be
   regenerated.** A mismatch is a reader bug until proven otherwise, never a cue
   to refresh the file. `parser/cmd/dumpcells` narrows a failure to the cell.
 - **`ToAscii` filters the literal range U+0300..U+036F, not `unicode.Mn`.** It
   must match `toAscii` in `web/src/App.jsx`, or accent-insensitive search
   silently misses rows.
+- **The 2016 files use four different layouts, and detection is per sheet.**
+  Two of them publish scores in one column per subject instead of a `DIEM_THI`
+  sentence, and one puts a three-row ministry title block above its header.
+  `parser/internal/ingest/detect2016.go` holds the header tables; they are
+  observations about 119 specific files, not a rule to generalise.
 - **`base` in `web/vite.config.js` is absolute.** One emitted `index.html` is
   copied to every dataset path, so every URL is a real static file and no SPA
   404-fallback is needed — a fallback would break the `?q=` deep links.

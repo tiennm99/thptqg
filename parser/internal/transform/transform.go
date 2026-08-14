@@ -68,9 +68,7 @@ type ParsedRow struct {
 //
 // The distinction is load-bearing for the printed counters: the two non-blank
 // reasons count as source rows while SkipBlankRow does not. That split lives in
-// the CALLER, not here — the build loop drops blank rows before the source-row
-// counter and, at the later switch, lets SkipBlankRow fall through to transform
-// and insert. Both call sites have to stay as they are.
+// the CALLER — the build loop drops blank rows before the source-row counter.
 type SkipReason int
 
 const (
@@ -188,14 +186,7 @@ func TransformRow(raw []reader.Cell, cfg *config.DatasetConfig) (*ParsedRow, err
 	hoTen := get(cols.HoTen)
 	ngaySinh := get(cols.NgaySinh)
 	soBaoDanh := get(cols.SoBaoDanh)
-
-	// diem_thi is read WITHOUT trimming, unlike the three fields above. Harmless
-	// because the score patterns are unanchored, but it is the shipped behaviour
-	// — do not "tidy" it.
-	diemThi := ""
-	if cols.DiemThi >= 0 && cols.DiemThi < len(raw) {
-		diemThi = raw[cols.DiemThi].Str
-	}
+	diemThi := get(cols.DiemThi)
 
 	var ngaySinhOpt *string
 	if ngaySinh != "" {
