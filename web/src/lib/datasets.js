@@ -19,10 +19,15 @@ const SUBTITLE = "Dữ liệu thí sinh toàn quốc · Hỗ trợ truy vấn SQ
 /**
  * Presentation, keyed by the ids declared in datasets.json.
  *
- * `source` is the full article URL the dataset's spreadsheets come from, shown
- * in the footer as a link. The canonical copy is the crawler's `Article` field
+ * `source` is the full article URL the dataset's spreadsheets come from. The
+ * canonical copy is the crawler's `Article` field
  * (crawler/internal/sources/source_<id>.go); it is duplicated here because a Go
- * module and a Vite app cannot share a constant. Keep the two in step.
+ * module and the web app cannot share a constant. Keep the two in step.
+ *
+ * `sourceName` is who published that article, and is what the footer shows —
+ * the URLs run to 120 characters and used to wrap across three lines on a
+ * phone. The link still points at the article, and its title attribute still
+ * carries the URL for anyone who wants to see where it goes.
  */
 const CONTENT = {
   2016: {
@@ -33,6 +38,7 @@ const CONTENT = {
     // ministry — hence the unexpected domain.
     source:
       "https://dtnt.bacninh.edu.vn/tin-tuc/tin-tuc-su-kien/cong-bo-diem-thi-thptqg-2016-toan-bo-120-cum-thi-da-co-diem.html",
+    sourceName: "Trường Phổ thông DTNT tỉnh Bắc Ninh",
     examples: ["TKG002747", "Nguyễn Bửu Lộc"],
     presets: PRESETS_2016,
   },
@@ -42,6 +48,7 @@ const CONTENT = {
     subtitle: SUBTITLE,
     source:
       "https://baotintuc.vn/tuyen-sinh/tra-cuu-diem-thi-thpt-2017-cua-63-tinh-thanh-pho-tren-baotintucvn-20170706073512672.htm",
+    sourceName: "Báo Tin tức và Dân tộc - TTXVN",
     examples: ["49008235", "Nguyễn Minh Tiến"],
     presets: PRESETS_2017,
   },
@@ -53,6 +60,13 @@ const CONTENT = {
 for (const { id } of registry.datasets) {
   if (!CONTENT[id]) {
     throw new Error(`datasets.json declares "${id}" but web/src/datasets.js has no content for it`);
+  }
+  // The footer renders sourceName as the link text, so a missing one is an
+  // empty link rather than a visible mistake.
+  for (const field of ["title", "label", "source", "sourceName", "examples", "presets"]) {
+    if (!CONTENT[id][field]) {
+      throw new Error(`web/src/lib/datasets.js: dataset "${id}" is missing ${field}`);
+    }
   }
 }
 for (const id of Object.keys(CONTENT)) {

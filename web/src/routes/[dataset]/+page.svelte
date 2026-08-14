@@ -207,12 +207,14 @@
     {/if}
   </main>
 
-  <footer class="mt-12 border-t border-line pt-4 text-center text-sm break-words text-ink-subtle">
+  <footer class="mt-12 border-t border-line pt-4 text-center text-sm text-ink-subtle">
     <p>
       Nguồn:
       <!-- An off-site article URL, so there is no route for resolve() to take. -->
       <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-      <a href={dataset.source} target="_blank" rel="noopener noreferrer">{dataset.source}</a>
+      <a href={dataset.source} title={dataset.source} target="_blank" rel="noopener noreferrer"
+        >{dataset.sourceName}</a
+      >
       · {dataset.rows.toLocaleString("vi-VN")} thí sinh · Dữ liệu chỉ mang tính tham khảo
     </p>
   </footer>
