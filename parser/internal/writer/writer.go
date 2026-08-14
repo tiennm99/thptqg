@@ -43,6 +43,19 @@ func OpenDB(dbPath string) (*sql.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open db %s: %w", dbPath, err)
 	}
+	// Before the DDL, because a page size cannot change once a table exists —
+	// only the VACUUM in Finish could rewrite it, and only to this same value.
+	//
+	// 1 KiB rather than SQLite's 4 KiB default because the browser reads this
+	// file a page at a time over HTTP: a row fetched by index seek costs one
+	// page, so a search that returns 100 scattered rows transfers 100 KB
+	// instead of 400 KB. It costs about 5% file size, and both sql.js-httpvfs
+	// and sqlite-wasm-http recommend it. web/src/lib/sqlite.svelte.ts must
+	// request the same size.
+	if _, err := db.Exec("PRAGMA page_size = 1024"); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("set page size: %w", err)
+	}
 	if _, err := db.Exec(schema.DDL); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("execute DDL: %w", err)

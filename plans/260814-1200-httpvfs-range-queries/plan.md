@@ -35,12 +35,16 @@ finds "Nguyễn Bửu Lộc", in a few hundred KB.
 
 | Segment | 2016 |
 | --- | --- |
-| `student` | 127 MB |
-| `name_word` | 97 MB |
-| `idx_ten_cum_thi` | 37 MB |
-| PK autoindex | 15 MB |
-| score indexes | 12 MB |
-| **total** | **288.6 MB** (2017: 237.7 MB) |
+| `student` | 137.5 MB |
+| `name_word` | 98.7 MB |
+| `idx_ten_cum_thi` | 38.1 MB |
+| PK autoindex | 15.3 MB |
+| `idx_toan` | 12.6 MB |
+| **total** | **302.4 MB** (2017: 247.3 MB) |
+
+Written with 1 KiB pages, so a row reached by an index seek costs one 1 KB
+request instead of 4 KB: 6.3 rows share a page rather than 27, which is what
+turns a 100-row search from ~400 KB of row fetches into ~100 KB.
 
 **Assembler.** Publishes uncompressed; the size guard reads the raw size; the
 stray-artifact check now rejects journals, `.db` and `.gz`.

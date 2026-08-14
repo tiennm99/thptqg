@@ -14,8 +14,10 @@ import wasmUrl from "sql.js-httpvfs/dist/sql-wasm.wasm?url";
  * the byte budget below is for.
  */
 
-// Matches the page size the parser writes, so one request is one page.
-const CHUNK_BYTES = 4096;
+// Must equal the page size the parser writes (PRAGMA page_size in
+// parser/internal/writer/writer.go), so one request is exactly one page. A
+// mismatch makes every logical page read span two requests.
+const CHUNK_BYTES = 1024;
 
 /** Generous for indexed work: a name search costs well under 1 MB. */
 export const SEARCH_BUDGET_BYTES = 25 * 1024 * 1024;

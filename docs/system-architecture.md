@@ -175,6 +175,7 @@ total descending.
 | WASM hosting | Bundled with the app | `sql.js-httpvfs` ships its own build; one less third-party runtime dependency |
 | Diacritics search | Pre-computed `ho_ten_ascii`, indexed word by word | `LOWER(REPLACE(...))` at query time defeats the index, and `LIKE '%x%'` reads the whole table |
 | Row count in the footer | Read from `datasets.json` | `COUNT(*)` scans an index — 20 MB over range requests |
+| Page size | 1 KiB, matched by `requestChunkSize` | One HTTP request is one page; a row fetched by seek costs 1 KB rather than 4 KB, for about 5% more file |
 | SQL safety | Leading-keyword allowlist | `sql.js` is in-memory so writes cannot persist; the allowlist prevents confusion |
 | Row caps | 100 (lookup), 1000 (SQL) | Keeps DOM render sizes reasonable |
 | Routing | SvelteKit file routes, prerendered | Each dataset gets a real HTML file with its own title |
@@ -191,7 +192,7 @@ total descending.
   `curl -sI …/db/2016.sqlite3` must show no `content-encoding`.
 - **`sql.js-httpvfs` is unmaintained** (0.8.12, September 2022) and ships its
   own SQLite WASM. `sqlite-wasm-http`, on the official build, is the fallback.
-- **Hosted size.** 528 MB for both datasets against the 1 GB GitHub Pages
+- **Hosted size.** 552 MB for both datasets against the 1 GB GitHub Pages
   limit; a third dataset of this size would not fit.
 - **Excel format drift.** A new source file with an unseen header layout needs a
   new branch in `parser/internal/ingest/detect2016.go` or a new config.

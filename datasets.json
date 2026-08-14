@@ -20,12 +20,12 @@
     {
       "id": "2016",
       "expectedRows": 877460,
-      "dbSizeMb": 289
+      "dbSizeMb": 302
     },
     {
       "id": "2017",
       "expectedRows": 861068,
-      "dbSizeMb": 238
+      "dbSizeMb": 247
     }
   ]
 }
