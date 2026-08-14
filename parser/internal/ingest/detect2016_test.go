@@ -6,12 +6,9 @@ import (
 	"github.com/tiennm99/thptqg/parser/internal/reader"
 )
 
-// Ports the 11 tests in parser/src/format_detect_2016.rs, plus a guard per quirk.
-//
-// Phase 1 settled the Data -> string translation these fixtures need, so no
-// guessing: Data::String(s) is s verbatim, Data::Float(8.0) renders "8" (Rust's
-// f64 Display drops the .0, matching Go's FormatFloat(v,'f',-1,64)),
-// Data::Float(8.5) renders "8.5", and Data::Empty is "" with IsEmpty true.
+// Fixtures use the reader's rendering: a string cell is its text verbatim, a
+// numeric cell is its shortest round-tripping form (8.0 is "8", 8.5 is "8.5"),
+// and a cell with no value is "" with IsEmpty set.
 
 // --- header detection ---
 
@@ -81,8 +78,7 @@ func TestDetectFormatMappedIsOrderIndependent(t *testing.T) {
 	}
 }
 
-// TestDetectFormatMappedHoTenFallback ports the col-1 fallback
-// (format_detect_2016.rs:132).
+// TestDetectFormatMappedHoTenFallback covers the col-1 fallback for ho_ten.
 func TestDetectFormatMappedHoTenFallback(t *testing.T) {
 	f := DetectFormat(cells("SBD", "SOMETHING", "DIEM_THI"))
 	if f.Kind != FormatMapped {
@@ -137,8 +133,8 @@ func TestProcessSeparateScoresRow(t *testing.T) {
 	}
 }
 
-// TestZeroScoreBecomesNull pins the JS falsy quirk: parseFloat(x) || null means
-// a literal 0 is indistinguishable from "no score" (format_detect_2016.rs:165).
+// TestZeroScoreBecomesNull pins the quirk that a literal 0 is indistinguishable
+// from "no score".
 func TestZeroScoreBecomesNull(t *testing.T) {
 	row := cells("1000", "A", "0", "0.0", "1", "", "", "", "", "", "", "")
 	got := ProcessRow2016(row, Format{Kind: FormatSeparateScores})
@@ -156,7 +152,7 @@ func TestZeroScoreBecomesNull(t *testing.T) {
 	}
 }
 
-// TestGenderAllowlist ports format_detect_2016.rs:263-271 — exactly two values.
+// TestGenderAllowlist: exactly two accepted values, matched case-sensitively.
 func TestGenderAllowlist(t *testing.T) {
 	f := defaultFormat()
 	for in, want := range map[string]string{"Nam": "Nam", "Nữ": "Nữ"} {
@@ -178,7 +174,8 @@ func TestGenderAllowlist(t *testing.T) {
 	}
 }
 
-// TestLeakedHeaderRowSkipped ports format_detect_2016.rs:244-250.
+// TestLeakedHeaderRowSkipped: a header repeated inside the data must not become
+// a student.
 func TestLeakedHeaderRowSkipped(t *testing.T) {
 	f := defaultFormat()
 	if ProcessRow2016(cells("SBD", "HO_TEN", "", "", "", ""), f) != nil {
@@ -222,8 +219,8 @@ func TestMappedRowPopulates2016OnlyColumns(t *testing.T) {
 	}
 }
 
-// TestDefaultIsMappedWithFixedIndices: FormatDefault must not be a separate code
-// path (format_detect_2016.rs:295-306).
+// TestDefaultIsMappedWithFixedIndices: FormatDefault must not become a separate
+// code path.
 func TestDefaultIsMappedWithFixedIndices(t *testing.T) {
 	row := cells("123", "A", "01/01/2000", "Cluster", "Nữ", "Toán: 5")
 	viaDefault := ProcessRow2016(row, defaultFormat())
@@ -244,7 +241,7 @@ func TestDefaultIsMappedWithFixedIndices(t *testing.T) {
 }
 
 // TestShortRowGuardIsSeparateFromValidation documents that rows under 2 cells
-// are dropped by the loop before the counter (main.rs:351-353), not here.
+// are dropped by the ingest loop before the counter, not by row processing.
 func TestShortRowGuardIsSeparateFromValidation(t *testing.T) {
 	if got := ProcessRow2016([]reader.Cell{{Str: "123"}}, defaultFormat()); got != nil {
 		t.Error("a 1-cell row has no name and must be rejected")

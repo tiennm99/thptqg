@@ -1,5 +1,5 @@
 // Package schema is the single source of truth for the SQL shape of every
-// dataset — a direct port of parser/src/schema.rs.
+// dataset.
 //
 // Every dataset writes into the same 22-column student table. Columns a dataset has no data for bind NULL.
 //
@@ -9,20 +9,22 @@
 //	khtn, khxh, gdcd, tieng_nga                    -> 2017 datasets only
 //	everything else                                -> both
 //
-// Before this consolidation the DDL, the INSERT and the subject regexes were
-// duplicated across four TOML configs, which is how the 2016 and 2017 schemas
-// drifted apart. The configs now carry only per-dataset parse rules.
+// The DDL, the INSERT and the subject regexes belong here and nowhere else. One
+// copy per dataset is what let the 2016 and 2017 schemas drift apart; the
+// per-dataset configs carry only parse rules.
 package schema
 
 import "regexp"
 
 // DDL is executed verbatim after the output database is (re)created.
 //
-// idx_ten_cum_thi is partial, so it holds zero entries on the three 2017
-// datasets — where the column is always NULL — while staying useful for the
-// 2016 cluster-grouping queries. Partial indexes are SQLite-specific.
+// idx_ten_cum_thi is partial, so it holds zero entries on the 2017 dataset —
+// where the column is always NULL — while staying useful for the 2016
+// cluster-grouping queries. Partial indexes are SQLite-specific.
 //
-// Byte-identical to parser/src/schema.rs:26-54; TestDDLMatchesRust enforces it.
+// This text is frozen: it decides the shape of every database the parser
+// produces. TestDDLIsFrozen holds an independent copy so any edit has to be
+// deliberate.
 const DDL = `
 CREATE TABLE student (
   so_bao_danh   TEXT PRIMARY KEY,
@@ -103,15 +105,12 @@ VALUES
 `
 
 // scorePatternSources holds the regex per subject, applied to the DIEM_THI cell
-// text. Copied verbatim from parser/src/schema.rs:126-143 — the literals contain
-// Vietnamese text and must never be retyped.
+// text. The literals contain Vietnamese subject names exactly as they appear in
+// the source files — copy them, never retype them.
 //
 // Every pattern runs against every dataset. A subject absent from a given exam
 // year simply never matches and stays NULL: 2016 files contain no "KHTN:" or
 // "Tiếng Nga:" tokens, and 2017 files contain no "Tiếng Đức:" or "Tiếng Nhật:".
-//
-// Go's regexp and Rust's regex crate are both RE2, and these patterns use no
-// backreferences, lookaround or Unicode classes, so they port with zero risk.
 var scorePatternSources = map[string]string{
 	"toan":        `Toán:\s*(\d+(?:\.\d+)?)`,
 	"ngu_van":     `Ngữ văn:\s*(\d+(?:\.\d+)?)`,
@@ -131,9 +130,7 @@ var scorePatternSources = map[string]string{
 	"tieng_trung": `Tiếng Trung:\s*(\d+(?:\.\d+)?)`,
 }
 
-// ScorePatterns holds the compiled subject regexes, compiled once at init.
-// Rust compiles them once per run in CompiledPatterns::new; a package-level map
-// is the equivalent for a single-threaded CLI.
+// ScorePatterns holds the subject regexes, compiled once at package init.
 var ScorePatterns = func() map[string]*regexp.Regexp {
 	out := make(map[string]*regexp.Regexp, len(scorePatternSources))
 	for field, src := range scorePatternSources {

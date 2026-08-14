@@ -12,10 +12,9 @@ export function ScoreTable({ results }) {
     return <p className="no-results">Không tìm thấy kết quả.</p>;
   }
 
-  // Drop columns where every row in the result set is NULL. This is what makes
-  // one table serve both exam years: 2016 rows surface Cụm thi / GT / Đức /
-  // Nhật and hide KHTN / KHXH / GDCD / Nga, and 2017 rows do the reverse — with
-  // no dataset conditional anywhere in this component.
+  // Drop columns that are NULL for every row in the result set. That is what
+  // lets one table serve both exam years with no dataset conditional here: each
+  // year's unused columns simply drop out.
   const visibleIdentity = IDENTITY_COLUMNS.filter((col) =>
     hasAnyValue(results, col.key),
   );

@@ -47,7 +47,7 @@ func DefaultPaths(root string) Paths {
 // BuildWeb runs the Vite build.
 //
 // Shelling out to npm is not a wart: Vite is a Node tool, and web/ is the only
-// npm project left in the repository. This stage owns the sequencing, not the
+// npm project in the repository. This stage owns the sequencing, not the
 // bundling.
 func BuildWeb(p Paths) error {
 	cmd := exec.Command("npm", "run", "build")

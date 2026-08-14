@@ -48,7 +48,7 @@ function DatasetApp({ dataset }) {
   const [results, setResults] = useState(null);
   const [searchError, setSearchError] = useState(null);
   const [activeTab, setActiveTab] = useState("search");
-  // Query is owned here so we can bidirectionally bind it to the URL
+  // Owned here, not in SearchForm, so it can be bound to the URL both ways.
   const [query, setQuery] = useState(() => readUrlQuery());
   const [totalCount, setTotalCount] = useState(null);
 
@@ -98,16 +98,16 @@ function DatasetApp({ dataset }) {
     [db],
   );
 
-  // Hydrate a ?q= deep link once, as soon as the database is ready. Fires at
-  // most once per mount, so it cannot cascade.
+  // Hydrate a ?q= deep link as soon as the database is ready. Keyed on `db`
+  // alone so it fires at most once per mount and cannot cascade.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (db && query) handleSearch(query);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [db]);
 
-  // Read the candidate count for the footer once the database loads. One-shot
-  // per mount; the query result cannot change without a new database.
+  // Candidate count for the footer. One-shot per mount: the count cannot change
+  // without a new database.
   useEffect(() => {
     if (!db) return;
     const stmt = db.prepare("SELECT COUNT(*) AS c FROM student");

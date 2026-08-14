@@ -1,12 +1,12 @@
 // Package writer handles SQLite output: DDL setup, INSERT OR REPLACE, VACUUM
-// and the stats block — a port of parser/src/writer.rs.
+// and the stats block.
 //
 // Every dataset writes the same canonical table (internal/schema), so there is
 // exactly one insert path. Columns a dataset carries no data for bind NULL.
 //
-// The stats lines are reproduced verbatim because they are the operator-facing
-// output of the build, and docs/deployment-guide.md points at the per-file row
-// counts for troubleshooting.
+// The stats lines are the operator-facing output of the build, and
+// docs/deployment-guide.md points at the per-file row counts for
+// troubleshooting — do not reword them casually.
 package writer
 
 import (
@@ -23,9 +23,9 @@ import (
 // OpenDB deletes any existing database at dbPath, recreates it, and executes the
 // canonical DDL.
 //
-// Deleting the file rather than issuing DROP TABLE mirrors build-lib.js:54 via
-// writer.rs:24-30. A consequence worth knowing: a concurrent reader sees the file
-// vanish mid-rebuild rather than a transactional swap.
+// Deleting the file rather than issuing DROP TABLE has a consequence worth
+// knowing: a concurrent reader sees the file vanish mid-rebuild rather than a
+// transactional swap.
 func OpenDB(dbPath string) (*sql.DB, error) {
 	if _, err := os.Stat(dbPath); err == nil {
 		if err := os.Remove(dbPath); err != nil {
@@ -49,11 +49,8 @@ func OpenDB(dbPath string) (*sql.DB, error) {
 	return db, nil
 }
 
-// Inserter wraps a prepared INSERT statement.
-//
-// Rust calls conn.execute(INSERT_SQL, ...) per row (writer.rs:73), re-preparing
-// each time. Preparing once is a performance choice, not a parity requirement —
-// the SQL and its bindings are identical either way.
+// Inserter wraps the canonical INSERT, prepared once per transaction rather
+// than per row.
 type Inserter struct{ stmt *sql.Stmt }
 
 // Prepare compiles the canonical INSERT against tx.
@@ -116,12 +113,6 @@ type Stats struct {
 // Finish runs VACUUM and prints the stats block.
 //
 // VACUUM must run AFTER the transaction commits — SQLite refuses it inside one.
-//
-// The Rust original varied the wording by dataset, keying off the input
-// directory's basename (main.rs:98-101) — one phrasing for the 2017-old2
-// export, another for anything with "old" in its name. Both of those datasets
-// have been removed, so only one branch was ever taken; the wording below is
-// exactly what 2016 and 2017 have always printed.
 func Finish(db *sql.DB, dbPath string, st Stats) error {
 	if _, err := db.Exec("VACUUM"); err != nil {
 		return fmt.Errorf("vacuum: %w", err)

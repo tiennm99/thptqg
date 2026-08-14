@@ -1,20 +1,19 @@
 {
   "_comment": [
-    "The dataset registry: the one place every stage agrees on what exists.",
+    "The dataset registry: the one place every pipeline stage agrees on what",
+    "exists. JSON because the Go stages and the Vite app both read it.",
     "",
-    "  crawler/  fills   data/<id>/",
-    "  parser/   reads   data/<id>/ with configs/<id>.yml, writes <id>.db",
-    "  assembler/ verifies, compresses and publishes it as db/<id>.db.gz",
-    "  web/      serves it at /thptqg/<id>/",
+    "  id           the identifier used end to end, from data/<id>/ to /thptqg/<id>/",
+    "  expectedRows exact row count of the built database, not an estimate. The",
+    "               inputs are frozen exam results, so a deviation of even one row",
+    "               means something changed unintentionally and the assembler",
+    "               refuses to publish.",
+    "  dbSizeMb     usual size of the gzipped database. Required and non-zero:",
+    "               the assembler rejects a build that comes out far smaller, and",
+    "               the web app shows it while the download runs.",
     "",
-    "It is JSON rather than a module because Go and the Vite app both read it,",
-    "and JSON is the only format both parse without a dependency. Presentation",
-    "(titles, labels, SQL presets) stays in web/src/datasets.js keyed by id;",
-    "that file fails loudly if the two lists disagree.",
-    "",
-    "expectedRows is exact, not approximate. The inputs are frozen historical",
-    "exam results, so a deviation of even one row means something changed that",
-    "nobody intended, and the assembler refuses to publish."
+    "Presentation (titles, labels, SQL presets) lives in web/src/datasets.js keyed",
+    "by id; that file throws at load if the two lists disagree."
   ],
   "datasets": [
     {

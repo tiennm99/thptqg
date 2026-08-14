@@ -1,16 +1,15 @@
 // Command dumpcells emits the canonical cell rendering of a spreadsheet.
 //
-// It exists to diagnose a reader-fidelity failure. That suite compares a
-// SHA-256 per input file against a frozen oracle, so a mismatch says which file
-// changed but not which cell; this prints the stream the hash is taken over, so
-// two runs can be diffed. It was originally written to compare against the
-// Rust/calamine ground truth from parser/examples/dump_cells.rs, which was
-// removed with the Rust tree — the hashes it produced are what remains.
+// It exists to diagnose a TestReaderFidelity failure. That suite compares a
+// SHA-256 per input file against the frozen oracle, so a mismatch names the
+// file but not the cell; this prints the stream the hash is taken over — plus a
+// leading FILE line, which the hash excludes — so a dump from before and after
+// a reader change can be diffed line by line.
 //
-// The canonical stream carries geometry and rendered cell values only. The
-// calamine Data variant is deliberately excluded: Data::Empty and
-// Data::String("") both render "" and both count as blank everywhere
-// downstream, so the distinction cannot affect the database.
+// The canonical stream carries geometry and rendered cell values only. Whether
+// a cell was absent or an empty string is deliberately excluded: both render ""
+// and both count as blank everywhere downstream, so the distinction cannot
+// affect the database.
 //
 // Usage: dumpcells <spreadsheet> [out-file]
 package main
@@ -24,7 +23,8 @@ import (
 	"github.com/tiennm99/thptqg/parser/internal/reader"
 )
 
-// escape mirrors the Rust dumper so field separators can never break the format.
+// escape hides the field and record separators so a cell value can never break
+// the format. Must stay in step with the fidelity test's escaping.
 func escape(s string) string {
 	var b strings.Builder
 	b.Grow(len(s))

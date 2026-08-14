@@ -4,9 +4,7 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
-// Scoped to this workspace. The other stages are Go, and the one remaining
-// Node file outside it (parser/scripts/differential-parity.mjs, a diagnostic
-// run by hand) is out of reach of a config that lives here.
+// Scoped to this workspace; every other stage in the repository is Go.
 export default defineConfig([
   globalIgnores(['dist']),
   {

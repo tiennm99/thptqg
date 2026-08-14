@@ -1,17 +1,13 @@
 /**
  * The datasets this site serves.
  *
- * `id` is the single identifier used end to end:
- *
- *   data/<id>/  →  parser/configs/<id>.yml  →  db/<id>.db.gz  →  /thptqg/<id>/
+ * Which datasets exist is decided by the repository-root `datasets.json`, not
+ * here: the assembler is a Go program and cannot import this module. This file
+ * supplies only what the interface needs — titles, labels, search examples and
+ * SQL presets, keyed by id.
  *
  * Site path and database URL are derived from `id` rather than stored, so a
  * dataset cannot be misconfigured into pointing at the wrong database.
- *
- * Which datasets exist is not decided here. That lives in the repository-root
- * `datasets.json`, which the assembler reads too — it is a Go program and
- * cannot import this module. This file supplies only what the interface needs:
- * titles, labels, search examples and SQL presets, keyed by id.
  */
 
 import registry from "../../datasets.json";
@@ -24,17 +20,17 @@ const SUBTITLE = "Dữ liệu thí sinh toàn quốc · Hỗ trợ truy vấn SQ
  * Presentation, keyed by the ids declared in datasets.json.
  *
  * `source` is the full article URL the dataset's spreadsheets come from, shown
- * in the footer as a link. The canonical copy of each URL is the crawler's
- * `Article` field (crawler/internal/sources/source_<id>.go); it is repeated here
- * because a Go module and a Vite app cannot share a constant.
+ * in the footer as a link. The canonical copy is the crawler's `Article` field
+ * (crawler/internal/sources/source_<id>.go); it is duplicated here because a Go
+ * module and a Vite app cannot share a constant. Keep the two in step.
  */
 const CONTENT = {
   2016: {
     label: "Kỳ thi 2016",
     title: "Tra cứu điểm thi THPT Quốc gia 2016",
     subtitle: SUBTITLE,
-    // The article the 119 cluster spreadsheets are fetched from — a school
-    // site that aggregated every cluster's file, not the ministry.
+    // A school site that aggregated every exam cluster's spreadsheet, not the
+    // ministry — hence the unexpected domain.
     source:
       "https://dtnt.bacninh.edu.vn/tin-tuc/tin-tuc-su-kien/cong-bo-diem-thi-thptqg-2016-toan-bo-120-cum-thi-da-co-diem.html",
     examples: ["17006021", "Nguyễn Thị Hoa"],
@@ -51,10 +47,9 @@ const CONTENT = {
   },
 };
 
-// A dataset in the registry with no content here would render a page with no
-// title and no presets; content here for a dataset that no longer exists would
-// offer a link to a database that was never built. Neither should reach a
-// browser, so both fail at module load.
+// Fail at module load rather than in the browser: a registry entry with no
+// content here renders a page with no title and no presets, and content for an
+// unregistered id links to a database that was never built.
 for (const { id } of registry.datasets) {
   if (!CONTENT[id]) {
     throw new Error(`datasets.json declares "${id}" but web/src/datasets.js has no content for it`);
@@ -69,8 +64,8 @@ for (const id of Object.keys(CONTENT)) {
 export const DATASETS = registry.datasets.map((d) => ({
   id: d.id,
   dbSizeMb: d.dbSizeMb,
-  // Derived, not written twice: the candidate count the hub shows is the same
-  // number the assembler enforces, so the two cannot drift apart.
+  // Derived from expectedRows so the count the hub shows is the same number the
+  // assembler enforces.
   blurb: `${d.expectedRows.toLocaleString("vi-VN")} thí sinh`,
   ...CONTENT[d.id],
 }));

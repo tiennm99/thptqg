@@ -51,12 +51,11 @@ type Result struct {
 type Options struct {
 	// Concurrency is the number of files downloaded at once.
 	Concurrency int
-	// Timeout bounds each individual request, headers and body together.
-	// The original JS crawler had no timeout, so one stalled connection could
-	// hang the whole run indefinitely.
+	// Timeout bounds each individual request, headers and body together, so a
+	// single stalled connection cannot hang the whole run.
 	Timeout time.Duration
-	// Headers are sent with every request. The CDN this was written against
-	// rejects requests without a browser User-Agent and a matching Referer.
+	// Headers are sent with every request. The 2017 CDN rejects requests
+	// without a browser User-Agent and a matching Referer.
 	Headers map[string]string
 	// OnResult, if set, is called once per completed item. Calls are
 	// serialised, so it does not need its own locking, but they arrive in

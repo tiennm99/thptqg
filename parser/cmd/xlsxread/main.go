@@ -1,8 +1,7 @@
 // Command xlsxread reads .xls/.xlsx files and builds SQLite databases for the
 // thptqg datasets.
 //
-// The CLI contract is fixed by the assembler, which drives this binary, and it
-// matched the Rust binary it replaced exactly:
+// The CLI contract is fixed by the assembler, which drives this binary:
 //
 //	xlsxread build --schema <config.yml> --input <dir> --output <db>
 //	xlsxread audit --schema <config.yml> --input <dir> --db <db>
@@ -67,8 +66,8 @@ func runBuild(args []string) {
 		fatalf("Failed to load config: %v", err)
 	}
 
-	// The 2016 dataset selects its column layout per file at runtime; every other
-	// dataset uses the fixed columns: mapping (main.rs:63-67).
+	// The 2016 dataset selects its column layout per sheet at runtime; every
+	// other dataset uses the fixed columns: mapping from its config.
 	if cfg.FormatDetection != nil && *cfg.FormatDetection == "thptqg2016" {
 		if err := ingest.Detect2016(cfg, *inputDir, *outputPath); err != nil {
 			fatalf("%v", err)
@@ -102,8 +101,8 @@ func runAudit(args []string) {
 	}
 	audit.PrintReport(res)
 
-	// A mismatch is a non-zero exit even though the audit itself succeeded
-	// (main.rs:46-48) — CI treats it as a failure signal.
+	// A mismatch is a non-zero exit even though the audit itself succeeded —
+	// CI treats it as a failure signal.
 	if !res.Matched {
 		os.Exit(1)
 	}

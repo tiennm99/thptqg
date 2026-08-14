@@ -8,12 +8,12 @@ import (
 
 // xlsxWorkbook reads OOXML through excelize.
 //
-// Two excelize behaviours must be corrected to match calamine:
+// Two excelize behaviours must be corrected to match the reference:
 //
-//  1. GetRows applies the cell number format by default, while calamine renders
-//     the underlying value. RawCellValue: true disables that.
-//  2. GetRows trims trailing blank cells, so rows are ragged; calamine returns a
-//     rectangular used range. Rows are padded back out to the sheet width.
+//  1. GetRows applies the cell number format by default, while the reference
+//     renders the underlying value. RawCellValue: true disables that.
+//  2. GetRows trims trailing blank cells, so rows are ragged; the reference used
+//     range is rectangular. Rows are padded back out to the sheet width.
 type xlsxWorkbook struct {
 	f      *excelize.File
 	sheets []Sheet
@@ -35,15 +35,16 @@ func openXLSX(path string) (Workbook, error) {
 			return nil, fmt.Errorf("excelize GetRows %s/%s: %w", path, name, err)
 		}
 
-		// Do NOT trim trailing blank rows: calamine's used range keeps them, and
-		// excelize's GetRows already drops trailing fully-empty rows itself.
+		// Do NOT trim trailing blank rows: the reference used range keeps them,
+		// and excelize's GetRows already drops trailing fully-empty rows itself.
 		//
-		// One correction is needed. 63 sheets in 2017-old and 53 in 2017-old2
-		// hold a single empty shared-string cell at A1; calamine reports those
-		// as a 1x1 range, while GetRows returns nothing. A genuinely empty sheet
-		// (230 of them in 2016) is height 0 on both sides. GetCellType tells the
-		// two apart: the empty-shared-string cell exists in the XML and types as
-		// CellTypeSharedString, an absent cell types as CellTypeUnset.
+		// One correction is needed. A sheet holding a single empty
+		// shared-string cell at A1 is a 1x1 range to the reference, while
+		// GetRows returns nothing for it. A genuinely empty sheet (230 of them
+		// in 2016) is height 0 either way.
+		// GetCellType tells the two apart: the empty-shared-string cell exists
+		// in the XML and types as CellTypeSharedString, an absent cell types as
+		// CellTypeUnset.
 		if len(raw) == 0 {
 			if t, terr := f.GetCellType(name, "A1"); terr == nil && t != excelize.CellTypeUnset {
 				raw = [][]string{{""}}

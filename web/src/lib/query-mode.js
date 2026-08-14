@@ -1,9 +1,6 @@
 /**
- * Classify a search box query as an exam ID (số báo danh) or a name.
- *
- * Shared by App.jsx and search-form.jsx. They previously carried separate
- * copies of this rule and had already drifted: the 2016 app matched
- * `/^[A-Z]{2,4}\d+$/i || /^\d+$/` while the 2017 app matched only `/^\d+$/`.
+ * Classify a search box query as an exam ID (số báo danh) or a name. Shared by
+ * App.jsx and search-form.jsx so the two cannot disagree on what a query is.
  *
  * SBD formats across both exam years:
  *
@@ -11,9 +8,8 @@
  *   017006021    2016 — 9 digits including a leading zero
  *   BAL000001    2016 — 2-4 letter exam-cluster code then digits
  *
- * That last form is not an edge case: 616,593 of 877,461 candidates in the
- * 2016 dataset (70.3%) have a letter-prefixed SBD. Matching digits only would
- * break exam-ID lookup for most of that year.
+ * The letter prefix is not an edge case: 70% of the 2016 candidates have one,
+ * so a digits-only pattern would break exam-ID lookup for most of that year.
  */
 
 const SBD_PATTERN = /^[A-Za-z]{0,4}\d+$/;

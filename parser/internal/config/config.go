@@ -1,8 +1,8 @@
-// Package config loads per-dataset parse rules — a port of parser/src/config.rs.
+// Package config loads per-dataset parse rules.
 //
 // The config deliberately carries no SQL. The table shape, the INSERT and the
 // subject regexes are identical for every dataset and live in internal/schema;
-// keeping them here meant one copy of the DDL per dataset, which is how the
+// keeping them here means one copy of the DDL per dataset, which is how the
 // 2016 and 2017 schemas drifted apart.
 package config
 
@@ -25,7 +25,7 @@ const (
 	SheetModeFirst SheetMode = "first"
 )
 
-// valid reports whether m is one of the two values the Rust enum accepts.
+// valid reports whether m is one of the two accepted sheet modes.
 //
 // Checked after decoding rather than via a custom unmarshaler: the decoder
 // assigns named string types directly, so a typo would otherwise decode
@@ -52,7 +52,7 @@ type DatasetConfig struct {
 type ReaderCfg struct {
 	SheetMode SheetMode `yaml:"sheet_mode"`
 	// StripBlankRows skips rows where every cell is empty before counting them
-	// as source rows (a 2017-old2 quirk).
+	// as source rows.
 	StripBlankRows bool `yaml:"strip_blank_rows"`
 }
 
@@ -66,8 +66,7 @@ type ColumnMap struct {
 }
 
 type ValidationCfg struct {
-	// RequireNumericSbd mirrors build-database-old.js / -old2.js, which require
-	// so_bao_danh to match ^\d+$.
+	// RequireNumericSbd skips rows whose so_bao_danh is not all ASCII digits.
 	RequireNumericSbd   bool `yaml:"require_numeric_sbd"`
 	RequireNonemptyName bool `yaml:"require_nonempty_name"`
 	RequireNonemptySbd  bool `yaml:"require_nonempty_sbd"`
@@ -80,11 +79,10 @@ type HeaderCfg struct {
 
 // Parse decodes a config, rejecting any key the struct does not declare.
 //
-// Strictness is load-bearing and has its own test. Rust gets it from serde's
-// deny_unknown_fields; yaml.v3 needs KnownFields(true) explicitly, and Go YAML
-// decoders ignore unknown keys by default. Without it a leftover `schema:`
-// mapping would look effective while internal/schema actually drove the build —
-// the drift that produced two divergent schemas before the unification.
+// Strictness is load-bearing and has its own test. YAML decoders ignore unknown
+// keys by default, so KnownFields(true) has to be set explicitly. Without it a
+// leftover `schema:` mapping would look effective while internal/schema actually
+// drove the build — the drift that produced two divergent schemas.
 func Parse(src []byte) (*DatasetConfig, error) {
 	var cfg DatasetConfig
 	dec := yaml.NewDecoder(bytes.NewReader(src))

@@ -2,9 +2,7 @@
 // headers, which are blank, and how rows are counted.
 //
 // The reader deliberately has none of this — it reports every sheet and every
-// row exactly as calamine would, which is what made its fidelity independently
-// testable. This package ports the build loop in parser/src/main.rs plus the
-// header/blank helpers in parser/src/reader.rs.
+// row verbatim, which is what keeps its fidelity independently testable.
 package ingest
 
 import (
@@ -21,10 +19,10 @@ import (
 )
 
 // IsHeaderRow reports whether row is a header, by matching its uppercased first
-// cell against the configured tokens (reader.rs:28-34).
+// cell against the configured tokens.
 //
-// Rows shorter than 3 cells are never headers (reader.rs:29) — a 1- or 2-cell
-// row is a stray fragment, not a real header.
+// Rows shorter than 3 cells are never headers — a 1- or 2-cell row is a stray
+// fragment, not a real header.
 func IsHeaderRow(row []reader.Cell, tokens []string) bool {
 	if len(row) < 3 {
 		return false
@@ -38,13 +36,11 @@ func IsHeaderRow(row []reader.Cell, tokens []string) bool {
 	return false
 }
 
-// IsAllBlank reports whether every cell is empty or whitespace-only
-// (reader.rs:40-43).
+// IsAllBlank reports whether every cell is empty or whitespace-only.
 //
-// Compares on Str only. Cell.IsEmpty is diagnostic: calamine distinguishes
-// Data::Empty from an empty string cell, but both render "" and both count as
-// blank here, so branching on the flag would invent a distinction the Rust
-// original never acts on.
+// Compares on Str only. Cell.IsEmpty is diagnostic: an absent cell and an empty
+// string cell both render "" and both count as blank here, so branching on the
+// flag would invent a distinction nothing downstream acts on.
 func IsAllBlank(row []reader.Cell) bool {
 	for _, c := range row {
 		if strings.TrimSpace(c.Str) != "" {
@@ -54,11 +50,11 @@ func IsAllBlank(row []reader.Cell) bool {
 	return true
 }
 
-// InputFiles lists a dataset directory's spreadsheets, sorted.
+// InputFiles lists a dataset directory's spreadsheets, bytewise-sorted on the
+// full path.
 //
 // The sort is load-bearing, not cosmetic: INSERT OR REPLACE is last-wins, so
-// file order decides which row survives a duplicate SBD. Rust collects read_dir
-// then calls files.sort() (main.rs:82-97) — a bytewise sort on the full path.
+// file order decides which row survives a duplicate SBD.
 func InputFiles(dir string) ([]string, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -78,8 +74,7 @@ func InputFiles(dir string) ([]string, error) {
 	return out, nil
 }
 
-// DatasetLabel derives the stats-wording key from the input directory basename,
-// matching main.rs:98-101.
+// DatasetLabel derives the build-log label from the input directory basename.
 func DatasetLabel(inputDir string) string {
 	base := filepath.Base(strings.TrimRight(inputDir, string(filepath.Separator)))
 	if base == "" || base == "." || base == string(filepath.Separator) {
@@ -92,11 +87,11 @@ func DatasetLabel(inputDir string) string {
 type RowFn func(sheetIdx int, row []reader.Cell)
 
 // ProcessFile applies sheet selection and per-sheet header skipping, invoking fn
-// for every remaining row — the port of reader.rs:54-105.
+// for every remaining row.
 //
-// The header check is per SHEET, not per file: first_row resets inside the sheet
-// loop (reader.rs:91), so a workbook whose second sheet repeats the header has
-// it skipped there too.
+// The header check is per SHEET, not per file: firstRow resets inside the sheet
+// loop, so a workbook whose second sheet repeats the header has it skipped
+// there too.
 func ProcessFile(path string, cfg *config.DatasetConfig, fn RowFn) error {
 	wb, err := reader.Open(path)
 	if err != nil {
@@ -131,8 +126,7 @@ func ProcessFile(path string, cfg *config.DatasetConfig, fn RowFn) error {
 	return nil
 }
 
-// Standard runs the fixed-column path for the 2017-family datasets — the port of
-// run_build_standard (main.rs:74-199).
+// Standard runs the fixed-column path for the 2017-family datasets.
 func Standard(cfg *config.DatasetConfig, inputDir, outputPath string) error {
 	files, err := InputFiles(inputDir)
 	if err != nil {
@@ -149,7 +143,7 @@ func Standard(cfg *config.DatasetConfig, inputDir, outputPath string) error {
 
 	stripBlank := cfg.Reader.StripBlankRows
 
-	// One transaction spans the whole dataset directory (main.rs:120,184).
+	// One transaction spans the whole dataset directory.
 	tx, err := db.Begin()
 	if err != nil {
 		return fmt.Errorf("begin: %w", err)
@@ -167,8 +161,8 @@ func Standard(cfg *config.DatasetConfig, inputDir, outputPath string) error {
 
 		procErr := ProcessFile(file, cfg, func(_ int, row []reader.Cell) {
 			allBlank := IsAllBlank(row)
-			// 2017-old2: blank rows drop out BEFORE the source-row counter
-			// (main.rs:134-137, ahead of the increment at :140).
+			// Blank rows drop out BEFORE the source-row counter, so they never
+			// reach the source total.
 			if stripBlank && allBlank {
 				return
 			}
@@ -182,10 +176,10 @@ func Standard(cfg *config.DatasetConfig, inputDir, outputPath string) error {
 
 			switch transform.ValidateRow(hoTen, soBaoDanh, &cfg.Validation, stripBlank, allBlank) {
 			case transform.SkipBlankRow:
-				// Falls through to transform and insert, matching main.rs:150.
-				// Unreachable here: BlankRow requires stripBlank && allBlank,
-				// which returned above. Kept so the two call sites with opposite
-				// outcomes stay visibly distinct.
+				// Falls through to transform and insert. Unreachable here:
+				// BlankRow requires stripBlank && allBlank, which returned
+				// above. Kept so the two call sites with opposite outcomes stay
+				// visibly distinct.
 			case transform.SkipNone:
 				// proceed
 			default:
@@ -200,7 +194,7 @@ func Standard(cfg *config.DatasetConfig, inputDir, outputPath string) error {
 			}
 			if err := ins.Insert(parsed); err != nil {
 				fileErrors++
-				// Only the first five insert warnings print (main.rs:164).
+				// Only the first five insert warnings print.
 				if st.Errors+fileErrors <= 5 {
 					fmt.Fprintf(os.Stderr, "  [warn] %s: %v\n", base, err)
 				}
@@ -209,8 +203,8 @@ func Standard(cfg *config.DatasetConfig, inputDir, outputPath string) error {
 			fileRows++
 		})
 		if procErr != nil {
-			// A file that cannot be read is logged and counted, never fatal
-			// (main.rs:171-177) — one corrupt file must not abandon the batch.
+			// A file that cannot be read is logged and counted, never fatal —
+			// one corrupt file must not abandon the batch.
 			fmt.Fprintf(os.Stderr, "  [error] %s: %v\n", base, procErr)
 			fileErrors++
 		}
@@ -232,8 +226,7 @@ func Standard(cfg *config.DatasetConfig, inputDir, outputPath string) error {
 	return writer.Finish(db, outputPath, st)
 }
 
-// cellAt returns the trimmed cell at idx, or "" when out of range — the
-// unwrap_or_default() behaviour of transform.rs:163-167.
+// cellAt returns the trimmed cell at idx, or "" when idx is out of range.
 func cellAt(row []reader.Cell, idx int) string {
 	if idx < 0 || idx >= len(row) {
 		return ""

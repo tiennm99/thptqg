@@ -13,19 +13,20 @@ import (
 	"github.com/tiennm99/thptqg/parser/internal/reader"
 )
 
-// TestReaderFidelity asserts the Go reader reproduces calamine byte-for-byte on
-// every real input file.
+// TestReaderFidelity asserts the reader reproduces the reference rendering
+// byte-for-byte on every real input file.
 //
-// The oracle is a committed SHA-256 per file over a canonical cell dump. The
-// dumps themselves are real student names and birthdates, so only the hashes are
-// committed — regenerate the dumps from the Rust side on demand
-// (parser/examples/dump_cells.rs), which is possible because parser/ still
-// builds.
+// The oracle is parser/testdata/reader-fidelity-hashes.tsv: one SHA-256 per
+// file over a canonical cell dump. The dumps are real student names and
+// birthdates, so only the hashes are committed. The manifest is FROZEN — it is
+// the only guard on reader output, so a mismatch is a reader bug until proven
+// otherwise, never a cue to regenerate the hashes.
 //
-// The canonical form carries geometry and rendered cell values. The calamine
-// Data variant is excluded on purpose: Data::Empty and Data::String("") both
-// render "" and both count as blank in is_all_blank and transform, so the
-// distinction cannot reach the database.
+// The canonical form carries geometry and rendered cell values only. Whether a
+// cell was absent or an empty string is excluded on purpose: both render "" and
+// both count as blank in IsAllBlank and transform, so the distinction cannot
+// reach the database.
+//
 // Runs by default so CI and `go test ./...` keep the full guarantee; skipped
 // under -short, which is how to iterate without paying ~77s to re-read 418 MB.
 func TestReaderFidelity(t *testing.T) {
@@ -65,7 +66,7 @@ func TestReaderFidelity(t *testing.T) {
 				t.Fatalf("hash %s: %v", rel, err)
 			}
 			if got != want {
-				t.Errorf("cell dump diverges from calamine\n  want %s\n  got  %s", want, got)
+				t.Errorf("cell dump diverges from the frozen oracle\n  want %s\n  got  %s", want, got)
 			}
 		})
 	}
@@ -77,8 +78,8 @@ func TestReaderFidelity(t *testing.T) {
 	}
 }
 
-// canonicalHash renders one file in the canonical form and hashes it. Kept
-// byte-identical to the awk canonicalisation used to build the manifest.
+// canonicalHash renders one file in the canonical form and hashes it. The byte
+// format is fixed: any change to it invalidates every hash in the manifest.
 func canonicalHash(path string) (string, error) {
 	wb, err := reader.Open(path)
 	if err != nil {

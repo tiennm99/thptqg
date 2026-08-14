@@ -5,9 +5,8 @@
 // out — but a change in transform or writer logic can alter what is in those
 // rows while both of those still pass. This is what catches that.
 //
-// It was written as the gate for the Rust-to-Go parser migration and works for
-// any two builds: before and after a refactor, or a re-crawl against the
-// databases already published.
+// It works on any two builds: either side of a refactor, or a re-crawl against
+// the databases already published.
 package verify
 
 import (

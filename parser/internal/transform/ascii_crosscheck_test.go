@@ -9,17 +9,18 @@ import (
 	"github.com/tiennm99/thptqg/parser/internal/transform"
 )
 
-// TestToAsciiAgainstRustOutput cross-checks ToAscii against Rust on real data.
+// TestToAsciiAgainstRustOutput cross-checks ToAscii against a reference database
+// on real data.
 //
-// A Rust-built database is its own oracle: every row carries ho_ten alongside
-// the ho_ten_ascii that Rust derived from it, so the whole table is a
-// name -> expected-slug corpus far broader than the 20 hand-picked unit cases.
-//
-// Point it at a Rust-built database:
+// Such a database is its own oracle: every row carries ho_ten alongside the
+// ho_ten_ascii derived from it, so the whole table is a name -> expected-slug
+// corpus far broader than the 20 hand-picked unit cases.
 //
 //	GO_PARSER_RUST_DB=/tmp/rust-2016.db go test ./internal/transform/
 //
-// Skips when unset, so the default suite stays hermetic.
+// Skips when unset, so the default suite stays hermetic. The reference parser is
+// gone from the tree, so no new oracle database can be produced and this always
+// skips today.
 func TestToAsciiAgainstRustOutput(t *testing.T) {
 	path := os.Getenv("GO_PARSER_RUST_DB")
 	if path == "" {

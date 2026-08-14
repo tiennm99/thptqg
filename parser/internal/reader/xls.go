@@ -10,18 +10,16 @@ import (
 
 // xlsWorkbook reads legacy BIFF through pbnjay/grate.
 //
-// grate replaced extrame/xls, which was measured against calamine ground truth
-// and found to corrupt 69% of cells and drop a further 28%: undecoded UTF-16LE
-// and BIFF record framing leaked into cell values, content moved between rows
-// and columns, and tail rows came back blank. That was charset-independent and
-// unfixable from the outside. grate reproduces calamine exactly on the same
-// files.
+// Do not swap grate back for extrame/xls: on this corpus it corrupted 69% of
+// cells and dropped a further 28% — undecoded UTF-16LE and BIFF record framing
+// leaked into cell values, content moved between rows and columns, and tail
+// rows came back blank. Charset-independent, and unfixable from the outside.
 //
 // The one normalisation grate needs is trailing blank rows: it yields rows past
-// the end of calamine's used range (one for a populated sheet, two for an empty
-// one), so trailing all-blank rows are trimmed. Note this is the opposite of
-// the xlsx path, where excelize already trims and calamine keeps a 1x1 empty
-// range — in both cases the rule is "match calamine's used range".
+// the end of the reference used range (one for a populated sheet, two for an
+// empty one), so trailing all-blank rows are trimmed. Note this is the opposite
+// of the xlsx path, where excelize already trims and the reference keeps a 1x1
+// empty range — in both cases the rule is "match the reference used range".
 type xlsWorkbook struct {
 	sheets []Sheet
 	rows   [][][]Cell
@@ -56,7 +54,7 @@ func openXLS(path string) (Workbook, error) {
 			raw = append(raw, cp)
 		}
 
-		// Trim to calamine's used range.
+		// Trim to the reference used range.
 		height := len(raw)
 		for height > 0 && rowAllBlank(raw[height-1]) {
 			height--
@@ -87,7 +85,7 @@ func openXLS(path string) (Workbook, error) {
 
 // demergeMarker blanks grate's merged-cell continuation markers.
 //
-// grate fills the cells covered by a merge with sentinel runes; calamine
+// grate fills the cells covered by a merge with sentinel runes; the reference
 // reports them as empty. In this corpus they occur only in the merged title
 // block of the 2016 spreadsheets (19 cells in rows 0-2 of one file). Only an
 // exact whole-value match is blanked, so a real cell that merely contains an

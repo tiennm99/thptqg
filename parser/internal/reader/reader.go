@@ -1,6 +1,9 @@
-// Package reader wraps the two spreadsheet libraries behind one streaming
-// contract, mirroring parser/src/reader.rs (which wraps calamine's
-// open_workbook_auto for both formats).
+// Package reader wraps the two spreadsheet libraries behind one contract.
+//
+// Cell rendering and sheet geometry are pinned by the frozen fidelity oracle in
+// parser/testdata/reader-fidelity-hashes.tsv. "The reference" below means that
+// pinned rendering: whenever an underlying library disagrees with it, this
+// package corrects the library, never the oracle.
 //
 // The *contract* is row-at-a-time: callers receive one row per callback and
 // never hold the workbook. The two implementations do not honour that in
@@ -16,21 +19,19 @@ import (
 	"strings"
 )
 
-// Cell is one spreadsheet cell rendered the way calamine's Data::to_string()
-// renders it.
+// Cell is one spreadsheet cell rendered as reference text.
 //
-// IsEmpty tracks calamine's Data::Empty variant separately from a string cell
-// that happens to be empty. Rust distinguishes them at reader.rs:42, but both
-// render "" and both count as blank in is_all_blank and in transform, so the
-// flag is diagnostic only — never compare on it.
+// IsEmpty marks a cell with no value, as opposed to a string cell that happens
+// to be empty. Both render "" and both count as blank in IsAllBlank and in
+// transform, so the flag is diagnostic only — never compare on it.
 type Cell struct {
 	Str     string
 	IsEmpty bool
 }
 
 // Sheet carries a sheet's identity and geometry. Height and Width describe the
-// used range, matching calamine's Range::height()/width(); every used range in
-// the corpus starts at (0,0), verified across every input file.
+// reference used range; every used range in the corpus starts at (0,0),
+// verified across every input file.
 type Sheet struct {
 	Index  int
 	Name   string
@@ -40,8 +41,8 @@ type Sheet struct {
 
 // RowFunc receives each row of each sheet. Rows are padded to the sheet's used
 // width — width is load-bearing because every column read downstream is
-// positional with an unwrap_or_default() equivalent, so a short row silently
-// NULLs its tail columns.
+// positional and falls back to "" when the index is out of range, so a short
+// row silently NULLs its tail columns.
 type RowFunc func(sheet Sheet, rowIdx int, row []Cell) error
 
 // Workbook is one opened spreadsheet.
@@ -53,7 +54,7 @@ type Workbook interface {
 	Close() error
 }
 
-// Open dispatches on file extension, mirroring calamine's open_workbook_auto.
+// Open dispatches on file extension.
 func Open(path string) (Workbook, error) {
 	switch strings.ToLower(filepath.Ext(path)) {
 	case ".xls":

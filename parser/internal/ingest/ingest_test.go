@@ -8,10 +8,6 @@ import (
 	"github.com/tiennm99/thptqg/parser/internal/reader"
 )
 
-// Ports the 7 tests in parser/src/reader.rs:116-197. They were listed under
-// Phase 1 originally, which was wrong: they exercise header and blank-row
-// policy, which lives here rather than in the reader package.
-
 func cells(vals ...string) []reader.Cell {
 	out := make([]reader.Cell, len(vals))
 	for i, v := range vals {
@@ -22,50 +18,45 @@ func cells(vals ...string) []reader.Cell {
 
 var stdTokens = []string{"HO_TEN", "HỌ TÊN", "STT"}
 
-// header_detects_ho_ten (reader.rs:128)
 func TestHeaderDetectsHoTen(t *testing.T) {
 	if !IsHeaderRow(cells("HO_TEN", "NGAY_SINH", "SBD"), stdTokens) {
 		t.Error("HO_TEN header not detected")
 	}
 }
 
-// header_detects_stt (reader.rs:139)
 func TestHeaderDetectsStt(t *testing.T) {
 	if !IsHeaderRow(cells("STT", "B", "C"), stdTokens) {
 		t.Error("STT header not detected")
 	}
 }
 
-// header_detects_ho_ten_unicode (reader.rs:150)
 func TestHeaderDetectsHoTenUnicode(t *testing.T) {
 	if !IsHeaderRow(cells("HỌ TÊN", "B", "C"), stdTokens) {
 		t.Error("HỌ TÊN header not detected")
 	}
 }
 
-// header_rejects_data_row (reader.rs:161)
 func TestHeaderRejectsDataRow(t *testing.T) {
 	if IsHeaderRow(cells("Nguyen Van A", "01/01/2000", "12345678"), stdTokens) {
 		t.Error("data row wrongly detected as header")
 	}
 }
 
-// header_rejects_short_row (reader.rs:172) — the <3 cell guard.
+// TestHeaderRejectsShortRow covers the <3-cell guard.
 func TestHeaderRejectsShortRow(t *testing.T) {
 	if IsHeaderRow(cells("HO_TEN", ""), stdTokens) {
 		t.Error("a 2-cell row must never be a header, even with a matching token")
 	}
 }
 
-// header_case_insensitive (reader.rs:179)
 func TestHeaderCaseInsensitive(t *testing.T) {
 	if !IsHeaderRow(cells("ho_ten", "B", "C"), stdTokens) {
 		t.Error("lowercase header not detected")
 	}
 }
 
-// blank_row_detection (reader.rs:190) — note the third cell is an empty *string*
-// cell, not Data::Empty, and must still count as blank.
+// TestBlankRowDetection: the third cell is an empty *string* cell rather than an
+// absent one, and must still count as blank.
 func TestBlankRowDetection(t *testing.T) {
 	blank := []reader.Cell{{IsEmpty: true}, {IsEmpty: true}, {Str: ""}}
 	if !IsAllBlank(blank) {
@@ -77,14 +68,13 @@ func TestBlankRowDetection(t *testing.T) {
 }
 
 // TestIsAllBlankIgnoresIsEmptyFlag pins the rule that blankness is decided by
-// the rendered string, never by Cell.IsEmpty — calamine emits empty-but-not-Empty
-// cells, and treating the flag as authoritative would diverge.
+// the rendered string, never by Cell.IsEmpty, which is diagnostic only.
 func TestIsAllBlankIgnoresIsEmptyFlag(t *testing.T) {
 	// Content present but IsEmpty wrongly set: still not blank.
 	if IsAllBlank([]reader.Cell{{Str: "x", IsEmpty: true}}) {
 		t.Error("a cell with content must not be blank regardless of IsEmpty")
 	}
-	// Whitespace only: blank, matching Rust's trim().is_empty().
+	// Whitespace only: blank.
 	if !IsAllBlank([]reader.Cell{{Str: "   "}, {Str: "\t"}}) {
 		t.Error("whitespace-only cells should be blank")
 	}

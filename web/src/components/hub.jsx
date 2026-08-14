@@ -1,12 +1,6 @@
 import { DATASETS, pathOf } from "../datasets";
 
-/**
- * The /thptqg/ landing route.
- *
- * Replaces the hand-written static index.html the repo used to serve here, so
- * the hub shares the app's styling and dataset list instead of repeating them.
- * No database is fetched on this route.
- */
+/** The /thptqg/ landing route. No database is fetched here. */
 export function Hub() {
   const base = import.meta.env.BASE_URL;
 

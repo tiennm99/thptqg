@@ -1,13 +1,14 @@
 /**
  * SQL presets shown in the "Truy vấn SQL" tab, per dataset.
  *
- * These are genuinely dataset-specific and cannot be shared:
+ * These cannot be shared between years:
  *   - 2016 has ten_cum_thi / gioi_tinh to group by, and no KHTN/KHXH/GDCD
  *   - 2017 has the composite KHTN/KHXH scores, and its SBDs are province-
  *     prefixed 8-digit numbers, which the Long An (49xxx) queries rely on
  *
- * Both end with a "Hệ thống" group whose first query is run automatically when
- * the SQL tab is first opened, so the schema is visible before writing a query.
+ * Each list must end with a "Hệ thống" group: custom-query.jsx runs that group's
+ * first query automatically when the SQL tab opens, so the schema is on screen
+ * before the user writes anything.
  */
 
 export const PRESETS_2017 = [
@@ -60,11 +61,10 @@ WHERE so_bao_danh LIKE '49%'
 ORDER BY tong_khoi_a DESC LIMIT 10`,
       },
       {
-        // Top 100 Long An students by their best of 49 official 2017
-        // admission blocks. Each (student, block) pair is materialised via
-        // UNION ALL; ROW_NUMBER picks each student's #1 block; the outer
-        // SELECT ranks across students. Result includes the winning block
-        // code so the user sees which combination produced the score.
+        // Each (student, block) pair is materialised by UNION ALL, ROW_NUMBER
+        // picks each student's best block, and the outer SELECT ranks across
+        // students. The winning block code is returned so the user can see
+        // which combination produced the score.
         label: "Top 10 điểm khối cao nhất - Long An",
         sql: `WITH per_block AS (
   SELECT so_bao_danh, ho_ten, ngay_sinh, 'A00' k, toan+vat_ly+hoa_hoc s FROM student WHERE so_bao_danh LIKE '49%'

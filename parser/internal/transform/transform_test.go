@@ -7,12 +7,7 @@ import (
 	"github.com/tiennm99/thptqg/parser/internal/reader"
 )
 
-// Ports every test in parser/src/transform.rs's test module (:201-409) — 29 in
-// total, not the 20 in the :213-315 range, which covers only ToAscii. The nine
-// outside that range are the ParseScores and ValidateRow cases, i.e. exactly the
-// behaviours this package's traps concern.
-
-// --- ToAscii: the 20 cases at transform.rs:213-315 ---
+// --- ToAscii ---
 
 func TestToAscii(t *testing.T) {
 	cases := []struct{ name, in, want string }{
@@ -47,10 +42,9 @@ func TestToAscii(t *testing.T) {
 }
 
 // TestToAsciiUsesLiteralRangeNotUnicodeMn guards the highest-value trap in this
-// package. transform.rs:56 filters the literal range U+0300..U+036F; the inline
-// comment at :53 calls it "Unicode category M", but the code is the spec.
-// unicode.Mn is strictly broader, so using it would strip marks Rust keeps.
-// U+0654 (ARABIC HAMZA ABOVE) is in Mn but outside the range: Rust keeps it.
+// package: ToAscii drops the literal range U+0300..U+036F, not Unicode category
+// Mn, which is strictly broader. U+0654 (ARABIC HAMZA ABOVE) is in Mn but outside
+// the range, so it must survive.
 func TestToAsciiUsesLiteralRangeNotUnicodeMn(t *testing.T) {
 	const in = "aٔb"
 	if got := ToAscii(in); got != in {
@@ -76,7 +70,7 @@ func TestToAsciiDStrokeIndependentOfNFD(t *testing.T) {
 	}
 }
 
-// --- ParseScores: transform.rs:323, :332, :342 ---
+// --- ParseScores ---
 
 func TestParseScoresSingle(t *testing.T) {
 	s := ParseScores("Toán: 8.5")
@@ -115,7 +109,7 @@ func TestParseScoresRealCellShape(t *testing.T) {
 	}
 }
 
-// --- ValidateRow: transform.rs:359, :365, :374, :383, :393, :400 ---
+// --- ValidateRow ---
 
 func defaultValidation() *config.ValidationCfg {
 	return &config.ValidationCfg{
@@ -165,9 +159,8 @@ func TestValidateBlankRowSkipped(t *testing.T) {
 	}
 }
 
-// TestValidateNumericSbdIsDigitScanNotAtoi: Rust uses chars().all(is_ascii_digit),
-// which strconv.Atoi does not reproduce — Atoi accepts a leading sign, and would
-// wrongly admit "+123".
+// TestValidateNumericSbdIsDigitScanNotAtoi: the check is a digit scan, not
+// strconv.Atoi — Atoi accepts a leading sign and would wrongly admit "+123".
 func TestValidateNumericSbdIsDigitScanNotAtoi(t *testing.T) {
 	v := defaultValidation()
 	v.RequireNumericSbd = true
@@ -179,7 +172,7 @@ func TestValidateNumericSbdIsDigitScanNotAtoi(t *testing.T) {
 }
 
 // TestValidateBlankRowOnlyWhenStripEnabled: with strip_blank_rows false, an
-// all-blank row falls through to the empty-field checks instead (transform.rs:109).
+// all-blank row falls through to the empty-field checks instead.
 func TestValidateBlankRowOnlyWhenStripEnabled(t *testing.T) {
 	if r := ValidateRow("", "", defaultValidation(), false, true); r != SkipEmptyField {
 		t.Errorf("got %v, want SkipEmptyField when strip_blank_rows is off", r)
@@ -227,7 +220,6 @@ func TestTransformRow(t *testing.T) {
 	}
 }
 
-// TestTransformRowEmptyNgaySinhBecomesNil ports transform.rs:179-183.
 func TestTransformRowEmptyNgaySinhBecomesNil(t *testing.T) {
 	got, err := TransformRow(cells("A", "", "1", ""), fixedColumnCfg())
 	if err != nil {
@@ -238,9 +230,8 @@ func TestTransformRowEmptyNgaySinhBecomesNil(t *testing.T) {
 	}
 }
 
-// TestTransformRowShortRowYieldsEmptyFields ports the unwrap_or_default()
-// behaviour at transform.rs:163-176: a row shorter than the configured indices
-// yields empty strings rather than an error.
+// TestTransformRowShortRowYieldsEmptyFields: a row shorter than the configured
+// indices yields empty strings rather than an error.
 func TestTransformRowShortRowYieldsEmptyFields(t *testing.T) {
 	got, err := TransformRow(cells("OnlyName"), fixedColumnCfg())
 	if err != nil {
@@ -252,8 +243,8 @@ func TestTransformRowShortRowYieldsEmptyFields(t *testing.T) {
 }
 
 // TestTransformRowDiemThiIsNotTrimmed pins an asymmetry that is easy to
-// "tidy away": ho_ten, ngay_sinh and so_bao_danh are trimmed through the closure
-// at transform.rs:164-168, but diem_thi is read raw at :172-175.
+// "tidy away": ho_ten, ngay_sinh and so_bao_danh are trimmed, but diem_thi is
+// read raw.
 func TestTransformRowDiemThiIsNotTrimmed(t *testing.T) {
 	row := cells("  A  ", "  01/01/2000  ", "  123  ", "   Toán: 5   ")
 	got, err := TransformRow(row, fixedColumnCfg())
@@ -273,8 +264,7 @@ func TestTransformRowDiemThiIsNotTrimmed(t *testing.T) {
 }
 
 // TestTransformRowRequiresColumns: the fixed-column path is only reachable when
-// the config has a columns: mapping. Rust panics via .expect() (transform.rs:162);
-// Go returns an error instead.
+// the config has a columns: mapping, and must error rather than guess otherwise.
 func TestTransformRowRequiresColumns(t *testing.T) {
 	cfg := &config.DatasetConfig{Validation: *defaultValidation()}
 	if _, err := TransformRow(cells("A", "B", "C", "D"), cfg); err == nil {

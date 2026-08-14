@@ -10,10 +10,11 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-// normalizeNumeric reproduces calamine's rendering of a numeric cell.
+// normalizeNumeric reproduces the reference rendering of a numeric cell.
 //
-// calamine parses a numeric cell to f64 and renders it with Rust's f64 Display,
-// so the stored literal "6.0" becomes "6". RawCellValue hands back the literal.
+// The reference parses a numeric cell to a float and prints its shortest
+// round-tripping form, so the stored literal "6.0" becomes "6". RawCellValue
+// hands back the literal instead.
 //
 // The cell type must be consulted, not guessed: "01063476", "6.00" and "NAN" are
 // all shared strings that survive ParseFloat, and renumbering them would drop a
@@ -54,7 +55,7 @@ func normalizeNumeric(f *excelize.File, sheet string, col, row int, v string) st
 //
 // Go's encoding/xml performs the line-ending normalisation the XML 1.0 spec
 // mandates (CRLF and lone CR both become LF), so excelize returns "a\nb" where
-// calamine — which reads the raw bytes — returns "a\r\nb". That difference
+// the reference — which reads the raw bytes — returns "a\r\nb". That difference
 // reaches the database: in one 2016 file it affects 2,233 TEN_CUMTHI values,
 // which populate the ten_cum_thi column.
 //

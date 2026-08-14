@@ -6,8 +6,8 @@ function fmt(n) {
   return n === null || n === undefined ? "—" : Number(n).toFixed(2);
 }
 
-// Visible tier legend — keeps symbol + range + label co-located so users
-// don't have to hover tiles to decode colors.
+// Visible legend, so a user does not have to hover tiles to decode the colors.
+// The ranges must stay in step with scoreTier() in lib/admission-blocks.js.
 const TIER_LEGEND = [
   { key: "common",    symbol: "·", range: "≤ 1",   label: "Điểm liệt" },
   { key: "uncommon",  symbol: "○", range: "< 5",   label: "Chưa đạt" },

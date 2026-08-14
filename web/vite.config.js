@@ -1,26 +1,17 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-// One build serves every page. The app resolves which dataset to show from the
-// URL (src/router.js), so there are no per-dataset build variants.
+// One build serves every page; src/router.js resolves the dataset from the URL.
 //
-// `base` is absolute, which is what lets the single emitted index.html work as
-// an entry point at any depth: it references /thptqg/assets/... regardless of
-// the directory it is served from. The deploy step copies it to each dataset
-// path, so every URL is a real static file and no SPA 404-fallback is needed —
-// and the existing ?q= deep links keep working, which that fallback would break.
+// `base` must stay absolute. It makes the single emitted index.html work as an
+// entry point at any depth, because asset URLs read /thptqg/assets/... no matter
+// which directory serves the page. The deploy step copies that file to every
+// dataset path, so each URL is a real static file and needs no SPA 404-fallback
+// — a fallback would break the ?q= deep links.
 //
-// publicDir holds only the gzipped databases, staged there by the assembler
-// (assembler/internal/databases). Nothing uncompressed is ever placed in it.
-//
-// It sits at the repository root rather than inside this workspace because
-// parser writes it, so the path has to climb out of web/. Vite resolves
-// publicDir against the project root, which is this directory.
-//
-// outDir is left at its default, so the build lands in web/dist and this
-// workspace stays self-contained. The Pages artifact (_site) is assembled at
-// the repository root by the assembler (assembler/internal/site), since that is
-// where the deploy action uploads from.
+// publicDir points outside this workspace because the assembler stages the
+// gzipped databases there (assembler/internal/databases). Vite resolves the path
+// against the project root, which is this directory.
 export default defineConfig({
   plugins: [react()],
   base: "/thptqg/",

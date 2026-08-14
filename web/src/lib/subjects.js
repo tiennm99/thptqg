@@ -1,13 +1,11 @@
 /**
- * The 16 subject columns of the canonical schema, in display order.
+ * The 16 subject columns of the canonical schema, in display order. Mirrors
+ * `ScoreFields` in parser/internal/schema/schema.go, and is the single list both
+ * score-table.jsx and student-detail.jsx render from.
  *
- * Mirrors `ScoreFields` in parser/internal/schema/schema.go. Previously this list was
- * maintained separately in score-table.jsx and student-detail.jsx, which is how
- * they drifted out of sync with each other and with the database.
- *
- * No subject is dataset-specific here. Columns a given exam year has no data
- * for are simply NULL for every row, and the UI hides all-NULL columns — so one
- * list serves 2016 and 2017 without branching.
+ * Nothing here is dataset-specific. Columns an exam year has no data for are
+ * NULL on every row, and the UI hides all-NULL columns, so one list serves both
+ * years without branching.
  */
 
 export const SUBJECTS = [
@@ -30,11 +28,9 @@ export const SUBJECTS = [
 ];
 
 /**
- * Non-score columns worth showing in the results table.
- *
- * Only the 2016 dataset populates these; they are NULL throughout 2017
- * and get hidden by the same all-NULL filter that hides unused
- * subjects, so no per-dataset conditional is needed.
+ * Non-score columns worth showing in the results table. Only the 2016 dataset
+ * populates these; the same all-NULL filter that hides unused subjects hides
+ * them elsewhere, so no per-dataset conditional is needed.
  */
 export const IDENTITY_COLUMNS = [
   { key: "ten_cum_thi", label: "Cụm thi" },

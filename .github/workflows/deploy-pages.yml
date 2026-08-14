@@ -3,10 +3,8 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
-  # Pull requests run the build job only. Before this, the workflow triggered on
-  # main-push and workflow_dispatch alone, so "verify on a branch first" was not
-  # actually possible: pushing to a branch ran nothing, and dispatching from one
-  # published that branch straight to the live site.
+  # Pull requests run the build job only: the deploy job is guarded to main, so
+  # a branch can be verified end to end without touching the live site.
   pull_request:
   workflow_dispatch:
 
@@ -92,9 +90,10 @@ jobs:
           path: _site
 
   deploy:
-    # Guarded to main. Without this, a workflow_dispatch from any branch would
-    # publish that branch's output to the live site, and concurrency
-    # cancel-in-progress would kill an in-flight good deploy on the way.
+    # Deploy only from main. pull_request and workflow_dispatch both run on
+    # other branches, and publishing one would put that branch's output on the
+    # live site while concurrency cancel-in-progress killed an in-flight good
+    # deploy on the way.
     if: github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest

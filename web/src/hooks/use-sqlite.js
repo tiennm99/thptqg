@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import initSqlJs from "sql.js";
 
-// sql.js WASM file served from node_modules via Vite's public dir or CDN
+// The sql.js engine itself, fetched from the upstream CDN rather than bundled.
+// It is a hard runtime dependency: if this URL is unreachable, initSqlJs()
+// rejects and no dataset can be opened at all, whatever the database fetch does.
 const SQL_WASM_URL =
   "https://sql.js.org/dist/sql-wasm.wasm";
 
 /**
- * Hook to load a SQLite database from a URL into sql.js.
- * Returns { db, loading, error, progress }.
+ * Load a SQLite database from a URL into sql.js. A `.gz` URL is decompressed in
+ * the browser. Returns { db, loading, error, progress }.
  */
 export function useSqlite(dbUrl) {
   const [db, setDb] = useState(null);
@@ -21,10 +23,8 @@ export function useSqlite(dbUrl) {
 
     async function load() {
       try {
-        // Init sql.js WASM
         const SQL = await initSqlJs({ locateFile: () => SQL_WASM_URL });
 
-        // Fetch the gzipped database with progress tracking
         const response = await fetch(dbUrl);
         if (!response.ok) throw new Error(`Failed to fetch database: ${response.status}`);
 
@@ -45,11 +45,9 @@ export function useSqlite(dbUrl) {
 
         if (cancelled) return;
 
-        // Combine chunks into single ArrayBuffer
         const blob = new Blob(chunks);
         let arrayBuffer;
 
-        // If URL ends with .gz, decompress using DecompressionStream
         if (dbUrl.endsWith(".gz")) {
           const ds = new DecompressionStream("gzip");
           const decompressed = blob.stream().pipeThrough(ds);

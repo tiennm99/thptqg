@@ -781,11 +781,8 @@ footer {
   }
 }
 
-/* ---------------------------------------------------------------------------
-   Table cells for the 2016-only identity columns.
-   Ported from the 2016 frontend; hidden automatically on the 2017 datasets
-   because every row there is NULL.
-   --------------------------------------------------------------------------- */
+/* Table cells for the 2016-only identity columns. The table hides them on other
+   datasets, where every row is NULL. */
 
 .sbd-cell {
   font-family: ui-monospace, monospace;
@@ -803,9 +800,7 @@ footer {
   white-space: nowrap;
 }
 
-/* ---------------------------------------------------------------------------
-   Hub route (/thptqg/) — replaces the old standalone static index.html
-   --------------------------------------------------------------------------- */
+/* Hub route (/thptqg/) */
 
 .hub {
   max-width: 42rem;

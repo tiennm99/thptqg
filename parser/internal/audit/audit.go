@@ -1,13 +1,12 @@
 // Package audit compares distinct SBDs in the source spreadsheets against the
-// row count in a built database — a port of parser/src/audit.rs.
+// row count in a built database.
 //
-// Two deliberate divergences from the build path are preserved, both inherited
-// from audit-row-counts.js:
+// Two divergences from the build path are deliberate:
 //
-//   - only .xlsx files are considered (audit.rs:53-59)
-//   - only sheet 0 is read, regardless of sheet_mode (audit.rs:81-84)
+//   - only .xlsx files are considered
+//   - only sheet 0 is read, regardless of sheet_mode
 //
-// These are intentional, not oversights. Do not "fix" them.
+// They are intentional, not oversights. Do not "fix" them.
 package audit
 
 import (
@@ -56,8 +55,8 @@ func Run(inputDir, dbPath string, cfg *config.DatasetConfig) (*Result, error) {
 	res := &Result{}
 	seen := make(map[string]struct{})
 
-	// The audit uses positional defaults for format-detection configs, mirroring
-	// audit-row-counts.js's fixed column assumption (audit.rs:104-111).
+	// Format-detection configs carry no Columns block, so the audit falls back
+	// to fixed positional columns for them.
 	hoTenCol, sbdCol := 1, 0
 	if cfg.Columns != nil {
 		hoTenCol, sbdCol = cfg.Columns.HoTen, cfg.Columns.SoBaoDanh
@@ -108,8 +107,7 @@ func Run(inputDir, dbPath string, cfg *config.DatasetConfig) (*Result, error) {
 		}
 	}
 
-	// Opened read-only: the audit must never mutate the database it inspects
-	// (audit.rs:139).
+	// Opened read-only: the audit must never mutate the database it inspects.
 	db, err := sql.Open(sqlitedb.DriverName, "file:"+dbPath+"?mode=ro")
 	if err != nil {
 		return nil, fmt.Errorf("open db %s: %w", dbPath, err)
@@ -124,7 +122,7 @@ func Run(inputDir, dbPath string, cfg *config.DatasetConfig) (*Result, error) {
 	return res, nil
 }
 
-// PrintReport mirrors audit-row-counts.js:54-62 exactly.
+// PrintReport writes the source-versus-database comparison block.
 func PrintReport(r *Result) {
 	fmt.Println("=== Source vs DB ===")
 	fmt.Printf("Source: total data rows across all files: %d\n", r.TotalDataRows)

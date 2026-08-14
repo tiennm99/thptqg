@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// sampleYAML mirrors SAMPLE_YAML in parser/src/config.rs.
+// sampleYAML is a fixed-column (2017-style) config with every section populated.
 const sampleYAML = `
 reader:
   sheet_mode: all
@@ -27,7 +27,6 @@ header:
   tokens: ["HO_TEN", "HỌ TÊN", "STT"]
 `
 
-// TestConfigRoundTrip ports config_round_trip (config.rs:115).
 func TestConfigRoundTrip(t *testing.T) {
 	cfg, err := Parse([]byte(sampleYAML))
 	if err != nil {
@@ -62,12 +61,10 @@ func TestConfigRoundTrip(t *testing.T) {
 	}
 }
 
-// TestConfigRejectsLeftoverSQLSections ports config_rejects_leftover_sql_sections
-// (config.rs:132). This is the load-bearing one: Rust gets the behaviour free
-// from serde's deny_unknown_fields, whereas Go YAML decoders ignore unknown keys
-// unless KnownFields(true) is set. Without it a stale schema: mapping would look effective while
-// internal/schema silently drove the build — exactly the drift that produced two
-// divergent schemas before the unification.
+// TestConfigRejectsLeftoverSQLSections is the load-bearing one: YAML decoders
+// ignore unknown keys unless KnownFields(true) is set, and without it a stale
+// schema: mapping would look effective while internal/schema silently drove the
+// build — exactly the drift that produced two divergent schemas.
 func TestConfigRejectsLeftoverSQLSections(t *testing.T) {
 	withDDL := sampleYAML + "\nschema:\n  ddl: \"CREATE TABLE student (so_bao_danh TEXT);\"\n"
 	if _, err := Parse([]byte(withDDL)); err == nil {
@@ -84,7 +81,6 @@ func TestConfigRejectsUnknownScalarKey(t *testing.T) {
 	}
 }
 
-// TestConfigFirstSheetMode ports config_first_sheet_mode (config.rs:140).
 func TestConfigFirstSheetMode(t *testing.T) {
 	src := []byte(replaceAll(sampleYAML, "sheet_mode: all", "sheet_mode: first"))
 	cfg, err := Parse(src)
@@ -96,7 +92,7 @@ func TestConfigFirstSheetMode(t *testing.T) {
 	}
 }
 
-// TestConfigRejectsUnknownSheetMode: the Rust enum accepts only "all"/"first",
+// TestConfigRejectsUnknownSheetMode: sheet_mode accepts only "all" or "first",
 // so anything else must fail rather than defaulting.
 func TestConfigRejectsUnknownSheetMode(t *testing.T) {
 	src := []byte(replaceAll(sampleYAML, "sheet_mode: all", "sheet_mode: second"))
@@ -105,8 +101,7 @@ func TestConfigRejectsUnknownSheetMode(t *testing.T) {
 	}
 }
 
-// TestConfigFormatDetectionField ports config_format_detection_field
-// (config.rs:147): a 2016-style config has no columns: mapping at all.
+// TestConfigFormatDetectionField: a 2016-style config has no columns: mapping at all.
 func TestConfigFormatDetectionField(t *testing.T) {
 	const src = `
 format_detection: thptqg2016
@@ -135,8 +130,8 @@ header:
 	}
 }
 
-// TestLoadRealConfigs loads the shipped configs and asserts the per-dataset
-// differences recorded during scouting.
+// TestLoadRealConfigs loads the shipped configs and pins the per-dataset
+// differences between them.
 func TestLoadRealConfigs(t *testing.T) {
 	root := repoRoot(t)
 	want := map[string]struct {

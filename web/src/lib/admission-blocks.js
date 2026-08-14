@@ -1,13 +1,10 @@
-// Vietnamese university admission-block ("khối thi") definitions.
-// Each block is the sum of 3 subjects; we only compute a block when ALL three
-// subject scores exist for the student.
+// Vietnamese university admission-block ("khối thi") definitions, per Circular
+// 03/2017/TT-BGDĐT. Each block is the sum of exactly 3 subject scores.
 //
-// One list serves both exam years. computeBlocks() skips any block with a
-// missing subject score, so blocks needing GDCD self-exclude on 2016 rows and
-// blocks needing Tiếng Đức / Nhật self-exclude wherever those weren't sat —
-// no per-year branching required.
-//
-// Based on Circular 03/2017/TT-BGDĐT.
+// One list serves both exam years with no per-year branching: computeBlocks()
+// skips any block with a missing subject score, so blocks needing GDCD
+// self-exclude on 2016 rows, and blocks needing a language the candidate did
+// not sit self-exclude row by row.
 export const ADMISSION_BLOCKS = [
   { code: "A00", subjects: ["toan", "vat_ly", "hoa_hoc"],     label: "Toán + Lý + Hóa" },
   { code: "A01", subjects: ["toan", "vat_ly", "tieng_anh"],   label: "Toán + Lý + Anh" },
@@ -59,11 +56,8 @@ export const ADMISSION_BLOCKS = [
   { code: "D14", subjects: ["ngu_van", "lich_su", "tieng_anh"], label: "Văn + Sử + Anh" },
   { code: "D15", subjects: ["ngu_van", "dia_ly", "tieng_anh"], label: "Văn + Địa + Anh" },
 
-  // German and Japanese blocks. Previously omitted because neither language
-  // appeared in the 2017 database — but that was a parser gap, not reality:
-  // unifying the subject patterns recovered German and Japanese scores in every
-  // dataset. Students who sat neither are unaffected, since computeBlocks()
-  // skips blocks with a missing subject.
+  // Out of code order. computeBlocks() sorts by total and ties break on list
+  // position, so resorting this list would reshuffle equal-scoring blocks.
   { code: "D05", subjects: ["toan", "ngu_van", "tieng_duc"],  label: "Toán + Văn + Đức" },
   { code: "D06", subjects: ["toan", "ngu_van", "tieng_nhat"], label: "Toán + Văn + Nhật" },
 ];
@@ -81,9 +75,11 @@ export function computeBlocks(student) {
   return out.sort((a, b) => b.total - a.total);
 }
 
-// Score tier: TFT rarity-style ladder. 6 stops match the Vietnamese exam
-// reality (≤1 is "điểm liệt" — automatic fail regardless of other scores).
-// Color is paired with a unicode symbol so meaning is never color-only.
+// Score tier for a single subject, as a rarity-style ladder of 6 stops. The
+// lowest stop is the Vietnamese "điểm liệt" rule: ≤ 1 is an automatic fail
+// whatever the other scores are, so that boundary is inclusive while the rest
+// are exclusive upper bounds. Every tier carries a unicode symbol as well as a
+// color, so the meaning is never conveyed by color alone.
 export function scoreTier(score) {
   if (score === null || score === undefined) return null;
   if (score <= 1) return { key: "common",      symbol: "·", label: "Điểm liệt" };

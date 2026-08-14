@@ -14,16 +14,14 @@ import (
 )
 
 // The 2016 dataset's 119 files were produced by inconsistent tooling and use
-// three different column layouts, chosen per sheet at runtime. This is a port of
-// parser/src/format_detect_2016.rs — institutional knowledge encoded as
-// literals, with no abstraction to derive it from, so everything here is copied
-// verbatim rather than rationalised.
+// three different column layouts, chosen per sheet at runtime. The literals
+// below are institutional knowledge about those files, with no rule to derive
+// them from — extend them, but do not tidy them into something more regular.
 
-// KnownHeaders are the upper-cased first-cell values that identify a header row
-// (format_detect_2016.rs:36-54, mirroring KNOWN_HEADERS in build-database.js).
+// KnownHeaders are the upper-cased first-cell values that identify a header row.
 //
-// NOTE "SINH " carries a TRAILING SPACE, exactly as in the Rust source. Trimming
-// it would change which rows are recognised as headers.
+// NOTE "SINH " carries a TRAILING SPACE. Trimming it would change which rows
+// are recognised as headers.
 var KnownHeaders = []string{
 	"SOBAODANH",
 	"SBD",
@@ -53,8 +51,7 @@ func isKnownHeader(s string) bool {
 	return false
 }
 
-// IsHeaderRow2016 reports whether row[0] is a known header token
-// (format_detect_2016.rs:58-64).
+// IsHeaderRow2016 reports whether row[0] is a known header token.
 //
 // The guard here is len < 2, not the len < 3 used by the 2017 header check.
 func IsHeaderRow2016(row []reader.Cell) bool {
@@ -89,8 +86,7 @@ type Format struct {
 	DiemThi   int
 }
 
-// defaultFormat is FormatMapped with the fixed positional indices
-// (format_detect_2016.rs:295-306).
+// defaultFormat is FormatMapped with the fixed positional indices.
 func defaultFormat() Format {
 	two, three, four := 2, 3, 4
 	return Format{
@@ -99,8 +95,7 @@ func defaultFormat() Format {
 	}
 }
 
-// DetectFormat inspects a header row and decides which layout applies
-// (format_detect_2016.rs:95-145).
+// DetectFormat inspects a header row and decides which layout applies.
 func DetectFormat(headerRow []reader.Cell) Format {
 	cols := make([]string, len(headerRow))
 	for i, c := range headerRow {
@@ -150,10 +145,9 @@ func DetectFormat(headerRow []reader.Cell) Format {
 
 // parseFloatCell parses a per-subject score cell.
 //
-// A parsed 0.0 becomes "no score" — this replicates JavaScript's
-// `parseFloat(row[N]) || null`, where 0 is falsy (format_detect_2016.rs:165).
-// It means a genuine zero is indistinguishable from a blank. Not obviously
-// correct, but it is the shipped behaviour and the published data depends on it.
+// A parsed 0.0 becomes "no score", so a genuine zero is indistinguishable from
+// a blank. Not obviously correct, but it is the shipped behaviour and the
+// published data depends on it.
 func parseFloatCell(row []reader.Cell, idx int) (float64, bool) {
 	s := cellAt(row, idx)
 	if s == "" {
@@ -166,8 +160,7 @@ func parseFloatCell(row []reader.Cell, idx int) (float64, bool) {
 	return v, true
 }
 
-// processSeparateScoresRow handles the fixed 12-column layout
-// (format_detect_2016.rs:176-216):
+// processSeparateScoresRow handles the fixed 12-column layout:
 //
 //	0=SBD 1=HOTEN 2=TOAN 3=VAN 4=LY 5=HOA 6=SINH 7=SU 8=DIA
 //	9=NGOAINGUTN 10=NGOAINGUTL 11=NGOAINGU(total -> tieng_anh)
@@ -202,8 +195,7 @@ func processSeparateScoresRow(row []reader.Cell) *transform.ParsedRow {
 	}
 }
 
-// processMappedRow handles header-derived column indices
-// (format_detect_2016.rs:226-289).
+// processMappedRow handles header-derived column indices.
 func processMappedRow(row []reader.Cell, f Format) *transform.ParsedRow {
 	sbd := cellAt(row, f.Sbd)
 	hoTen := cellAt(row, f.HoTen)
@@ -212,7 +204,7 @@ func processMappedRow(row []reader.Cell, f Format) *transform.ParsedRow {
 	}
 
 	// Leaked-header guard: a row whose SBD or name cell is itself a header token
-	// is a repeated header, not data (format_detect_2016.rs:244-250).
+	// is a repeated header, not data.
 	if isKnownHeader(strings.ToUpper(sbd)) || isKnownHeader(strings.ToUpper(hoTen)) {
 		return nil
 	}
@@ -228,7 +220,7 @@ func processMappedRow(row []reader.Cell, f Format) *transform.ParsedRow {
 	}
 
 	// Gender is a two-value allowlist, not a general enum: anything other than
-	// exactly "Nam" or "Nữ" becomes nil (format_detect_2016.rs:263-271).
+	// exactly "Nam" or "Nữ" becomes nil.
 	var gioiTinh *string
 	if f.GioiTinh != nil {
 		if s := cellAt(row, *f.GioiTinh); s == "Nam" || s == "Nữ" {
@@ -236,7 +228,7 @@ func processMappedRow(row []reader.Cell, f Format) *transform.ParsedRow {
 		}
 	}
 
-	// Read untrimmed, matching format_detect_2016.rs:273-276.
+	// The free-text score cell is read untrimmed, unlike every other cell here.
 	diemThi := ""
 	if f.DiemThi >= 0 && f.DiemThi < len(row) {
 		diemThi = row[f.DiemThi].Str
@@ -264,8 +256,7 @@ func ProcessRow2016(row []reader.Cell, f Format) *transform.ParsedRow {
 	return processMappedRow(row, f)
 }
 
-// Detect2016 ingests the 2016 dataset — the port of run_build_2016 and
-// process_file_2016 (main.rs:211-377).
+// Detect2016 ingests the 2016 dataset.
 func Detect2016(cfg *config.DatasetConfig, inputDir, outputPath string) error {
 	files, err := InputFiles(inputDir)
 	if err != nil {
@@ -290,7 +281,7 @@ func Detect2016(cfg *config.DatasetConfig, inputDir, outputPath string) error {
 		return err
 	}
 
-	var st writer.Stats // Skipped stays 0 on this path, matching main.rs:251
+	var st writer.Stats // Skipped stays 0 on this path
 	for _, file := range files {
 		base := filepath.Base(file)
 		fileRows, err := processFile2016(file, cfg, ins, base, &st)
@@ -314,9 +305,9 @@ func Detect2016(cfg *config.DatasetConfig, inputDir, outputPath string) error {
 
 // processFile2016 detects the layout per SHEET and processes that sheet's rows.
 //
-// Detection is per sheet, not per file (main.rs:344-349): within one workbook,
-// sheet 2 may legitimately detect differently from sheet 1, which matters for
-// the province files that overflow past Excel's row cap.
+// Detection is per sheet, not per file: within one workbook, sheet 2 may
+// legitimately detect differently from sheet 1, which matters for the province
+// files that overflow past Excel's row cap.
 func processFile2016(path string, cfg *config.DatasetConfig, ins *writer.Inserter, base string, st *writer.Stats) (uint64, error) {
 	wb, err := reader.Open(path)
 	if err != nil {
@@ -353,8 +344,8 @@ func processFile2016(path string, cfg *config.DatasetConfig, ins *writer.Inserte
 		}
 
 		for _, row := range rows[startIdx:] {
-			// Rows shorter than 2 cells are dropped BEFORE the counter
-			// (main.rs:351-353), so they never appear in the source total.
+			// Rows shorter than 2 cells are dropped BEFORE the counter, so they
+			// never appear in the source total.
 			if len(row) < 2 {
 				continue
 			}
@@ -363,9 +354,9 @@ func processFile2016(path string, cfg *config.DatasetConfig, ins *writer.Inserte
 			parsed := ProcessRow2016(row, f)
 			if parsed == nil {
 				// Empty or invalid. Note this is NOT counted as skipped — the
-				// 2016 path leaves that counter at zero (main.rs:251), so the
-				// stats block reports insertable == source rows and the Audit
-				// line absorbs the difference.
+				// 2016 path leaves that counter at zero, so the stats block
+				// reports insertable == source rows and the Audit line absorbs
+				// the difference.
 				continue
 			}
 			if err := ins.Insert(parsed); err != nil {

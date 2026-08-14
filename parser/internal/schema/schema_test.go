@@ -5,11 +5,9 @@ import (
 	"testing"
 )
 
-// Ports the four tests in parser/src/schema.rs:149-213. Their purpose is to stop
-// the DDL, the INSERT column list and the field-order constants from drifting
-// apart — a drift that silently lands values in the wrong columns.
+// These tests stop the DDL, the INSERT column list and the field-order constants
+// from drifting apart — a drift that silently lands values in the wrong columns.
 
-// TestInsertMatchesFieldOrder ports insert_matches_field_order (schema.rs:156).
 func TestInsertMatchesFieldOrder(t *testing.T) {
 	if ParamCount != 22 {
 		t.Errorf("ParamCount = %d, want 22", ParamCount)
@@ -41,8 +39,6 @@ func TestInsertMatchesFieldOrder(t *testing.T) {
 	}
 }
 
-// TestScorePatternsCoverScoreFields ports score_patterns_cover_score_fields
-// (schema.rs:183).
 func TestScorePatternsCoverScoreFields(t *testing.T) {
 	if len(ScorePatterns) != len(ScoreFields) {
 		t.Fatalf("%d patterns for %d score columns", len(ScorePatterns), len(ScoreFields))
@@ -63,7 +59,6 @@ func TestScorePatternsCoverScoreFields(t *testing.T) {
 	}
 }
 
-// TestDDLColumnsMatchInsert ports ddl_columns_match_insert (schema.rs:201).
 func TestDDLColumnsMatchInsert(t *testing.T) {
 	for _, field := range append(append([]string{}, IdentityFields...), ScoreFields...) {
 		if !strings.Contains(DDL, field) {
@@ -72,9 +67,9 @@ func TestDDLColumnsMatchInsert(t *testing.T) {
 	}
 }
 
-// TestScorePatternsCompile ports score_patterns_compile (schema.rs:208).
-// Compilation happens in the package initialiser, so reaching this point already
-// proves it; the explicit checks guard against an empty or partial table.
+// TestScorePatternsCompile: compilation happens in the package initialiser, so
+// reaching this point already proves it; the explicit checks guard against an
+// empty or partial table.
 func TestScorePatternsCompile(t *testing.T) {
 	for field, re := range ScorePatterns {
 		if re == nil {
@@ -83,10 +78,12 @@ func TestScorePatternsCompile(t *testing.T) {
 	}
 }
 
-// TestDDLMatchesRust asserts the DDL is byte-identical to parser/src/schema.rs.
-// Anything less and the two parsers can produce structurally different databases
-// while every row-level check still passes.
-func TestDDLMatchesRust(t *testing.T) {
+// TestDDLIsFrozen compares DDL against an independent copy of the exact text,
+// down to the byte. It catches column, type and index changes that every
+// row-level check would still pass — a database can be structurally different
+// and look fine one row at a time. Update the copy below only when the schema
+// change is intended.
+func TestDDLIsFrozen(t *testing.T) {
 	const want = `
 CREATE TABLE student (
   so_bao_danh   TEXT PRIMARY KEY,
@@ -117,7 +114,7 @@ CREATE INDEX idx_ho_ten_ascii ON student(ho_ten_ascii);
 CREATE INDEX idx_ten_cum_thi  ON student(ten_cum_thi) WHERE ten_cum_thi IS NOT NULL;
 `
 	if DDL != want {
-		t.Errorf("DDL diverges from parser/src/schema.rs:26-54\n--- got ---\n%s\n--- want ---\n%s", DDL, want)
+		t.Errorf("DDL changed\n--- got ---\n%s\n--- want ---\n%s", DDL, want)
 	}
 }
 

@@ -1,13 +1,12 @@
-# Canonical cell-dump SHA-256 per input file, produced by the Rust/calamine
-# ground truth (parser/examples/dump_cells.rs). The Go reader must reproduce
-# each hash exactly. Hashes only - the dumps themselves are real student PII
-# and are never committed, per parser/tests/fixtures/README.md.
-# FROZEN. These hashes were produced by the Rust/calamine parser, which has
-# since been removed, so they cannot be regenerated. They remain a real
-# regression guard: any change to the Go reader that alters a single cell of any
-# input file listed below fails the suite. If the inputs themselves ever change,
-# the affected rows must be re-derived deliberately and reviewed, not refreshed
-# in bulk.
+# Canonical cell-dump SHA-256 per input file. The reader must reproduce each
+# hash exactly. Hashes only - the dumps themselves are real student PII and are
+# never committed. parser/cmd/dumpcells prints the stream a hash is taken over,
+# which is how a failure is narrowed from a file to a cell.
+# FROZEN. These cannot be regenerated, so a mismatch is a reader bug until
+# proven otherwise, never a cue to refresh this file. Any change to the reader
+# that alters a single cell of any input listed below fails the suite. If the
+# inputs themselves ever change, re-derive only the affected rows, deliberately
+# and reviewed, not in bulk.
 data/2016/023718c7d3cf7ace3a7116fabb12bd9cdhyduoccantho-1468920829104.xlsx	fc3afd8da9ed28b0fc177192fab7b19a06535cb45d86841835d8e8828fc61c1c
 data/2016/08cdeb3636dcb2adaef829d62968274atravinh-1468902443859.xlsx	71f0e61918c63b95f08a16d502f5e9f2054e3c830bd83c725f1285bb1aabead1
 data/2016/0b583c9875443e65ffa449d5ca76fae8ninhbinh-1468899778557.xlsx	b0c2cfb9ab419442f151be5a014439f7f477fa7b31a9ae3f37b83073276bdb59

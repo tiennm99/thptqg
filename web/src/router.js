@@ -7,15 +7,9 @@
  *   /thptqg/2016/   → 2016
  *   /thptqg/2017/   → 2017
  *
- * That makes this an exact match on a single segment. The nested form this
- * replaced (/thptqg/2017/old/) needed longest-prefix matching, because
- * "/thptqg/2017/old/" also starts with "/thptqg/2017/" — an entire class of
- * routing bug the flat scheme designs out.
- *
- * Those nested URLs used to be rewritten here so old bookmarks kept working.
- * Both of them addressed the 2017-old and 2017-old2 datasets, which no longer
- * exist, so there is nothing left to rewrite them to: they now fall through to
- * the hub like any other unknown path.
+ * Keeping them flat makes this an exact match on a single segment; nested
+ * routes would need longest-prefix matching to disambiguate. Unknown paths fall
+ * through to the hub.
  */
 
 import { DATASETS } from "./datasets";

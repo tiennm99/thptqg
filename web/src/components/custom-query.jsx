@@ -3,8 +3,8 @@ import { useState, useCallback, useEffect } from "react";
 const MAX_ROWS = 1000;
 
 export function CustomQuery({ db, disabled, presets = [] }) {
-  // Every preset set ends with a "Hệ thống" group whose first query dumps the
-  // table schema; that is what gets auto-run when the tab first opens.
+  // By convention every preset list ends with a "Hệ thống" group whose first
+  // query dumps the table schema. See lib/sql-presets.js.
   const schemaPreset = presets[presets.length - 1]?.queries[0];
 
   const [sql, setSql] = useState("");
@@ -24,7 +24,8 @@ export function CustomQuery({ db, disabled, presets = [] }) {
       const trimmed = queryStr.trim();
       if (!trimmed) return;
 
-      // Safety: only allow read-only statements
+      // Read-only statements only. The database is a per-browser copy, so this
+      // guards the user's own session against a typo, not the server.
       const upper = trimmed.toUpperCase();
       const allowed = ["SELECT", "PRAGMA", "EXPLAIN", "WITH"];
       if (!allowed.some((kw) => upper.startsWith(kw))) {
@@ -34,7 +35,8 @@ export function CustomQuery({ db, disabled, presets = [] }) {
         return;
       }
 
-      // Auto-add LIMIT if user forgot
+      // Cap an unbounded SELECT: the tables run to hundreds of thousands of
+      // rows and rendering them all would lock the tab.
       let finalSql = trimmed;
       if (
         upper.startsWith("SELECT") &&
