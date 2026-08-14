@@ -38,15 +38,20 @@ export async function searchByName(db: RemoteDatabase, query: string): Promise<S
     WHERE w.word >= ? AND w.word < ?${filters.length ? " AND " + filters.join(" AND ") : ""}
     LIMIT ${MAX_RESULTS}`;
 
-  return db.query<Student>(sql, [seek, upperBound(seek), ...others.map((w) => `% ${escapeLike(w)}%`)]);
+  return db.query<Student>(
+    sql,
+    [seek, upperBound(seek), ...others.map((w) => `% ${escapeLike(w)}%`)],
+    `name ${JSON.stringify(words.join(" "))} seeking ${JSON.stringify(seek)}`,
+  );
 }
 
 /** Exact lookup by exam number: a primary-key seek, a few pages. */
 export async function lookupExamId(db: RemoteDatabase, id: string): Promise<Student[]> {
-  return db.query<Student>("SELECT * FROM student WHERE so_bao_danh = ? LIMIT ?", [
-    normaliseExamId(id),
-    MAX_RESULTS,
-  ]);
+  return db.query<Student>(
+    "SELECT * FROM student WHERE so_bao_danh = ? LIMIT ?",
+    [normaliseExamId(id), MAX_RESULTS],
+    `exam id ${JSON.stringify(normaliseExamId(id))}`,
+  );
 }
 
 /** Fold to ASCII and split into words, the same shape name_word was built in. */
@@ -66,7 +71,7 @@ async function rarest(db: RemoteDatabase, words: string[]): Promise<string> {
     .join(" UNION ALL ");
   const params = words.flatMap((w) => [w, w, upperBound(w)]);
 
-  const counts = await db.query<{ word: string; n: number }>(sql, params);
+  const counts = await db.query<{ word: string; n: number }>(sql, params, "word frequencies");
   let best = words[0];
   let bestN = Infinity;
   for (const { word, n } of counts) {

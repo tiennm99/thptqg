@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { isBudgetError, type RemoteDatabase } from "$lib/sqlite.svelte";
+  import { formatBytes, isBudgetError, type RemoteDatabase } from "$lib/sqlite.svelte";
   import type { PresetGroup } from "$lib/types";
 
   const MAX_ROWS = 1000;
@@ -52,7 +52,7 @@
     running = true;
     const start = performance.now();
     try {
-      const result = await source.query<Record<string, unknown>>(finalSql);
+      const result = await source.query<Record<string, unknown>>(finalSql, [], "SQL tab");
       execTime = (performance.now() - start).toFixed(1);
       rows = result.slice(0, MAX_ROWS);
       columns = rows.length > 0 ? Object.keys(rows[0]) : [];
@@ -81,9 +81,6 @@
     runPreset(schemaPreset.sql);
   });
 
-  function formatBytes(n: number): string {
-    return n < 1024 * 1024 ? `${Math.round(n / 1024)} KB` : `${(n / 1048576).toFixed(1)} MB`;
-  }
 </script>
 
 <div class="mx-auto max-w-[900px]">
@@ -133,9 +130,12 @@
       {#if execTime !== null}
         <span class="text-sm text-ink-muted">{rows.length} kết quả · {execTime}ms</span>
       {/if}
-      {#if db}
-        <!-- What this session has actually pulled over the network. -->
-        <span class="text-sm text-ink-subtle">Đã tải: {formatBytes(db.bytesRead)}</span>
+      {#if db?.lastCost}
+        <!-- What this query cost, then what the session has cost so far. -->
+        <span class="text-sm text-ink-subtle">
+          Truy vấn này: {db.lastCost.requests} yêu cầu · {formatBytes(db.lastCost.bytes)}
+          · Phiên: {db.requests} yêu cầu · {formatBytes(db.bytesRead)}
+        </span>
       {/if}
     </div>
   </form>
