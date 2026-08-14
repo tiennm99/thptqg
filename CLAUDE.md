@@ -58,6 +58,15 @@ hashes every real input file. That is the point of it; do not skip it.
   used — a fallback would break the `?q=` deep links.
 - **`dbSizeMb` in `datasets.json` is a build guard, not just a label.** The
   assembler refuses to publish an artifact that falls below a ratio of it.
+- **The databases ship uncompressed, as `<id>.sqlite3`.** The browser reads
+  byte ranges of them, and a range of a gzip stream is not a range of the
+  database. The host must not apply `Content-Encoding` either — check with
+  `curl -sI` after a deploy.
+- **Every query the site runs must be index-driven.** Over range requests an
+  unindexed query fetches the whole table. Hence no index on `ho_ten` (nothing
+  can use one), `name_word` for name search, partial indexes for the score
+  presets, and the footer count read from `datasets.json` instead of
+  `COUNT(*)`.
 
 ## Conventions
 

@@ -1,84 +1,106 @@
-import initSqlJs, { type Database } from "sql.js";
-
-// The sql.js engine itself, fetched from the upstream CDN rather than bundled.
-// It is a hard runtime dependency: if this URL is unreachable, initSqlJs()
-// rejects and no dataset can be opened at all, whatever the database fetch does.
-const SQL_WASM_URL = "https://sql.js.org/dist/sql-wasm.wasm";
+import { createDbWorker, type WorkerHttpvfs } from "sql.js-httpvfs";
+import workerUrl from "sql.js-httpvfs/dist/sqlite.worker.js?url";
+import wasmUrl from "sql.js-httpvfs/dist/sql-wasm.wasm?url";
 
 /**
- * A SQLite database loaded from a URL into sql.js, with reactive load state.
+ * The database is read where it lies. SQLite asks for pages, the virtual file
+ * system turns each into an HTTP range request, and only the pages a query
+ * touches ever cross the network — a few hundred KB for a lookup, against the
+ * 45 MB the whole file used to cost before the first query.
  *
- * The whole file is downloaded and decompressed before the first query: a `.gz`
- * URL is inflated in the browser. Nothing streams — sql.js needs the complete
- * image in memory.
+ * That only holds while every query is index-driven. The schema exists for it:
+ * name_word serves name search, and the score indexes serve the SQL presets.
+ * An unindexed query walks the table and pulls all 100+ MB of it, which is what
+ * the byte budget below is for.
  */
-export class SqliteSource {
-  db = $state<Database | null>(null);
-  loading = $state(true);
+
+// Matches the page size the parser writes, so one request is one page.
+const CHUNK_BYTES = 4096;
+
+/** Generous for indexed work: a name search costs well under 1 MB. */
+export const SEARCH_BUDGET_BYTES = 25 * 1024 * 1024;
+
+/** What the SQL tab gets once the user has accepted the cost of a scan. */
+export const PLAYGROUND_BUDGET_BYTES = 250 * 1024 * 1024;
+
+/**
+ * One remotely-paged database, with the load state the UI needs.
+ *
+ * `budgetBytes` is a hard ceiling for the worker's lifetime: past it a query
+ * fails instead of quietly downloading the file. Raising it means a new worker,
+ * which costs only the header pages.
+ */
+export class RemoteDatabase {
+  ready = $state(false);
   error = $state<string | null>(null);
-  progress = $state(0);
+  /** Bytes fetched so far, refreshed after every query. */
+  bytesRead = $state(0);
 
-  #cancelled = false;
+  #worker: WorkerHttpvfs | null = null;
+  #opening: Promise<WorkerHttpvfs>;
+  #closed = false;
 
-  constructor(url: string) {
-    void this.#load(url);
+  constructor(
+    readonly url: string,
+    readonly budgetBytes: number = SEARCH_BUDGET_BYTES,
+  ) {
+    this.#opening = this.#open();
   }
 
-  async #load(url: string) {
+  async #open(): Promise<WorkerHttpvfs> {
     try {
-      const SQL = await initSqlJs({ locateFile: () => SQL_WASM_URL });
-
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`Failed to fetch database: ${response.status}`);
-
-      const contentLength = Number(response.headers.get("Content-Length")) || 0;
-      const reader = response.body!.getReader();
-      const chunks: Uint8Array[] = [];
-      let received = 0;
-
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-        received += value.length;
-        if (contentLength > 0) {
-          this.progress = Math.round((received / contentLength) * 100);
-        }
-      }
-      if (this.#cancelled) return;
-
-      const blob = new Blob(chunks as BlobPart[]);
-      const bytes = url.endsWith(".gz")
-        ? await new Response(blob.stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer()
-        : await blob.arrayBuffer();
-      if (this.#cancelled) return;
-
-      this.db = new SQL.Database(new Uint8Array(bytes));
-      this.loading = false;
+      const worker = await createDbWorker(
+        [{ from: "inline", config: { serverMode: "full", url: this.url, requestChunkSize: CHUNK_BYTES } }],
+        workerUrl,
+        wasmUrl,
+        this.budgetBytes,
+      );
+      if (this.#closed) throw new Error("closed");
+      this.#worker = worker;
+      this.ready = true;
+      return worker;
     } catch (err) {
-      if (this.#cancelled) return;
-      this.error = err instanceof Error ? err.message : String(err);
-      this.loading = false;
+      if (!this.#closed) {
+        this.error = message(err);
+        this.ready = false;
+      }
+      throw err;
     }
   }
 
-  /** Release the database. Call from the owning component's teardown. */
+  /** Run a query and return its rows as objects. */
+  async query<T>(sql: string, params: unknown[] = []): Promise<T[]> {
+    const worker = this.#worker ?? (await this.#opening);
+    // Comlink erases the generic when it proxies the method across the worker
+    // boundary, so the row type is asserted here rather than inferred.
+    const run = worker.db.query as unknown as (sql: string, ...params: unknown[]) => Promise<T[]>;
+    try {
+      return await run(sql, ...params);
+    } finally {
+      // Comlink proxies the property, so this is a round trip; worth it because
+      // the number is the only honest feedback about what a query cost.
+      this.bytesRead = await worker.worker.bytesRead;
+    }
+  }
+
+  /**
+   * Drop this database. createDbWorker owns the Worker and exposes no handle to
+   * it, so the thread outlives this call; a page creates at most one per
+   * dataset and one more if the SQL budget is raised, which is why that is
+   * tolerable rather than a leak worth working around.
+   */
   close() {
-    this.#cancelled = true;
-    this.db?.close();
-    this.db = null;
+    this.#closed = true;
+    this.#worker = null;
+    this.ready = false;
   }
 }
 
-/** Run a statement and return its rows as objects. */
-export function queryRows<T>(db: Database, sql: string, params?: Record<string, unknown>): T[] {
-  const stmt = db.prepare(sql);
-  try {
-    if (params) stmt.bind(params as never);
-    const rows: T[] = [];
-    while (stmt.step()) rows.push(stmt.getAsObject() as T);
-    return rows;
-  } finally {
-    stmt.free();
-  }
+/** True when a query failed because it would have exceeded the byte budget. */
+export function isBudgetError(err: unknown): boolean {
+  return /maxBytesToRead|too much data|exceeded/i.test(message(err));
+}
+
+function message(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }

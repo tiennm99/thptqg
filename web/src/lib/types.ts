@@ -35,7 +35,12 @@ export type Student = {
 /** A dataset as the interface needs it: registry facts plus presentation. */
 export type Dataset = {
   id: string;
+  /** Size of the hosted database. Nothing downloads it whole; it is shown so a
+   *  user knows what they are querying into. */
   dbSizeMb: number;
+  /** Row count from the registry, so the footer never runs COUNT(*) — that
+   *  scans an index and would cost 20 MB over range requests. */
+  rows: number;
   blurb: string;
   label: string;
   title: string;

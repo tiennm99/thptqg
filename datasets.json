@@ -8,9 +8,10 @@
     "               inputs are frozen exam results, so a deviation of even one row",
     "               means something changed unintentionally and the assembler",
     "               refuses to publish.",
-    "  dbSizeMb     usual size of the gzipped database. Required and non-zero:",
-    "               the assembler rejects a build that comes out far smaller, and",
-    "               the web app shows it while the download runs.",
+    "  dbSizeMb     usual size of the published database. Required and non-zero:",
+    "               the assembler rejects a build that comes out far smaller. The",
+    "               file is served uncompressed and read a page at a time over",
+    "               HTTP range requests, so nothing downloads it whole.",
     "",
     "Presentation (titles, labels, SQL presets) lives in web/src/datasets.js keyed",
     "by id; that file throws at load if the two lists disagree."
@@ -19,12 +20,12 @@
     {
       "id": "2016",
       "expectedRows": 877460,
-      "dbSizeMb": 45
+      "dbSizeMb": 289
     },
     {
       "id": "2017",
       "expectedRows": 861068,
-      "dbSizeMb": 48
+      "dbSizeMb": 238
     }
   ]
 }

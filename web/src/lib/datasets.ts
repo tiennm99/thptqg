@@ -25,7 +25,7 @@ const SUBTITLE = "Dữ liệu thí sinh toàn quốc · Hỗ trợ truy vấn SQ
  * (crawler/internal/sources/source_<id>.go); it is duplicated here because a Go
  * module and a Vite app cannot share a constant. Keep the two in step.
  */
-type Content = Omit<Dataset, "id" | "dbSizeMb" | "blurb"> & { presets: PresetGroup[] };
+type Content = Omit<Dataset, "id" | "dbSizeMb" | "blurb" | "rows"> & { presets: PresetGroup[] };
 
 const CONTENT: Record<string, Content> = {
   2016: {
@@ -67,6 +67,7 @@ for (const id of Object.keys(CONTENT)) {
 export const DATASETS: Dataset[] = registry.datasets.map((d) => ({
   id: d.id,
   dbSizeMb: d.dbSizeMb,
+  rows: d.expectedRows,
   // Derived from expectedRows so the count the hub shows is the same number the
   // assembler enforces.
   blurb: `${d.expectedRows.toLocaleString("vi-VN")} thí sinh`,
@@ -86,7 +87,12 @@ export function pathOf(dataset: Dataset, base: string): string {
   return `${base}/${dataset.id}/`;
 }
 
-/** Gzipped database URL, e.g. dbOf(d, "/thptqg") → "/thptqg/db/2017.db.gz". */
+/**
+ * Database URL, e.g. dbOf(d, "/thptqg") → "/thptqg/db/2017.sqlite3".
+ *
+ * Uncompressed on purpose: the browser reads byte ranges of it, and a range of
+ * a gzip stream is not a range of the database.
+ */
 export function dbOf(dataset: Dataset, base: string): string {
-  return `${base}/db/${dataset.id}.db.gz`;
+  return `${base}/db/${dataset.id}.sqlite3`;
 }

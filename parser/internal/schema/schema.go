@@ -18,9 +18,17 @@ import "regexp"
 
 // DDL is executed verbatim after the output database is (re)created.
 //
-// idx_ten_cum_thi is partial, so it holds zero entries on the 2017 dataset —
-// where the column is always NULL — while staying useful for the 2016
-// cluster-grouping queries. Partial indexes are SQLite-specific.
+// Every index here is chosen for a database read over HTTP range requests,
+// where an unindexed query downloads the table. The rules that follow from
+// that:
+//
+//   - No index on ho_ten or ho_ten_ascii. Neither substring nor prefix LIKE can
+//     use one (SQLite's LIKE optimisation needs a NOCASE index or
+//     case_sensitive_like), so both scanned the whole table. name_word replaces
+//     them.
+//   - idx_ten_cum_thi is partial, so it holds zero entries on the 2017 dataset
+//     — where the column is always NULL — while serving the 2016 cluster
+//     grouping. Partial indexes are SQLite-specific.
 //
 // This text is frozen: it decides the shape of every database the parser
 // produces. TestDDLIsFrozen holds an independent copy so any edit has to be
@@ -50,9 +58,48 @@ CREATE TABLE student (
   tieng_nhat    REAL,
   tieng_trung   REAL
 );
-CREATE INDEX idx_ho_ten       ON student(ho_ten);
-CREATE INDEX idx_ho_ten_ascii ON student(ho_ten_ascii);
 CREATE INDEX idx_ten_cum_thi  ON student(ten_cum_thi) WHERE ten_cum_thi IS NOT NULL;
+
+CREATE TABLE name_word (
+  word          TEXT NOT NULL,
+  so_bao_danh   TEXT NOT NULL,
+  ho_ten_ascii  TEXT NOT NULL,
+  PRIMARY KEY (word, so_bao_danh)
+) WITHOUT ROWID;
+
+CREATE TABLE name_word_freq (
+  word TEXT PRIMARY KEY,
+  n    INTEGER NOT NULL
+) WITHOUT ROWID;
+`
+
+// PostLoadSQL runs once the student rows are in, before VACUUM.
+//
+// The frequency table is what lets the site pick which word of a query to seek
+// on: the vocabulary is about 4,400 words and the rarest word of a real query
+// matches a few hundred rows, so seeking on it and filtering the rest inside
+// name_word keeps a search to a few hundred kilobytes.
+//
+// The three score indexes are partial for the same reason idx_ten_cum_thi is:
+// each covers only the exam year that has the column, and each costs about
+// 4 MB. They exist so the SQL presets that rank by these columns seek instead
+// of scanning 127 MB.
+const PostLoadSQL = `
+INSERT INTO name_word_freq (word, n)
+  SELECT word, COUNT(*) FROM name_word GROUP BY word;
+CREATE INDEX idx_toan ON student(toan) WHERE toan IS NOT NULL;
+CREATE INDEX idx_khtn ON student(khtn) WHERE khtn IS NOT NULL;
+CREATE INDEX idx_khxh ON student(khxh) WHERE khxh IS NOT NULL;
+`
+
+// NameWordInsertSQL adds one row per distinct word of a candidate's ASCII name.
+//
+// ho_ten_ascii is carried along deliberately: a query with several words seeks
+// on the rarest one and filters the others against this copy, so the whole
+// match happens inside one b-tree and only the surviving rows are read from
+// student.
+const NameWordInsertSQL = `
+INSERT OR IGNORE INTO name_word (word, so_bao_danh, ho_ten_ascii) VALUES (?, ?, ?)
 `
 
 // IdentityFields are the identity columns, in INSERT parameter order.

@@ -12,7 +12,7 @@
     "lint": "eslint . && svelte-check --tsconfig ./tsconfig.json"
   },
   "dependencies": {
-    "sql.js": "^1.14.1"
+    "sql.js-httpvfs": "^0.8.12"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
@@ -20,7 +20,7 @@
     "@sveltejs/kit": "^2.70.2",
     "@sveltejs/vite-plugin-svelte": "^6.2.1",
     "@tailwindcss/vite": "^4.3.3",
-    "@types/sql.js": "^1.4.9",
+    "@types/sql.js": "^1.4.11",
     "eslint": "^9.39.4",
     "eslint-plugin-svelte": "^3.14.0",
     "globals": "^17.4.0",

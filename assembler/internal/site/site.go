@@ -20,6 +20,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/tiennm99/thptqg/assembler/internal/databases"
 	"github.com/tiennm99/thptqg/assembler/internal/registry"
 )
 
@@ -89,7 +90,7 @@ func Assemble(p Paths, datasets []registry.Dataset) error {
 	if err := checkDatabasesPresent(p.Site, datasets); err != nil {
 		return err
 	}
-	if err := checkNoRawDatabases(p.Site); err != nil {
+	if err := checkNoStrayArtifacts(p.Site); err != nil {
 		return err
 	}
 
@@ -131,10 +132,10 @@ func checkDatasetPages(siteDir string, datasets []registry.Dataset) error {
 func checkDatabasesPresent(siteDir string, datasets []registry.Dataset) error {
 	var missing []string
 	for _, d := range datasets {
-		gz := filepath.Join(siteDir, "db", d.ID+".db.gz")
-		st, err := os.Stat(gz)
+		file := filepath.Join(siteDir, "db", d.ID+databases.Extension)
+		st, err := os.Stat(file)
 		if err != nil || st.Size() == 0 {
-			missing = append(missing, d.ID+".db.gz")
+			missing = append(missing, d.ID+databases.Extension)
 		}
 	}
 	if len(missing) > 0 {
@@ -146,22 +147,23 @@ func checkDatabasesPresent(siteDir string, datasets []registry.Dataset) error {
 	return nil
 }
 
-// rawDatabase matches an uncompressed SQLite artifact, including the temporary
-// files SQLite leaves mid-build.
-var rawDatabase = regexp.MustCompile(`\.db(-journal|-wal|-shm)?$`)
+// strayArtifact matches what must never reach the output: a SQLite journal from
+// an interrupted run, a database under the old .db name, or a gzipped database
+// from before the switch to range requests.
+var strayArtifact = regexp.MustCompile(`(\.db|\.sqlite3)(-journal|-wal|-shm)$|\.db$|\.gz$`)
 
-// checkNoRawDatabases rejects an uncompressed database that reached the output.
+// checkNoStrayArtifacts rejects leftovers that would be published.
 //
-// The build gzips without keeping the source, so none should exist — but the
-// staging directory is copied wholesale, and a leftover from an interrupted run
-// would go straight through. A raw database is 100+ MB.
-func checkNoRawDatabases(siteDir string) error {
+// The staging directory is copied wholesale, so anything an interrupted run left
+// behind goes straight through — and each of these is 100+ MB. A gzipped
+// database would also be unreadable to the site, which reads byte ranges.
+func checkNoStrayArtifacts(siteDir string) error {
 	var stray []string
 	err := filepath.WalkDir(siteDir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if !d.IsDir() && rawDatabase.MatchString(d.Name()) {
+		if !d.IsDir() && strayArtifact.MatchString(d.Name()) {
 			stray = append(stray, path)
 		}
 		return nil
@@ -171,7 +173,7 @@ func checkNoRawDatabases(siteDir string) error {
 	}
 	if len(stray) > 0 {
 		var b strings.Builder
-		b.WriteString("uncompressed database artefact(s) found in the site output:\n")
+		b.WriteString("stray database artefact(s) found in the site output:\n")
 		for _, f := range stray {
 			st, _ := os.Stat(f)
 			fmt.Fprintf(&b, "  %s (%.1f MB)\n", f, float64(st.Size())/1048576)

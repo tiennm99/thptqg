@@ -75,17 +75,22 @@ artifact — one missing line away from publishing it.
 
 ## Notes
 
-- **The gzipped database is not cacheable across deploys.** Every rebuild
-  produces a different `.db.gz`, because SQLite does not lay pages out
-  deterministically. First-visit users pay the full download; later visits hit
-  browser cache until the next deploy.
-- **GitHub Pages caps individual files at 100 MB.** The largest gzipped database
-  is about 48 MB. Uncompressed they run 135–234 MB and would not fit — which is
-  why the browser decompresses via `DecompressionStream`.
-- **No server-side compression is assumed.** The app fetches the `.gz` bytes
-  directly rather than relying on `Content-Encoding: gzip`; Pages does not
-  reliably compress arbitrary paths on the fly.
-- **Total artifact is about 93 MB**, well inside the 1 GB site limit.
+- **The database is not cacheable across deploys.** Every rebuild lays SQLite
+  pages out differently, so the file changes even when the data does not. Only
+  the pages a query touches are fetched, so this costs far less than it used
+  to, but a deploy does invalidate what a returning visitor had cached.
+- **The 100 MB file limit is a Git limit, not a Pages one.** It applies to
+  files committed to a repository; the databases are built in CI and uploaded
+  as a Pages artifact, and the documented Pages limits are a 1 GB published
+  site and 100 GB/month of bandwidth, with no per-file figure. The two
+  databases are 289 MB and 238 MB.
+- **Total artifact is about 528 MB**, inside the 1 GB site limit but with less
+  headroom than before: a third dataset of this size would not fit. The fallback
+  is `sql.js-httpvfs`'s chunked mode, which splits a database into parts.
+- **The server must not compress the databases.** Ranges of a compressed body
+  address the wrong bytes, and the library refuses to open a file whose HEAD
+  carries a `Content-Encoding`. `.sqlite3` is an unknown type to Pages, so it is
+  served as `application/octet-stream` and left alone — verify after a deploy.
 
 ## Rollback
 
@@ -99,6 +104,7 @@ run rebuilds the older state. There is no data to migrate.
 | Blank page, 404 on assets | `paths.base` in `svelte.config.js` does not match the repo name |
 | `Failed to fetch database: 404` | Dataset id in `datasets.json` does not match the file in `db/` |
 | A route 404s | The site step did not run, or the id is missing from `datasets.json` |
-| WASM fails to load | `sql.js.org` unreachable — self-host `sql-wasm.wasm` and update `SQL_WASM_URL` in `lib/sqlite.svelte.ts` |
+| Database fails to open | The host compressed it. `curl -sI …/db/<id>.sqlite3` must show no `content-encoding`; ranges of a compressed body are unusable |
+| Every query is slow or huge | It is not using an index. `EXPLAIN QUERY PLAN` it: a `SCAN` means the browser is fetching the whole table |
 | Deploy fails on assembly | An uncompressed database artefact reached the output; the error names the files |
 | Missing rows after a data update | Unknown Excel header — check the per-file row counts the parser prints |

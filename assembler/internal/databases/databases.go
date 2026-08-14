@@ -1,5 +1,4 @@
-// Package databases builds, verifies and compresses one SQLite file per
-// dataset.
+// Package databases builds and verifies one SQLite file per dataset.
 //
 // VERIFICATION IS THE POINT OF THIS PACKAGE, not an extra.
 //
@@ -11,13 +10,15 @@
 //
 // The guards below close that: a build whose row count does not match the
 // registry, or whose artifact is implausibly small, fails the pipeline.
+//
+// The databases ship uncompressed. The browser reads them a page at a time over
+// HTTP range requests, and a range of a gzip stream is not a range of the
+// database.
 package databases
 
 import (
-	"compress/gzip"
 	"database/sql"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -30,9 +31,14 @@ import (
 // driverName is modernc.org/sqlite's registered name.
 const driverName = "sqlite"
 
-// minSizeRatio: a gzipped database far below its usual size means a truncated
-// build, even if the row count somehow passed.
+// minSizeRatio: a database far below its usual size means a truncated build,
+// even if the row count somehow passed.
 const minSizeRatio = 0.9
+
+// Extension is the published suffix. Not ".db": the sql.js-httpvfs ecosystem
+// uses ".sqlite3", and keeping ".db" free lets the site assembly treat any
+// stray .db or SQLite journal in the output as the leftover it is.
+const Extension = ".sqlite3"
 
 // Paths locates the pieces this package needs.
 type Paths struct {
@@ -75,7 +81,7 @@ func Build(p Paths, bin string, d registry.Dataset) error {
 	if err := os.MkdirAll(p.OutDir, 0o755); err != nil {
 		return err
 	}
-	db := filepath.Join(p.OutDir, d.ID+".db")
+	db := filepath.Join(p.OutDir, d.ID+Extension)
 
 	cmd := exec.Command(bin,
 		"build",
@@ -99,12 +105,11 @@ func Build(p Paths, bin string, d registry.Dataset) error {
 	}
 	fmt.Printf("  ✓ %s: %d rows (matches expected)\n", d.ID, rows)
 
-	gz, size, err := compress(db)
+	st, err := os.Stat(db)
 	if err != nil {
 		return fmt.Errorf("%s: %w", d.ID, err)
 	}
-
-	sizeMb := float64(size) / 1024 / 1024
+	sizeMb := float64(st.Size()) / 1024 / 1024
 	if min := d.DbSizeMb * minSizeRatio; sizeMb < min {
 		return fmt.Errorf(
 			"%s: %.1f MB is below %.1f MB (%.0f%% of the expected %.0f MB)\n"+
@@ -112,7 +117,7 @@ func Build(p Paths, bin string, d registry.Dataset) error {
 			d.ID, sizeMb, min, minSizeRatio*100, d.DbSizeMb)
 	}
 
-	fmt.Printf("  → %s (%.1f MB)\n\n", filepath.Base(gz), sizeMb)
+	fmt.Printf("  → %s (%.1f MB)\n\n", filepath.Base(db), sizeMb)
 	return nil
 }
 
@@ -131,61 +136,8 @@ func countRows(path string) (int64, error) {
 	return n, nil
 }
 
-// compress gzips path to path+".gz" and removes the original, returning the
-// compressed path and its size.
-//
-// The source is deleted only after the compressed file is closed successfully,
-// so a failure part-way through leaves the database rather than losing it.
-func compress(path string) (string, int64, error) {
-	in, err := os.Open(path)
-	if err != nil {
-		return "", 0, err
-	}
-	defer in.Close()
-
-	gzPath := path + ".gz"
-	out, err := os.Create(gzPath)
-	if err != nil {
-		return "", 0, err
-	}
-
-	zw, err := gzip.NewWriterLevel(out, gzip.BestCompression)
-	if err != nil {
-		out.Close()
-		return "", 0, err
-	}
-	if _, err := io.Copy(zw, in); err != nil {
-		zw.Close()
-		out.Close()
-		os.Remove(gzPath)
-		return "", 0, err
-	}
-	if err := zw.Close(); err != nil {
-		out.Close()
-		os.Remove(gzPath)
-		return "", 0, err
-	}
-	if err := out.Close(); err != nil {
-		os.Remove(gzPath)
-		return "", 0, err
-	}
-
-	if err := in.Close(); err != nil {
-		return "", 0, err
-	}
-	if err := os.Remove(path); err != nil {
-		return "", 0, fmt.Errorf("removing the uncompressed database: %w", err)
-	}
-
-	st, err := os.Stat(gzPath)
-	if err != nil {
-		return "", 0, err
-	}
-	return gzPath, st.Size(), nil
-}
-
 // Clean removes staged artifacts for datasets that are no longer in the
-// registry. Without this a removed dataset's .db.gz lingers in the staging
+// registry. Without this a removed dataset's file lingers in the staging
 // directory, and the site assembly copies that directory wholesale — so the
 // dead database would be published again.
 func Clean(p Paths, keep []registry.Dataset) error {
@@ -197,10 +149,9 @@ func Clean(p Paths, keep []registry.Dataset) error {
 		return err
 	}
 
-	wanted := make(map[string]bool, len(keep)*2)
+	wanted := make(map[string]bool, len(keep))
 	for _, d := range keep {
-		wanted[d.ID+".db"] = true
-		wanted[d.ID+".db.gz"] = true
+		wanted[d.ID+Extension] = true
 	}
 
 	for _, e := range entries {

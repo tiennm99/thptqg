@@ -1,7 +1,8 @@
 # thptqg
 
 Tra cứu điểm thi THPT Quốc gia — exam-score lookup for Vietnam's national high
-school graduation exam. Client-side SQL (sql.js) over a SQLite database built
+school graduation exam. Client-side SQL over a SQLite database read in place by
+HTTP range request, built
 from the published `.xls`/`.xlsx` score files by the Go `parser` module. Where
 those files come from: [data pipeline](./docs/data-pipeline.md#sources).
 
@@ -41,7 +42,7 @@ app both read it and neither needs a dependency to do so; presentation stays in
 The dataset id is one identifier end to end:
 
 ```
-data/2017/ → parser/configs/2017.yml → db/2017.db.gz → /thptqg/2017/
+data/2017/ → parser/configs/2017.yml → db/2017.sqlite3 → /thptqg/2017/
 ```
 
 ## Build

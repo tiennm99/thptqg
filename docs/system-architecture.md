@@ -1,7 +1,9 @@
 # System Architecture
 
-Static site, no backend. The browser downloads a compressed SQLite file at boot
-and every query runs locally via `sql.js` (SQLite compiled to WebAssembly).
+Static site, no backend. The SQLite file stays on the server and the browser
+reads the pages a query touches over HTTP range requests, via `sql.js-httpvfs`
+(SQLite compiled to WebAssembly behind a virtual file system). A lookup costs a
+few hundred KB; nothing downloads the database.
 
 One frontend, one parser, one schema, two datasets.
 
@@ -15,11 +17,11 @@ through. `assembler/` sequences everything from the parser onwards.
 data/<id>/*.xls(x)
         │
         ▼  parser/    (Go, one binary, one config per dataset)
-   .build/public/db/<id>.db
+   .build/public/db/<id>.sqlite3
         │
-        ▼  assembler/ — row count must match datasets.json, then gzip
-   .build/public/db/<id>.db.gz      (the raw .db does not survive)
-        │
+        ▼  assembler/ — row count and size must match datasets.json
+   .build/public/db/<id>.sqlite3    (uncompressed: ranges of a gzip stream
+        │                            are not ranges of the database)
         ▼  assembler/ → npm run build (SvelteKit static, assets = .build/public)
    web/dist/
         │
@@ -27,7 +29,7 @@ data/<id>/*.xls(x)
    _site/   →  GitHub Pages
         │
         ▼  browser
-   sql.js (WASM) opens the .db → queries run client-side
+   sql.js-httpvfs asks for pages → HTTP range requests → results client-side
 ```
 
 ## The dataset id
@@ -35,7 +37,7 @@ data/<id>/*.xls(x)
 One identifier ties the whole pipeline together:
 
 ```
-data/2017/  →  parser/configs/2017.yml  →  db/2017.db.gz  →  /thptqg/2017/
+data/2017/  →  parser/configs/2017.yml  →  db/2017.sqlite3  →  /thptqg/2017/
 ```
 
 `datasets.json` at the repository root declares the ids once, with the row count
@@ -44,7 +46,7 @@ because the assembler is a Go program and the web app is not, and JSON is the
 only format both parse without a dependency.
 
 Presentation — titles, labels, search examples, SQL presets — stays in
-`web/src/datasets.js`, keyed by id. That file cross-checks the two: a registry
+`web/src/lib/datasets.ts`, keyed by id. That file cross-checks the two: a registry
 entry with no content, or content for a dataset that was never built, throws at
 module load rather than rendering a page with no title or a link to a database
 that does not exist.
@@ -168,10 +170,11 @@ total descending.
 
 | Concern | Choice | Rationale |
 | --- | --- | --- |
-| Storage | Static SQLite file | No backend; the datasets are frozen |
-| Compression | gzip in CI, `DecompressionStream` in the browser | Native API, no extra library |
-| WASM hosting | `sql.js.org` CDN | Smaller self-hosted artifact |
-| Diacritics search | Pre-computed `ho_ten_ascii` | `LOWER(REPLACE(...))` at query time defeats the index |
+| Storage | Static SQLite file, read by range request | No backend; the datasets are frozen, and a lookup needs a few pages of them |
+| Compression | None | A byte range of a gzip stream is not a byte range of the database |
+| WASM hosting | Bundled with the app | `sql.js-httpvfs` ships its own build; one less third-party runtime dependency |
+| Diacritics search | Pre-computed `ho_ten_ascii`, indexed word by word | `LOWER(REPLACE(...))` at query time defeats the index, and `LIKE '%x%'` reads the whole table |
+| Row count in the footer | Read from `datasets.json` | `COUNT(*)` scans an index — 20 MB over range requests |
 | SQL safety | Leading-keyword allowlist | `sql.js` is in-memory so writes cannot persist; the allowlist prevents confusion |
 | Row caps | 100 (lookup), 1000 (SQL) | Keeps DOM render sizes reasonable |
 | Routing | SvelteKit file routes, prerendered | Each dataset gets a real HTML file with its own title |
@@ -179,12 +182,16 @@ total descending.
 
 ## Risks and limitations
 
-- **Database size.** 45–48 MB gzipped per dataset; slow links wait, mitigated by
-  a progress bar.
-- **Browser memory.** The full database lives in RAM; older mobile devices may
-  run out.
-- **`sql.js.org` dependency.** If that CDN is unreachable, the WASM fails to
-  load. Self-hosting `sql-wasm.wasm` and updating `SQL_WASM_URL` in
-  `web/src/lib/sqlite.svelte.ts` is the fix.
+- **Unindexed queries are expensive.** The SQL tab can express a query that
+  walks the table, which over range requests means fetching 100+ MB. A byte
+  budget stops one before it gets that far, and the tab warns before it opens.
+- **`Content-Encoding` breaks everything.** If the host ever compresses
+  `<id>.sqlite3` on the wire, ranges address compressed bytes and
+  `sql.js-httpvfs` refuses to open the file. Verify after a deploy:
+  `curl -sI …/db/2016.sqlite3` must show no `content-encoding`.
+- **`sql.js-httpvfs` is unmaintained** (0.8.12, September 2022) and ships its
+  own SQLite WASM. `sqlite-wasm-http`, on the official build, is the fallback.
+- **Hosted size.** 528 MB for both datasets against the 1 GB GitHub Pages
+  limit; a third dataset of this size would not fit.
 - **Excel format drift.** A new source file with an unseen header layout needs a
   new branch in `parser/internal/ingest/detect2016.go` or a new config.
