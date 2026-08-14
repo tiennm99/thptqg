@@ -1,7 +1,8 @@
 # thptqg
 
 Tra cứu điểm thi THPT Quốc gia — exam-score lookup for Vietnam's national high
-school graduation exam. Client-side SQL (sql.js) over a SQLite database built
+school graduation exam. Client-side SQL over a SQLite database read in place by
+HTTP range request, built
 from the published `.xls`/`.xlsx` score files by the Go `parser` module. Where
 those files come from: [data pipeline](./docs/data-pipeline.md#sources).
 
@@ -36,12 +37,12 @@ Each stage runs on its own and hands its output to the next through the stores.
 
 `datasets.json` is the contract between them. It is JSON because Go and the web
 app both read it and neither needs a dependency to do so; presentation stays in
-`web/src/lib/datasets.ts`, keyed by id, which fails loudly if the two disagree.
+`web/src/lib/datasets.js`, keyed by id, which fails loudly if the two disagree.
 
 The dataset id is one identifier end to end:
 
 ```
-data/2017/ → parser/configs/2017.yml → db/2017.db.gz → /thptqg/2017/
+data/2017/ → parser/configs/2017.yml → db/2017.sqlite3 → /thptqg/2017/
 ```
 
 ## Build
@@ -85,7 +86,7 @@ Pushing to `main` runs the same steps in
 2. Add `parser/configs/<id>.yml` — sheet mode, column indices, validation
    guards. No SQL; the schema is canonical.
 3. Add an entry to `datasets.json` with its expected row count and size
-4. Add the matching presentation to `CONTENT` in `web/src/lib/datasets.ts`
+4. Add the matching presentation to `CONTENT` in `web/src/lib/datasets.js`
 
 Everything else follows: the assembler, the router and the hub all read the
 registry, and the UI adapts to whichever columns the dataset fills. Steps 3 and 4

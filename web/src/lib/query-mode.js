@@ -18,11 +18,8 @@ const SBD_PATTERN = /^[A-Za-z]{0,4}\d+$/;
 export const MIN_SBD_DIGITS = 3;
 export const MIN_NAME_CHARS = 2;
 
-/** How a query was classified, and the hint shown beneath the field. */
-export type QueryMode = "empty" | "sbd" | "sbd-short" | "name" | "name-short";
-
 /** True when the query looks like an exam ID rather than a name. */
-export function isExamId(query: string): boolean {
+export function isExamId(query) {
   return SBD_PATTERN.test(query.trim());
 }
 
@@ -30,19 +27,20 @@ export function isExamId(query: string): boolean {
  * Normalise an exam ID for lookup. Letter prefixes are stored upper-case, so a
  * user typing "bal000001" still matches. No-op for all-digit IDs.
  */
-export function normaliseExamId(query: string): string {
+export function normaliseExamId(query) {
   return query.trim().toUpperCase();
 }
 
-function digitCount(str: string): number {
+function digitCount(str) {
   return (str.match(/\d/g) ?? []).length;
 }
 
 /**
  * Decide what the user is searching for, and what hint to show beneath the
- * field.
+ * field. Returns `{ mode, hint }` where mode is one of:
+ * empty | sbd | sbd-short | name | name-short.
  */
-export function detectMode(raw: string): { mode: QueryMode; hint: string } {
+export function detectMode(raw) {
   const q = raw.trim();
   if (!q) return { mode: "empty", hint: "Gõ SBD (số báo danh) hoặc họ tên để tìm" };
 

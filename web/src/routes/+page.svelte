@@ -1,12 +1,11 @@
-<script lang="ts">
+<script>
   import { resolve } from "$app/paths";
   import { DATASETS } from "$lib/datasets";
-  import type { Dataset } from "$lib/types";
 
   // Trailing slash on purpose: each page is prerendered as <id>/index.html, and
   // hitting it without the slash costs a GitHub Pages directory redirect.
   // resolve() still supplies the base path.
-  function hrefOf(dataset: Dataset): string {
+  function hrefOf(dataset) {
     return `${resolve("/[dataset]", { dataset: dataset.id })}/`;
   }
 </script>

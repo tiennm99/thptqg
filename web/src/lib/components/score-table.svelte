@@ -1,11 +1,10 @@
-<script lang="ts">
+<script>
   import { scoreTier } from "$lib/admission-blocks";
   import { IDENTITY_COLUMNS, SUBJECTS, hasAnyValue } from "$lib/subjects";
-  import type { Student } from "$lib/types";
 
-  let { results }: { results: Student[] | null } = $props();
+  let { results } = $props();
 
-  function formatScore(val: number | null): string {
+  function formatScore(val) {
     return val === null || val === undefined ? "—" : Number(val).toFixed(2);
   }
 

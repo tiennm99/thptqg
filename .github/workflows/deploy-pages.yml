@@ -66,8 +66,8 @@ jobs:
       - name: Test assembler
         run: go -C assembler test ./...
 
-      # Lint covers ESLint and svelte-check; the tests cover the framework-free
-      # modules, including the ASCII fold that has to match the Go parser.
+      # The tests cover the framework-free modules, including the ASCII fold
+      # that has to match the Go parser.
       - name: Test web
         working-directory: web
         run: npm test

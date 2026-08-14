@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/tiennm99/thptqg/parser/internal/schema"
 	"github.com/tiennm99/thptqg/parser/internal/sqlitedb"
@@ -41,6 +42,19 @@ func OpenDB(dbPath string) (*sql.DB, error) {
 	db, err := sql.Open(sqlitedb.DriverName, dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("open db %s: %w", dbPath, err)
+	}
+	// Before the DDL, because a page size cannot change once a table exists —
+	// only the VACUUM in Finish could rewrite it, and only to this same value.
+	//
+	// 1 KiB rather than SQLite's 4 KiB default because the browser reads this
+	// file a page at a time over HTTP: a row fetched by index seek costs one
+	// page, so a search that returns 100 scattered rows transfers 100 KB
+	// instead of 400 KB. It costs about 5% file size, and both sql.js-httpvfs
+	// and sqlite-wasm-http recommend it. web/src/lib/sqlite.svelte.ts must
+	// request the same size.
+	if _, err := db.Exec("PRAGMA page_size = 1024"); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("set page size: %w", err)
 	}
 	if _, err := db.Exec(schema.DDL); err != nil {
 		db.Close()
@@ -110,10 +124,77 @@ type Stats struct {
 	Errors     uint64
 }
 
-// Finish runs VACUUM and prints the stats block.
+// BuildNameIndex fills name_word from the student rows, one entry per distinct
+// word of each ASCII name.
 //
-// VACUUM must run AFTER the transaction commits — SQLite refuses it inside one.
+// A second pass rather than a write alongside each insert: a repeated exam
+// number replaces its earlier row, and the words of the row it replaced would
+// otherwise stay behind pointing at a name that is no longer there.
+func BuildNameIndex(db *sql.DB) error {
+	rows, err := db.Query("SELECT so_bao_danh, ho_ten_ascii FROM student")
+	if err != nil {
+		return fmt.Errorf("read names: %w", err)
+	}
+	defer rows.Close()
+
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("begin name index: %w", err)
+	}
+	stmt, err := tx.Prepare(schema.NameWordInsertSQL)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("prepare name index: %w", err)
+	}
+
+	var words uint64
+	seen := make(map[string]struct{}, 8)
+	for rows.Next() {
+		var sbd, ascii string
+		if err := rows.Scan(&sbd, &ascii); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("scan name: %w", err)
+		}
+		clear(seen)
+		for _, w := range strings.Fields(ascii) {
+			if _, dup := seen[w]; dup {
+				continue
+			}
+			seen[w] = struct{}{}
+			if _, err := stmt.Exec(w, sbd, ascii); err != nil {
+				tx.Rollback()
+				return fmt.Errorf("insert name word: %w", err)
+			}
+			words++
+		}
+	}
+	if err := rows.Err(); err != nil {
+		tx.Rollback()
+		return fmt.Errorf("read names: %w", err)
+	}
+	if err := stmt.Close(); err != nil {
+		tx.Rollback()
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit name index: %w", err)
+	}
+
+	if _, err := db.Exec(schema.PostLoadSQL); err != nil {
+		return fmt.Errorf("post-load statements: %w", err)
+	}
+	fmt.Printf("Name index:                       %d words\n", words)
+	return nil
+}
+
+// Finish builds the derived tables, runs VACUUM and prints the stats block.
+//
+// VACUUM must run AFTER the transaction commits — SQLite refuses it inside one
+// — and after the name index, so the file is laid out in one pass.
 func Finish(db *sql.DB, dbPath string, st Stats) error {
+	if err := BuildNameIndex(db); err != nil {
+		return err
+	}
 	if _, err := db.Exec("VACUUM"); err != nil {
 		return fmt.Errorf("vacuum: %w", err)
 	}

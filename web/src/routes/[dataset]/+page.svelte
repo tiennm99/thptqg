@@ -1,4 +1,4 @@
-<script lang="ts">
+<script>
   import { browser } from "$app/environment";
   import { replaceState } from "$app/navigation";
   import { base, resolve } from "$app/paths";
@@ -8,64 +8,51 @@
   import SearchForm from "$lib/components/search-form.svelte";
   import StudentDetail from "$lib/components/student-detail.svelte";
   import { dbOf } from "$lib/datasets";
-  import { isExamId, normaliseExamId } from "$lib/query-mode";
-  import { SqliteSource, queryRows } from "$lib/sqlite.svelte";
-  import { isAsciiOnly, toAscii } from "$lib/to-ascii";
-  import type { Student } from "$lib/types";
-
-  const MAX_RESULTS = 100;
+  import { isExamId } from "$lib/query-mode";
+  import { MAX_RESULTS, lookupExamId, searchByName } from "$lib/search";
+  import { PLAYGROUND_BUDGET_BYTES, RemoteDatabase, SEARCH_BUDGET_BYTES } from "$lib/sqlite.svelte";
 
   let { data } = $props();
   const dataset = $derived(data.dataset);
 
-  let source = $state<SqliteSource | null>(null);
-  let results = $state<Student[] | null>(null);
-  let searchError = $state<string | null>(null);
-  let activeTab = $state<"search" | "sql">("search");
-  let totalCount = $state<number | null>(null);
+  let db = $state(null);
+  let results = $state(null);
+  let searchError = $state(null);
+  let activeTab = $state("search");
+  let sqlWarningOpen = $state(false);
+  // Raised once the user has accepted that a hand-written query may fetch a lot.
+  let budget = $state(SEARCH_BUDGET_BYTES);
   // Owned here, not in SearchForm, so it can be bound to the URL both ways.
   // The query string is unreadable while prerendering — there is no request —
   // so a deep link is picked up on the client only.
   let query = $state(browser ? (page.url.searchParams.get("q") ?? "") : "");
 
-  const db = $derived(source?.db ?? null);
-  const loading = $derived(source?.loading ?? true);
-  const loadError = $derived(source?.error ?? null);
-  const progress = $derived(source?.progress ?? 0);
-  const busy = $derived(loading || !!loadError);
+  const opening = $derived(db !== null && !db.ready && db.error === null);
+  const loadError = $derived(db?.error ?? null);
+  const busy = $derived(!db?.ready);
 
-  // The database is per dataset, and only ever fetched in the browser: $effect
-  // does not run while prerendering.
+  // Opened in the browser only: $effect does not run while prerendering. A new
+  // budget means a new worker, which costs only the header pages.
   $effect(() => {
-    const opened = new SqliteSource(dbOf(dataset, base));
-    source = opened;
+    const opened = new RemoteDatabase(dbOf(dataset, base), budget);
+    db = opened;
     return () => {
       opened.close();
-      source = null;
-      results = null;
-      totalCount = null;
+      db = null;
     };
   });
 
-  // Candidate count for the footer. One-shot per database: it cannot change
-  // without a new one.
-  $effect(() => {
-    if (!db) return;
-    const [row] = queryRows<{ c: number }>(db, "SELECT COUNT(*) AS c FROM student");
-    totalCount = row?.c ?? null;
-  });
-
-  // Hydrate a ?q= deep link as soon as the database is ready.
+  // Hydrate a ?q= deep link as soon as the database is open.
   let hydrated = false;
   $effect(() => {
-    if (!db || hydrated) return;
+    if (!db?.ready || hydrated) return;
     hydrated = true;
-    if (query) search(query);
+    if (query) void search(query);
   });
 
   // Sync the query to ?q= without adding a history entry, so back still leaves
   // the page and a copied URL still reproduces the search.
-  function writeUrlQuery(q: string) {
+  function writeUrlQuery(q) {
     const route = resolve("/[dataset]", { dataset: dataset.id });
     // The target IS resolve()'d; the lint rule cannot see through the template
     // literal that appends the query string.
@@ -73,35 +60,15 @@
     replaceState(q ? `${route}?q=${encodeURIComponent(q)}` : route, page.state);
   }
 
-  function search(q: string) {
-    if (!db) return;
+  async function search(q) {
+    const source = db;
+    if (!source?.ready) return;
     searchError = null;
     query = q;
     writeUrlQuery(q);
 
     try {
-      if (isExamId(q)) {
-        // Letter-prefixed 2016 IDs are stored upper-case; digits are unaffected.
-        results = queryRows<Student>(
-          db,
-          "SELECT * FROM student WHERE so_bao_danh = $q LIMIT $limit",
-          { $q: normaliseExamId(q), $limit: MAX_RESULTS },
-        );
-      } else if (isAsciiOnly(q)) {
-        results = queryRows<Student>(
-          db,
-          "SELECT * FROM student WHERE ho_ten_ascii LIKE $q LIMIT $limit",
-          { $q: `%${toAscii(q)}%`, $limit: MAX_RESULTS },
-        );
-      } else {
-        results = queryRows<Student>(
-          db,
-          `SELECT * FROM student
-           WHERE ho_ten LIKE $q OR ho_ten_ascii LIKE $qn
-           LIMIT $limit`,
-          { $q: `%${q}%`, $qn: `%${toAscii(q)}%`, $limit: MAX_RESULTS },
-        );
-      }
+      results = isExamId(q) ? await lookupExamId(source, q) : await searchByName(source, q);
     } catch (err) {
       searchError = err instanceof Error ? err.message : String(err);
     }
@@ -113,11 +80,36 @@
     writeUrlQuery("");
   }
 
+  function openSqlTab() {
+    if (budget >= PLAYGROUND_BUDGET_BYTES) {
+      activeTab = "sql";
+      return;
+    }
+    sqlWarningOpen = true;
+  }
+
+  function acceptSqlWarning() {
+    sqlWarningOpen = false;
+    // Reopening with the larger budget throws away the current worker, and with
+    // it the pages it had cached — a few hundred KB, refetched on demand.
+    budget = PLAYGROUND_BUDGET_BYTES;
+    activeTab = "sql";
+  }
+
+  function declineSqlWarning() {
+    sqlWarningOpen = false;
+    activeTab = "search";
+  }
+
   // Global shortcuts: Ctrl+Enter submits the SQL query, "/" focuses the search
   // box unless the user is already typing somewhere.
-  function onKeydown(event: KeyboardEvent) {
+  function onKeydown(event) {
+    if (event.key === "Escape" && sqlWarningOpen) {
+      declineSqlWarning();
+      return;
+    }
     if (event.ctrlKey && event.key === "Enter" && activeTab === "sql") {
-      document.querySelector<HTMLFormElement>(".query-form")?.requestSubmit();
+      document.querySelector(".query-form")?.requestSubmit();
       return;
     }
     if (
@@ -151,18 +143,8 @@
   </header>
 
   <main>
-    {#if loading}
-      <div class="my-4 text-center text-ink-muted">
-        <p>
-          Đang tải cơ sở dữ liệu ~{dataset.dbSizeMb} MB{progress > 0 ? ` · ${progress}%` : ""}
-        </p>
-        <div class="mx-auto my-2 h-2 w-[300px] max-w-full overflow-hidden rounded bg-surface-alt">
-          <div class="h-full rounded bg-primary transition-[width]" style="width: {progress}%"></div>
-        </div>
-        <p class="mx-auto mt-2 max-w-[480px] text-sm text-ink-subtle">
-          Lần đầu có thể mất 10-30 giây. Sau đó trình duyệt sẽ lưu cache và mở nhanh hơn.
-        </p>
-      </div>
+    {#if opening}
+      <p class="my-4 text-center text-ink-muted">Đang mở cơ sở dữ liệu…</p>
     {/if}
 
     {#if loadError}
@@ -170,20 +152,30 @@
     {/if}
 
     <div class="mx-auto mb-6 flex max-w-[600px] border-b-2 border-line">
-      {#each [{ id: "search", label: "Tra cứu" }, { id: "sql", label: "Truy vấn SQL" }] as const as tab (tab.id)}
-        <button
-          class="-mb-0.5 flex-1 cursor-pointer border-0 border-b-2 bg-transparent px-4 py-3
-                 transition-colors hover:text-primary"
-          class:border-transparent={activeTab !== tab.id}
-          class:text-ink-muted={activeTab !== tab.id}
-          class:border-primary={activeTab === tab.id}
-          class:text-primary={activeTab === tab.id}
-          class:font-semibold={activeTab === tab.id}
-          onclick={() => (activeTab = tab.id)}
-        >
-          {tab.label}
-        </button>
-      {/each}
+      <button
+        class="-mb-0.5 flex-1 cursor-pointer border-0 border-b-2 bg-transparent px-4 py-3
+               transition-colors hover:text-primary"
+        class:border-transparent={activeTab !== "search"}
+        class:text-ink-muted={activeTab !== "search"}
+        class:border-primary={activeTab === "search"}
+        class:text-primary={activeTab === "search"}
+        class:font-semibold={activeTab === "search"}
+        onclick={() => (activeTab = "search")}
+      >
+        Tra cứu
+      </button>
+      <button
+        class="-mb-0.5 flex-1 cursor-pointer border-0 border-b-2 bg-transparent px-4 py-3
+               transition-colors hover:text-primary"
+        class:border-transparent={activeTab !== "sql"}
+        class:text-ink-muted={activeTab !== "sql"}
+        class:border-primary={activeTab === "sql"}
+        class:text-primary={activeTab === "sql"}
+        class:font-semibold={activeTab === "sql"}
+        onclick={openSqlTab}
+      >
+        Truy vấn SQL
+      </button>
     </div>
 
     {#if activeTab === "search"}
@@ -215,16 +207,48 @@
     {/if}
   </main>
 
-  <footer
-    class="mt-12 border-t border-line pt-4 text-center text-sm break-words text-ink-subtle"
-  >
+  <footer class="mt-12 border-t border-line pt-4 text-center text-sm text-ink-subtle">
     <p>
       Nguồn:
-      <a href={dataset.source} target="_blank" rel="noopener noreferrer">{dataset.source}</a>
-      {#if totalCount !== null}
-        · {totalCount.toLocaleString("vi-VN")} thí sinh
-      {/if}
-      · Dữ liệu chỉ mang tính tham khảo
+      <!-- An off-site article URL, so there is no route for resolve() to take. -->
+      <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+      <a href={dataset.source} title={dataset.source} target="_blank" rel="noopener noreferrer"
+        >{dataset.sourceName}</a
+      >
+      · {dataset.rows.toLocaleString("vi-VN")} thí sinh · Dữ liệu chỉ mang tính tham khảo
     </p>
   </footer>
 </div>
+
+{#if sqlWarningOpen}
+  <!--
+    The SQL tab is the one place a user can write a query that reads the whole
+    database. Everything else here is a seek; this is not, so it is opt-in.
+  -->
+  <div
+    class="fixed inset-0 z-10 flex items-center justify-center bg-black/50 p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="sql-warning-title"
+  >
+    <div class="max-w-[520px] rounded-xl border border-line bg-surface p-6 shadow-card">
+      <h2 id="sql-warning-title" class="mb-3 text-lg font-semibold">Truy vấn SQL tốn dữ liệu mạng</h2>
+      <p class="mb-3 text-sm text-ink-muted">
+        Tra cứu thường chỉ tải vài trăm KB. Truy vấn SQL tự viết có thể quét toàn bộ bảng và tải tới
+        hàng trăm MB — tốn dữ liệu di động và có thể rất chậm.
+      </p>
+      <p class="mb-5 text-sm text-ink-muted">
+        Cơ sở dữ liệu này nặng {dataset.dbSizeMb} MB. Số byte đã tải sẽ hiển thị bên cạnh thời gian
+        chạy để bạn theo dõi.
+      </p>
+      <div class="flex flex-wrap justify-end gap-3">
+        <button type="button" class="btn-chip" onclick={declineSqlWarning}>
+          Quay lại tra cứu
+        </button>
+        <button type="button" class="btn-primary" onclick={acceptSqlWarning}>
+          Tôi hiểu, tiếp tục
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}

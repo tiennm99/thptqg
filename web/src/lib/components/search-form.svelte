@@ -1,28 +1,16 @@
-<script lang="ts">
+<script>
   import { detectMode } from "$lib/query-mode";
 
   const DEBOUNCE_MS = 300;
 
-  let {
-    value = "",
-    onSearch,
-    onClear,
-    disabled = false,
-    examples = [],
-  }: {
-    value?: string;
-    onSearch: (q: string) => void;
-    onClear?: () => void;
-    disabled?: boolean;
-    examples?: string[];
-  } = $props();
+  let { value = "", onSearch, onClear, disabled = false, examples = [] } = $props();
 
   // A writable derived: it follows the owner's value — which is bound to the
   // URL, so a deep link or the clear button flows in — and typing overrides it
   // until the next external change.
   let query = $derived(value);
-  let input = $state<HTMLInputElement | null>(null);
-  let timer: ReturnType<typeof setTimeout> | undefined;
+  let input = $state(null);
+  let timer;
 
   const detected = $derived(detectMode(query));
   const canSearch = $derived(detected.mode === "sbd" || detected.mode === "name");
@@ -45,7 +33,7 @@
     return () => clearTimeout(timer);
   });
 
-  function submit(event: SubmitEvent) {
+  function submit(event) {
     event.preventDefault();
     if (!canSearch) return;
     clearTimeout(timer);

@@ -13,21 +13,23 @@
 import registry from "../../../datasets.json";
 
 import { PRESETS_2016, PRESETS_2017 } from "./sql-presets";
-import type { Dataset, PresetGroup } from "./types";
 
 const SUBTITLE = "Dữ liệu thí sinh toàn quốc · Hỗ trợ truy vấn SQL tùy chỉnh";
 
 /**
  * Presentation, keyed by the ids declared in datasets.json.
  *
- * `source` is the full article URL the dataset's spreadsheets come from, shown
- * in the footer as a link. The canonical copy is the crawler's `Article` field
+ * `source` is the full article URL the dataset's spreadsheets come from. The
+ * canonical copy is the crawler's `Article` field
  * (crawler/internal/sources/source_<id>.go); it is duplicated here because a Go
- * module and a Vite app cannot share a constant. Keep the two in step.
+ * module and the web app cannot share a constant. Keep the two in step.
+ *
+ * `sourceName` is who published that article, and is what the footer shows —
+ * the URLs run to 120 characters and used to wrap across three lines on a
+ * phone. The link still points at the article, and its title attribute still
+ * carries the URL for anyone who wants to see where it goes.
  */
-type Content = Omit<Dataset, "id" | "dbSizeMb" | "blurb"> & { presets: PresetGroup[] };
-
-const CONTENT: Record<string, Content> = {
+const CONTENT = {
   2016: {
     label: "Kỳ thi 2016",
     title: "Tra cứu điểm thi THPT Quốc gia 2016",
@@ -36,6 +38,7 @@ const CONTENT: Record<string, Content> = {
     // ministry — hence the unexpected domain.
     source:
       "https://dtnt.bacninh.edu.vn/tin-tuc/tin-tuc-su-kien/cong-bo-diem-thi-thptqg-2016-toan-bo-120-cum-thi-da-co-diem.html",
+    sourceName: "Trường Phổ thông DTNT tỉnh Bắc Ninh",
     examples: ["TKG002747", "Nguyễn Bửu Lộc"],
     presets: PRESETS_2016,
   },
@@ -45,6 +48,7 @@ const CONTENT: Record<string, Content> = {
     subtitle: SUBTITLE,
     source:
       "https://baotintuc.vn/tuyen-sinh/tra-cuu-diem-thi-thpt-2017-cua-63-tinh-thanh-pho-tren-baotintucvn-20170706073512672.htm",
+    sourceName: "Báo Tin tức và Dân tộc - TTXVN",
     examples: ["49008235", "Nguyễn Minh Tiến"],
     presets: PRESETS_2017,
   },
@@ -57,6 +61,13 @@ for (const { id } of registry.datasets) {
   if (!CONTENT[id]) {
     throw new Error(`datasets.json declares "${id}" but web/src/datasets.js has no content for it`);
   }
+  // The footer renders sourceName as the link text, so a missing one is an
+  // empty link rather than a visible mistake.
+  for (const field of ["title", "label", "source", "sourceName", "examples", "presets"]) {
+    if (!CONTENT[id][field]) {
+      throw new Error(`web/src/lib/datasets.js: dataset "${id}" is missing ${field}`);
+    }
+  }
 }
 for (const id of Object.keys(CONTENT)) {
   if (!registry.datasets.some((d) => d.id === id)) {
@@ -64,9 +75,10 @@ for (const id of Object.keys(CONTENT)) {
   }
 }
 
-export const DATASETS: Dataset[] = registry.datasets.map((d) => ({
+export const DATASETS = registry.datasets.map((d) => ({
   id: d.id,
   dbSizeMb: d.dbSizeMb,
+  rows: d.expectedRows,
   // Derived from expectedRows so the count the hub shows is the same number the
   // assembler enforces.
   blurb: `${d.expectedRows.toLocaleString("vi-VN")} thí sinh`,
@@ -74,7 +86,7 @@ export const DATASETS: Dataset[] = registry.datasets.map((d) => ({
 }));
 
 /** Look up a dataset by the route segment, or undefined for an unknown id. */
-export function datasetById(id: string): Dataset | undefined {
+export function datasetById(id) {
   return DATASETS.find((d) => d.id === id);
 }
 
@@ -82,11 +94,16 @@ export function datasetById(id: string): Dataset | undefined {
  * Site path for a dataset. `base` is SvelteKit's, which carries no trailing
  * slash: pathOf(d, "/thptqg") → "/thptqg/2017/".
  */
-export function pathOf(dataset: Dataset, base: string): string {
+export function pathOf(dataset, base) {
   return `${base}/${dataset.id}/`;
 }
 
-/** Gzipped database URL, e.g. dbOf(d, "/thptqg") → "/thptqg/db/2017.db.gz". */
-export function dbOf(dataset: Dataset, base: string): string {
-  return `${base}/db/${dataset.id}.db.gz`;
+/**
+ * Database URL, e.g. dbOf(d, "/thptqg") → "/thptqg/db/2017.sqlite3".
+ *
+ * Uncompressed on purpose: the browser reads byte ranges of it, and a range of
+ * a gzip stream is not a range of the database.
+ */
+export function dbOf(dataset, base) {
+  return `${base}/db/${dataset.id}.sqlite3`;
 }

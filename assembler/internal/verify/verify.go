@@ -44,8 +44,8 @@ type Result struct {
 // OK reports whether the two databases are logically identical.
 func (r Result) OK() bool { return len(r.Problems) == 0 }
 
-// Compare checks every dataset in the registry, reading <dir>/<id>.db.gz (or
-// <id>.db) from each side.
+// Compare checks every dataset in the registry, reading <dir>/<id>.sqlite3
+// from each side.
 func Compare(datasets []registry.Dataset, dirA, dirB string) ([]Result, error) {
 	out := make([]Result, 0, len(datasets))
 	for _, d := range datasets {
@@ -135,21 +135,26 @@ func compareOne(id, dirA, dirB string) (Result, error) {
 	return res, nil
 }
 
-// open finds <id>.db.gz or <id>.db in dir and returns a handle. A compressed
-// database is expanded to a temporary file, since SQLite needs to seek.
+// open finds <id>.sqlite3 in dir and returns a read-only handle.
+//
+// A gzipped database is still expanded to a temporary file rather than
+// rejected: the two sides of a comparison are often a build from before the
+// switch to range requests and one from after.
 func open(dir, id string) (*sql.DB, func(), error) {
 	noop := func() {}
 
-	plain := filepath.Join(dir, id+".db")
-	if _, err := os.Stat(plain); err == nil {
-		db, err := sql.Open(driverName, "file:"+plain+"?mode=ro")
-		return db, noop, err
+	for _, name := range []string{id + ".sqlite3", id + ".db"} {
+		plain := filepath.Join(dir, name)
+		if _, err := os.Stat(plain); err == nil {
+			db, err := sql.Open(driverName, "file:"+plain+"?mode=ro")
+			return db, noop, err
+		}
 	}
 
 	gzPath := filepath.Join(dir, id+".db.gz")
 	f, err := os.Open(gzPath)
 	if err != nil {
-		return nil, noop, fmt.Errorf("no %s.db or %s.db.gz in %s", id, id, dir)
+		return nil, noop, fmt.Errorf("no %s.sqlite3, %s.db or %s.db.gz in %s", id, id, id, dir)
 	}
 	defer f.Close()
 

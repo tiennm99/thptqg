@@ -1,9 +1,8 @@
-<script lang="ts">
+<script>
   import { computeBlocks, scoreTier } from "$lib/admission-blocks";
   import { SUBJECTS } from "$lib/subjects";
-  import type { Student, SubjectKey } from "$lib/types";
 
-  let { student }: { student: Student } = $props();
+  let { student } = $props();
 
   // Visible legend, so a user does not have to hover tiles to decode the
   // colours. The ranges must stay in step with scoreTier() in
@@ -17,22 +16,22 @@
     { key: "prismatic", symbol: "❖", range: "9-10", label: "Xuất sắc" },
   ];
 
-  let copied = $state<null | "sbd" | "share">(null);
+  let copied = $state(null);
 
   const blocks = $derived(computeBlocks(student));
   const subjects = $derived(
     SUBJECTS.filter((s) => student[s.key] !== null && student[s.key] !== undefined).map((s) => ({
-      key: s.key as SubjectKey,
+      key: s.key,
       label: s.label,
-      score: student[s.key] as number,
+      score: student[s.key],
     })),
   );
 
-  function fmt(n: number | null | undefined): string {
+  function fmt(n) {
     return n === null || n === undefined ? "—" : Number(n).toFixed(2);
   }
 
-  function flash(kind: "sbd" | "share") {
+  function flash(kind) {
     copied = kind;
     setTimeout(() => (copied = null), 1500);
   }

@@ -8,7 +8,7 @@ import { isAsciiOnly, toAscii } from "./to-ascii";
  * search silently misses rows. The cases below are the ones
  * parser/internal/transform/transform_test.go pins on the Go side.
  */
-const GO_PARITY: [input: string, want: string][] = [
+const GO_PARITY = [
   ["Nguyễn Bửu Lộc", "nguyen buu loc"],
   ["NGUYỄN THỊ HOA", "nguyen thi hoa"],
   ["Trần Thị Phước An", "tran thi phuoc an"],

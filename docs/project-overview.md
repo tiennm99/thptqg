@@ -21,10 +21,10 @@ running entirely in the browser and hosted for free on GitHub Pages. Covers the
 
 ## Constraints
 
-- **Zero backend.** The full database (44–48 MB gzipped per dataset) is
-  downloaded to the browser and queried in-process.
+- **Zero backend.** The database (238–289 MB per dataset) stays on the server
+  and the browser reads the pages a query touches over HTTP range requests.
 - **Read-only.** `INSERT`/`UPDATE`/`DELETE` are rejected, so nobody is misled
-  into thinking edits persist. `sql.js` is in-memory anyway.
+  into thinking edits persist. The file is fetched, never written.
 - **Row caps.** 100 rows for lookups, 1000 for custom SQL, to prevent browser
   hangs.
 - **Vietnamese-first UI.** App labels and data are Vietnamese; documentation is

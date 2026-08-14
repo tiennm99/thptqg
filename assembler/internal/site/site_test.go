@@ -23,7 +23,7 @@ func fakeBuild(t *testing.T, dbs ...string) Paths {
 	}
 	write(t, filepath.Join(dist, "_app", "immutable", "entry.js"), "console.log(1)")
 	for _, name := range dbs {
-		write(t, filepath.Join(dist, "db", name), "gzipped-bytes")
+		write(t, filepath.Join(dist, "db", name), "sqlite-bytes")
 	}
 	return Paths{Web: filepath.Join(root, "web"), Dist: dist, Site: filepath.Join(root, "_site")}
 }
@@ -39,7 +39,7 @@ func write(t *testing.T, path, body string) {
 }
 
 func TestAssembleProducesAPageForEveryDataset(t *testing.T) {
-	p := fakeBuild(t, "2016.db.gz", "2017.db.gz")
+	p := fakeBuild(t, "2016.sqlite3", "2017.sqlite3")
 	if err := Assemble(p, datasets); err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +49,7 @@ func TestAssembleProducesAPageForEveryDataset(t *testing.T) {
 		filepath.Join("2016", "index.html"),
 		filepath.Join("2017", "index.html"),
 		filepath.Join("_app", "immutable", "entry.js"),
-		filepath.Join("db", "2016.db.gz"),
+		filepath.Join("db", "2016.sqlite3"),
 	} {
 		if _, err := os.Stat(filepath.Join(p.Site, want)); err != nil {
 			t.Errorf("missing from the artifact: %s", want)
@@ -61,7 +61,7 @@ func TestAssembleProducesAPageForEveryDataset(t *testing.T) {
 // entry generator, which reads the same registry this does. If the two fall out
 // of step, that dataset's URL 404s — so the build stops instead.
 func TestMissingDatasetPageFailsTheBuild(t *testing.T) {
-	p := fakeBuild(t, "2016.db.gz", "2017.db.gz")
+	p := fakeBuild(t, "2016.sqlite3", "2017.sqlite3")
 	if err := os.RemoveAll(filepath.Join(p.Dist, "2017")); err != nil {
 		t.Fatal(err)
 	}
@@ -80,12 +80,12 @@ func TestMissingDatasetPageFailsTheBuild(t *testing.T) {
 // renders, every query 404s, and CI stays green. The row-count and size guards
 // cannot catch this — they only run when a database was built at all.
 func TestMissingDatabaseFailsTheBuild(t *testing.T) {
-	p := fakeBuild(t, "2016.db.gz") // 2017 never built
+	p := fakeBuild(t, "2016.sqlite3") // 2017 never built
 	err := Assemble(p, datasets)
 	if err == nil {
 		t.Fatal("expected an error when a database is missing")
 	}
-	if !strings.Contains(err.Error(), "2017.db.gz") {
+	if !strings.Contains(err.Error(), "2017.sqlite3") {
 		t.Errorf("the error should name the missing database, got: %v", err)
 	}
 }
@@ -93,40 +93,45 @@ func TestMissingDatabaseFailsTheBuild(t *testing.T) {
 // TestEmptyDatabaseFailsTheBuild: a zero-byte file satisfies "exists" but is
 // not a database.
 func TestEmptyDatabaseFailsTheBuild(t *testing.T) {
-	p := fakeBuild(t, "2016.db.gz", "2017.db.gz")
-	write(t, filepath.Join(p.Dist, "db", "2017.db.gz"), "")
+	p := fakeBuild(t, "2016.sqlite3", "2017.sqlite3")
+	write(t, filepath.Join(p.Dist, "db", "2017.sqlite3"), "")
 	if err := Assemble(p, datasets); err == nil {
 		t.Fatal("expected an error for a zero-byte database")
 	}
 }
 
-// TestRawDatabaseFailsTheBuild: the compression step deletes its source, so a
-// raw .db here means an interrupted run left one behind — and it is 100+ MB.
-func TestRawDatabaseFailsTheBuild(t *testing.T) {
-	for _, name := range []string{"2016.db", "2016.db-journal", "2016.db-wal", "2016.db-shm"} {
+// TestStrayArtifactFailsTheBuild: a journal means an interrupted run, a .db
+// means the old naming, a .gz means a database the site could not read a range
+// of — and each is 100+ MB.
+func TestStrayArtifactFailsTheBuild(t *testing.T) {
+	for _, name := range []string{
+		"2016.db", "2016.sqlite3-journal", "2016.sqlite3-wal", "2016.sqlite3-shm", "2016.sqlite3.gz",
+	} {
 		t.Run(name, func(t *testing.T) {
-			p := fakeBuild(t, "2016.db.gz", "2017.db.gz")
+			p := fakeBuild(t, "2016.sqlite3", "2017.sqlite3")
 			write(t, filepath.Join(p.Dist, "db", name), "raw sqlite")
 			err := Assemble(p, datasets)
 			if err == nil {
 				t.Fatalf("expected an error for %s", name)
 			}
-			if !strings.Contains(err.Error(), "uncompressed") {
+			if !strings.Contains(err.Error(), "stray") {
 				t.Errorf("unexpected error: %v", err)
 			}
 		})
 	}
 }
 
-// TestGzipIsNotMistakenForRaw: the reject pattern is anchored, so a .db.gz must
-// pass. Getting this wrong would fail every build.
-func TestGzipIsNotMistakenForRaw(t *testing.T) {
-	if rawDatabase.MatchString("2016.db.gz") {
-		t.Error("a .db.gz must not be treated as an uncompressed database")
+// TestPublishedDatabaseIsNotMistakenForStray: the pattern must pass the one
+// file the site is built to serve. Getting this wrong would fail every build.
+func TestPublishedDatabaseIsNotMistakenForStray(t *testing.T) {
+	if strayArtifact.MatchString("2016.sqlite3") {
+		t.Error("the published database must not be treated as a stray artifact")
 	}
-	for _, name := range []string{"2016.db", "x.db-journal", "x.db-wal", "x.db-shm"} {
-		if !rawDatabase.MatchString(name) {
-			t.Errorf("%s should be treated as an uncompressed artifact", name)
+	for _, name := range []string{
+		"2016.db", "x.sqlite3-journal", "x.sqlite3-wal", "x.sqlite3-shm", "x.sqlite3.gz", "x.db.gz",
+	} {
+		if !strayArtifact.MatchString(name) {
+			t.Errorf("%s should be rejected", name)
 		}
 	}
 }
@@ -142,7 +147,7 @@ func TestAssembleRejectsAMissingBuild(t *testing.T) {
 // TestAssembleIsIdempotent: the site directory is rebuilt from scratch, so a
 // previous run's leftovers cannot survive into the artifact.
 func TestAssembleIsIdempotent(t *testing.T) {
-	p := fakeBuild(t, "2016.db.gz", "2017.db.gz")
+	p := fakeBuild(t, "2016.sqlite3", "2017.sqlite3")
 	if err := Assemble(p, datasets); err != nil {
 		t.Fatal(err)
 	}

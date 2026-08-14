@@ -24,7 +24,8 @@ Add the web checks when frontend files changed:
 (cd web && npm test && npm run lint && npm run build)
 ```
 
-`npm run lint` is ESLint plus `svelte-check`, so it is the type check too.
+`npm run lint` is ESLint. The web app is plain JavaScript — no TypeScript, no
+type-check step.
 
 **Do not run the crawler suite as part of routine verification.** The crawler is
 not part of the build — `data/<id>/` is committed and a crawl only refreshes it
@@ -44,8 +45,8 @@ hashes every real input file. That is the point of it; do not skip it.
   regenerated.** A mismatch is a reader bug until proven otherwise, never a cue
   to refresh the file. `parser/cmd/dumpcells` narrows a failure to the cell.
 - **`ToAscii` filters the literal range U+0300..U+036F, not `unicode.Mn`.** It
-  must match `toAscii` in `web/src/lib/to-ascii.ts`, or accent-insensitive search
-  silently misses rows. `to-ascii.test.ts` pins the pairs both sides must agree
+  must match `toAscii` in `web/src/lib/to-ascii.js`, or accent-insensitive search
+  silently misses rows. `to-ascii.test.js` pins the pairs both sides must agree
   on.
 - **The 2016 files use four different layouts, and detection is per sheet.**
   Two of them publish scores in one column per subject instead of a `DIEM_THI`
@@ -58,6 +59,15 @@ hashes every real input file. That is the point of it; do not skip it.
   used — a fallback would break the `?q=` deep links.
 - **`dbSizeMb` in `datasets.json` is a build guard, not just a label.** The
   assembler refuses to publish an artifact that falls below a ratio of it.
+- **The databases ship uncompressed, as `<id>.sqlite3`.** The browser reads
+  byte ranges of them, and a range of a gzip stream is not a range of the
+  database. The host must not apply `Content-Encoding` either — check with
+  `curl -sI` after a deploy.
+- **Every query the site runs must be index-driven.** Over range requests an
+  unindexed query fetches the whole table. Hence no index on `ho_ten` (nothing
+  can use one), `name_word` for name search, partial indexes for the score
+  presets, and the footer count read from `datasets.json` instead of
+  `COUNT(*)`.
 
 ## Conventions
 
