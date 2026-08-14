@@ -189,7 +189,7 @@ total descending.
   whole; GitHub Pages serves everything with `Cache-Control: max-age=600`, and
   every rebuild relays SQLite's pages so the file changes even when the data
   does not, so that caching is cancelled by the host. Worth revisiting behind a
-  CDN with long TTLs, and it is the fallback if a single 300 MB file ever
+  CDN with long TTLs, and it is the fallback if a single 288 MB file ever
   becomes a problem.
 - **`sqlite-wasm-http`.** Maintained, and built on the official SQLite WASM
   rather than a 2022 fork, which is the better long-term footing. It does not
@@ -200,7 +200,7 @@ total descending.
   but it ships a fallback backend that does not — so isolation is not the
   blocker, the missing length option is.
 - **Substring name search.** `LIKE '%x%'` cannot use an index, so it read the
-  whole 127 MB table. `name_word` keeps search by any word of a name without
+  whole student table. `name_word` keeps search by any word of a name without
   it.
 
 ## Risks and limitations
@@ -220,7 +220,7 @@ total descending.
   fails loudly instead of returning nonsense.
 - **`sql.js-httpvfs` is unmaintained** (0.8.12, September 2022) and ships its
   own SQLite WASM. `sqlite-wasm-http`, on the official build, is the fallback.
-- **Hosted size.** 552 MB for both datasets against the 1 GB GitHub Pages
+- **Hosted size.** 526 MB for both datasets against the 1 GB GitHub Pages
   limit; a third dataset of this size would not fit.
 - **Excel format drift.** A new source file with an unseen header layout needs a
   new branch in `parser/internal/ingest/detect2016.go` or a new config.

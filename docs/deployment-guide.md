@@ -83,8 +83,8 @@ artifact — one missing line away from publishing it.
   files committed to a repository; the databases are built in CI and uploaded
   as a Pages artifact, and the documented Pages limits are a 1 GB published
   site and 100 GB/month of bandwidth, with no per-file figure. The two
-  databases are 302 MB and 247 MB.
-- **Total artifact is about 552 MB**, inside the 1 GB site limit but with less
+  databases are 288 MB and 238 MB.
+- **Total artifact is about 526 MB**, inside the 1 GB site limit but with less
   headroom than before: a third dataset of this size would not fit. The fallback
   is `sql.js-httpvfs`'s chunked mode, which splits a database into parts.
 - **Pages does compress the databases, and that is survivable.** The extension

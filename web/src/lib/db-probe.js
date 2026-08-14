@@ -3,8 +3,8 @@
  *
  * `sql.js-httpvfs` sizes a file with a HEAD request. That request carries no
  * Range header, so the browser advertises gzip, and GitHub Pages answers with
- * `Content-Encoding: gzip` and the length of the *compressed* body — 66 MB for
- * a 302 MB database. The library rightly refuses to believe it and gives up
+ * `Content-Encoding: gzip` and the length of the *compressed* body — 64 MB for
+ * a 288 MB database. The library rightly refuses to believe it and gives up
  * with "Length of the file not known. It must either be supplied in the config
  * or given by the HTTP server."
  *
