@@ -42,7 +42,7 @@ app both read it and neither needs a dependency to do so; presentation stays in
 The dataset id is one identifier end to end:
 
 ```
-data/2017/ → parser/configs/2017.yml → db/2017.sqlite3 → /thptqg/2017/
+data/2017/ → parser/configs/2017.yml → db/2017.sqlite30 → /thptqg/2017/
 ```
 
 ## Build

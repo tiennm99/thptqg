@@ -58,23 +58,23 @@ describe("looksLikeSqlite", () => {
 describe("probeDatabase", () => {
   it("asks for the header by range and returns the total length", async () => {
     const fetchImpl = vi.fn(async () => respond(header()));
-    const total = await probeDatabase("/db/2016.sqlite3", 1024, fetchImpl);
+    const total = await probeDatabase("/db/2016.sqlite30", 1024, fetchImpl);
 
     expect(total).toBe(317096960);
-    expect(fetchImpl).toHaveBeenCalledWith("/db/2016.sqlite3", {
+    expect(fetchImpl).toHaveBeenCalledWith("/db/2016.sqlite30", {
       headers: { Range: "bytes=0-99" },
     });
   });
 
   it("fails when the host ignores the range", async () => {
     const fetchImpl = async () => respond(header(), { status: 200 });
-    await expect(probeDatabase("/db/2016.sqlite3", 1024, fetchImpl)).rejects.toThrow(/expected 206/);
+    await expect(probeDatabase("/db/2016.sqlite30", 1024, fetchImpl)).rejects.toThrow(/expected 206/);
   });
 
   it("fails when the bytes are not a database", async () => {
     const gzip = new Uint8Array([0x1f, 0x8b, 0x08]);
     const fetchImpl = async () => respond(gzip);
-    await expect(probeDatabase("/db/2016.sqlite3", 1024, fetchImpl)).rejects.toThrow(
+    await expect(probeDatabase("/db/2016.sqlite30", 1024, fetchImpl)).rejects.toThrow(
       /not a SQLite header/,
     );
   });
@@ -83,7 +83,7 @@ describe("probeDatabase", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const fetchImpl = async () => respond(header(4096));
 
-    await expect(probeDatabase("/db/2016.sqlite3", 1024, fetchImpl)).resolves.toBe(317096960);
+    await expect(probeDatabase("/db/2016.sqlite30", 1024, fetchImpl)).resolves.toBe(317096960);
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/page size 4096/));
     warn.mockRestore();
   });

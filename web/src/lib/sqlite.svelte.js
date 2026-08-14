@@ -53,8 +53,14 @@ export class RemoteDatabase {
   // Previous cumulative reading, so a query's own cost is a subtraction.
   #seen = { requests: 0, bytes: 0 };
 
-  constructor(url, budgetBytes = SEARCH_BUDGET_BYTES) {
-    this.url = url;
+  /**
+   * `source` carries both forms of the same location: `url` is the file, and
+   * `urlPrefix` is what the library appends the chunk index to. They must
+   * agree — see dbOf/dbPrefixOf, which derive one from the other.
+   */
+  constructor(source, budgetBytes = SEARCH_BUDGET_BYTES) {
+    this.url = source.url;
+    this.urlPrefix = source.urlPrefix;
     this.budgetBytes = budgetBytes;
     this.#opening = this.#open();
   }
@@ -62,15 +68,29 @@ export class RemoteDatabase {
   async #open() {
     const opened = performance.now();
     try {
-      // Supplied rather than left to the library, which would size the file
-      // with a HEAD request. GitHub Pages compresses that response and reports
-      // the compressed length, which the library refuses to use. See db-probe.
-      const fileLength = await probeDatabase(this.url, CHUNK_BYTES);
+      // Chunked mode over a single chunk, which looks odd but is the only way
+      // to tell this library how long the file is: the worker reads
+      // databaseLengthBytes in chunked mode and hardcodes the length to
+      // undefined in full mode. Left to itself it sizes the file with a HEAD
+      // request, and GitHub Pages answers that with the gzipped length, which
+      // it then refuses to use.
+      //
+      // One chunk covers the whole database, so the chunk index is always 0
+      // and every request goes to urlPrefix + "0" — the file the assembler
+      // publishes as <id>.sqlite30.
+      const databaseLengthBytes = await probeDatabase(this.url, CHUNK_BYTES);
       const worker = await createDbWorker(
         [
           {
             from: "inline",
-            config: { serverMode: "full", url: this.url, requestChunkSize: CHUNK_BYTES, fileLength },
+            config: {
+              serverMode: "chunked",
+              urlPrefix: this.urlPrefix,
+              serverChunkSize: databaseLengthBytes,
+              databaseLengthBytes,
+              suffixLength: 1,
+              requestChunkSize: CHUNK_BYTES,
+            },
           },
         ],
         workerUrl,

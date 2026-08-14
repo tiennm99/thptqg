@@ -59,17 +59,24 @@ hashes every real input file. That is the point of it; do not skip it.
   used — a fallback would break the `?q=` deep links.
 - **`dbSizeMb` in `datasets.json` is a build guard, not just a label.** The
   assembler refuses to publish an artifact that falls below a ratio of it.
-- **The databases ship uncompressed, as `<id>.sqlite3`.** The browser reads
-  byte ranges of them, and a range of a gzip stream is not a range of the
-  database.
-- **The file length comes from a range request, not from the host's HEAD.**
-  GitHub Pages gzips `application/octet-stream`, so a HEAD reports the
-  compressed size and `sql.js-httpvfs` refuses to open the file. Ranged reads
-  are unaffected — browsers must send `Accept-Encoding: identity` whenever a
-  request carries a `Range` header — so `web/src/lib/db-probe.js` reads the
-  header over a range and passes `fileLength`. Verify the way a browser asks:
-  `curl -sI -r 0-99 -H 'Accept-Encoding: identity' …`, never a bare `curl -sI`,
-  which advertises no encoding and hides the problem.
+- **The databases ship uncompressed, as `<id>.sqlite30`.** The trailing 0 is a
+  chunk index, not a typo — see the next point. The browser reads byte ranges
+  of the file, and a range of a gzip stream is not a range of the database.
+- **The site uses chunked mode over a single chunk, and that is deliberate.**
+  GitHub Pages gzips `application/octet-stream`, so the HEAD request
+  `sql.js-httpvfs` sizes a file with reports the compressed length, and the
+  library refuses to open the file. Chunked mode is the only mode whose config
+  takes a length (`databaseLengthBytes`); in full mode the worker hardcodes it
+  to `undefined`, so a length passed there is silently dropped. One chunk holds
+  the database, so the index is always 0 and every request goes to
+  `<id>.sqlite3` + `0`. `web/src/lib/db-probe.js` supplies the length by
+  reading the file header over a range request.
+- **Ranged reads were never affected by the compression**, because browsers
+  must send `Accept-Encoding: identity` whenever a request carries a `Range`
+  header. Verify the way a browser asks —
+  `curl -s -r 0-14 -H 'Accept-Encoding: identity' …` must print
+  `SQLite format 3` — never a bare `curl -sI`, which advertises no encoding
+  and so passes whatever the host does.
 - **Every query the site runs must be index-driven.** Over range requests an
   unindexed query fetches the whole table. Hence no index on `ho_ten` (nothing
   can use one), `name_word` for name search, partial indexes for the score

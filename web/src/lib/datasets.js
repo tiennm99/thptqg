@@ -99,11 +99,38 @@ export function pathOf(dataset, base) {
 }
 
 /**
- * Database URL, e.g. dbOf(d, "/thptqg") → "/thptqg/db/2017.sqlite3".
+ * The chunk the whole database lives in. One chunk covers the file, so this is
+ * the only index the library ever asks for, and the assembler publishes the
+ * database under a name ending in it.
+ */
+const CHUNK_INDEX = "0";
+
+/**
+ * Everything a database URL has except the chunk index, e.g.
+ * dbPrefixOf(d, "/thptqg") → "/thptqg/db/2017.sqlite3".
+ *
+ * sql.js-httpvfs reads the file in chunked mode and builds each URL as
+ * prefix + chunk index. One chunk holds the whole database, so the index is
+ * always 0 and the published file is "<id>.sqlite30".
+ */
+export function dbPrefixOf(dataset, base) {
+  return `${base}/db/${dataset.id}.sqlite3`;
+}
+
+/**
+ * The published database file, e.g. dbOf(d, "/thptqg") → "/thptqg/db/2017.sqlite30".
  *
  * Uncompressed on purpose: the browser reads byte ranges of it, and a range of
  * a gzip stream is not a range of the database.
  */
 export function dbOf(dataset, base) {
-  return `${base}/db/${dataset.id}.sqlite3`;
+  return `${dbPrefixOf(dataset, base)}${CHUNK_INDEX}`;
+}
+
+/**
+ * Both forms of the database's location, for RemoteDatabase: the file to read,
+ * and the prefix the library appends the chunk index to.
+ */
+export function dbSourceOf(dataset, base) {
+  return { url: dbOf(dataset, base), urlPrefix: dbPrefixOf(dataset, base) };
 }

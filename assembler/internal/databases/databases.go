@@ -35,10 +35,18 @@ const driverName = "sqlite"
 // even if the row count somehow passed.
 const minSizeRatio = 0.9
 
-// Extension is the published suffix. Not ".db": the sql.js-httpvfs ecosystem
-// uses ".sqlite3", and keeping ".db" free lets the site assembly treat any
+// Extension is the published suffix. The trailing 0 is a chunk index, not a
+// typo: the browser reads the file through sql.js-httpvfs in chunked mode,
+// which is the only mode whose config accepts the file's length. That mode
+// builds each request's URL as urlPrefix + chunkIndex, and one chunk holds the
+// whole database, so the index is always 0 and the prefix is "<id>.sqlite3".
+//
+// The length has to come from the config because the library otherwise takes
+// it from a HEAD request, which GitHub Pages answers with the gzipped size.
+//
+// Not ".db" either: keeping that name free lets the site assembly treat any
 // stray .db or SQLite journal in the output as the leftover it is.
-const Extension = ".sqlite3"
+const Extension = ".sqlite30"
 
 // Paths locates the pieces this package needs.
 type Paths struct {

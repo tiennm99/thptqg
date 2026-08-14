@@ -193,7 +193,7 @@ HTTP request. `CHUNK_BYTES` in `web/src/lib/sqlite.svelte.js` must match.
 ## Verifying a rebuild
 
 The assembler verifies itself: each database's row count must match the
-figure in the table above, and each `.sqlite3` must be at least 90% of its usual
+figure in the table above, and each `.sqlite30` must be at least 90% of its usual
 size, or the build fails rather than publishing. That guard is the reason a
 truncated dataset cannot reach the site with a green pipeline.
 
@@ -207,7 +207,7 @@ go -C assembler run ./cmd/assemble db   # rebuild
 go -C assembler run ./cmd/assemble verify /tmp/before .build/public/db
 ```
 
-Each side is a directory of `<id>.sqlite3`; a gzipped database from before the
+Each side is a directory of `<id>.sqlite30`; a gzipped database from before the
 switch to range requests is still expanded to a temporary file automatically. It exits non-zero on any mismatch,
 names the first differing rows and columns, and fails rather than skipping when a
 dataset is absent from either side — silently comparing one of two datasets is

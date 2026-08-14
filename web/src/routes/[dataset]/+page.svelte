@@ -7,7 +7,7 @@
   import ScoreTable from "$lib/components/score-table.svelte";
   import SearchForm from "$lib/components/search-form.svelte";
   import StudentDetail from "$lib/components/student-detail.svelte";
-  import { dbOf } from "$lib/datasets";
+  import { dbSourceOf } from "$lib/datasets";
   import { isExamId } from "$lib/query-mode";
   import { MAX_RESULTS, lookupExamId, searchByName } from "$lib/search";
   import { PLAYGROUND_BUDGET_BYTES, RemoteDatabase, SEARCH_BUDGET_BYTES } from "$lib/sqlite.svelte";
@@ -34,7 +34,7 @@
   // Opened in the browser only: $effect does not run while prerendering. A new
   // budget means a new worker, which costs only the header pages.
   $effect(() => {
-    const opened = new RemoteDatabase(dbOf(dataset, base), budget);
+    const opened = new RemoteDatabase(dbSourceOf(dataset, base), budget);
     db = opened;
     return () => {
       opened.close();
