@@ -7,7 +7,8 @@
   import ScoreTable from "$lib/components/score-table.svelte";
   import SearchForm from "$lib/components/search-form.svelte";
   import StudentDetail from "$lib/components/student-detail.svelte";
-  import { LocalDatabase, weigh } from "$lib/database.svelte";
+  import { LocalDatabase, formatBytes } from "$lib/database.svelte";
+  import { forgetAll } from "$lib/db-cache";
   import { dbOf } from "$lib/datasets";
   import { isExamId } from "$lib/query-mode";
   import { MAX_RESULTS, lookupExamId, searchByName } from "$lib/search";
@@ -22,8 +23,6 @@
   /** How long the last search took, in ms. */
   let searchMs = $state(null);
   let activeTab = $state("search");
-  /** Compressed size of the download, as the server reports it. */
-  let transferBytes = $state(null);
   // Owned here, not in SearchForm, so it can be bound to the URL both ways.
   // The query string is unreadable while prerendering — there is no request —
   // so a deep link is picked up on the client only.
@@ -34,15 +33,22 @@
   // Created in the browser only: $effect does not run while prerendering. The
   // download itself waits for the visitor to accept it.
   $effect(() => {
-    const url = dbOf(dataset, base);
-    const opened = new LocalDatabase(url, dataset.dbSizeMb * 1024 * 1024);
+    const opened = new LocalDatabase(dbOf(dataset, base), dataset.dbSizeMb * 1024 * 1024);
     db = opened;
-    void weigh(url).then((bytes) => (transferBytes = bytes));
+    // Consults the cache, and opens a stored copy without asking: consent was
+    // given the first time, and reusing it costs nothing.
+    void opened.prepare();
     return () => {
       opened.close();
       db = null;
     };
   });
+
+  /** Drop the stored copy, then reload so the gate asks again. */
+  async function clearStored() {
+    await forgetAll();
+    location.reload();
+  }
 
   // Hydrate a ?q= deep link as soon as the database is open.
   let hydrated = false;
@@ -135,8 +141,18 @@
   </header>
 
   <main>
-    <!-- Load state belongs to the gate: until the database is here there is
-         nothing behind it to report on. -->
+    <!-- The gate carries the load state for a download. A copy already on the
+         device opens without one, so it reports itself here instead. -->
+    {#if db?.loading && db.fromCache}
+      <p class="notice flex items-center justify-center gap-2 bg-surface-alt" aria-live="polite">
+        <span
+          class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-line
+                 border-t-primary"
+          aria-hidden="true"
+        ></span>
+        Đang mở dữ liệu đã lưu trên máy… {Math.round(db.progress * 100)}%
+      </p>
+    {/if}
 
     <div class="mx-auto mb-6 flex max-w-[600px] border-b-2 border-line">
       <button
@@ -221,9 +237,21 @@
       >
       · {dataset.rows.toLocaleString("vi-VN")} thí sinh · Dữ liệu chỉ mang tính tham khảo
     </p>
+    {#if db?.fromCache}
+      <p class="mt-2">
+        Cơ sở dữ liệu ({formatBytes(db.expectedBytes)}) đã lưu trên máy để không phải tải lại.
+        <button
+          type="button"
+          class="cursor-pointer border-0 bg-transparent p-0 text-inherit underline"
+          onclick={clearStored}
+        >
+          Xoá khỏi máy
+        </button>
+      </p>
+    {/if}
   </footer>
 </div>
 
-{#if db && !db.ready}
-  <DownloadGate {db} {transferBytes} onDownload={() => db.open()} />
+{#if db && !db.ready && db.checked && !db.fromCache}
+  <DownloadGate {db} onDownload={() => db.open()} />
 {/if}

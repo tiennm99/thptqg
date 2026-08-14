@@ -64,8 +64,13 @@ hashes every real input file. That is the point of it; do not skip it.
   dataset page is gated behind that download: `download-gate.svelte` states the
   transfer and memory cost and offers nothing but the download, because there
   is no answer to give without it. `sql.js` holds the file in WebAssembly
-  memory for as long as the tab is open, so it is RAM, not disk, and it is gone
-  on reload.
+  memory for as long as the tab is open, so the memory figure is RAM, not disk.
+- **The download is kept in Cache Storage, versioned by ETag** (`db-cache.js`).
+  A later visit opens the stored copy without asking, since consent was given
+  once and reuse costs no network; a redeploy changes the ETag, so the new
+  version replaces the old rather than being served stale. When the server
+  cannot be reached at all, any stored version is used — which is what lets the
+  site answer offline.
 - **The schema carries no secondary indexes, deliberately.** An index saves a
   scan that already takes a few hundred milliseconds in memory, and costs every
   visitor megabytes of download. An earlier design read the file over HTTP

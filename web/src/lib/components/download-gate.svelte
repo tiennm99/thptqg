@@ -11,7 +11,7 @@
    *
    * It has no dismiss: without the database the page has no answers to give.
    */
-  let { db, transferBytes = null, onDownload } = $props();
+  let { db, onDownload } = $props();
 
   const percent = $derived(Math.round(db.progress * 100));
 </script>
@@ -22,7 +22,7 @@
   aria-modal="true"
   aria-labelledby="gate-title"
 >
-  <div class="w-full max-w-[480px] rounded-xl bg-surface p-6 shadow-xl">
+  <div class="w-full max-w-[480px] rounded-xl border border-line bg-surface p-6 shadow-card">
     <h2 id="gate-title" class="mb-2 text-xl font-semibold">Tải cơ sở dữ liệu</h2>
 
     <p class="mb-4 text-[0.95rem] text-ink-muted">
@@ -34,7 +34,7 @@
       <div class="rounded-lg bg-surface-alt p-3">
         <dt class="text-ink-muted">Dung lượng tải</dt>
         <dd class="text-lg font-semibold">
-          {transferBytes ? formatBytes(transferBytes) : "~31 MB"}
+          {db.transferBytes ? formatBytes(db.transferBytes) : "~31 MB"}
         </dd>
       </div>
       <div class="rounded-lg bg-surface-alt p-3">
@@ -44,8 +44,8 @@
     </dl>
 
     <p class="mb-5 text-sm text-ink-subtle">
-      Dữ liệu được giữ trong bộ nhớ của tab và sẽ mất khi bạn đóng trang, nên lần truy cập sau cần
-      tải lại. Không nên dùng trên thiết bị có ít bộ nhớ.
+      Sau khi tải, dữ liệu được lưu lại trên máy nên các lần sau không phải tải lại. Khi tra cứu,
+      dữ liệu nằm trong bộ nhớ (RAM) của tab, vì vậy không nên dùng trên thiết bị có ít bộ nhớ.
     </p>
 
     {#if db.error}

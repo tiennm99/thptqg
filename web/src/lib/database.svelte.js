@@ -1,3 +1,4 @@
+import { keepOnly, matchAny, matchVersion, openCache } from "./db-cache.js";
 import initSqlJs from "sql.js";
 import wasmUrl from "sql.js/dist/sql-wasm.wasm?url";
 
@@ -15,6 +16,10 @@ import wasmUrl from "sql.js/dist/sql-wasm.wasm?url";
  * whole file sits in the tab's address space for as long as the page is open.
  * That is what the gate on the dataset page tells the visitor before they
  * commit to it.
+ *
+ * The transfer is paid once per device rather than once per visit: the
+ * response is kept in Cache Storage, versioned by ETag so that a redeploy
+ * replaces it instead of being served stale. See db-cache.js.
  */
 
 /** Rows to return before a query is considered too broad to render. */
@@ -46,12 +51,45 @@ export class LocalDatabase {
   received = $state(0);
   /** How long the download and open took, once done. */
   ms = $state(0);
+  /** True once the cache has been consulted, so the gate knows what to ask for. */
+  checked = $state(false);
+  /** True when this copy came off the disk rather than the network. */
+  fromCache = $state(false);
+  /** Compressed size of the download, as the server reports it. */
+  transferBytes = $state(null);
 
   #db = null;
+  #etag = null;
 
   constructor(url, expectedBytes) {
     this.url = url;
     this.expectedBytes = expectedBytes;
+  }
+
+  /**
+   * Ask the server what it holds, and the disk what we kept.
+   *
+   * A copy already on the device costs no network and needs no consent, so it
+   * opens straight away. Otherwise this only works out what a download would
+   * cost, and the gate waits for the visitor to accept it.
+   */
+  async prepare() {
+    const head = await describe(this.url);
+    this.transferBytes = head?.bytes ?? null;
+    this.#etag = head?.etag ?? null;
+
+    const cache = await openCache();
+    // Without an ETag the server is unreachable; any stored version beats an
+    // error page, since these are frozen exam results.
+    const stored = this.#etag
+      ? await matchVersion(cache, this.url, this.#etag)
+      : await matchAny(cache, this.url);
+
+    this.checked = true;
+    if (stored) {
+      this.fromCache = true;
+      await this.open(stored);
+    }
   }
 
   /** Fraction downloaded, 0 to 1, for the progress bar. */
@@ -67,7 +105,7 @@ export class LocalDatabase {
    * sees movement: this is tens of megabytes on a phone connection, and a
    * progress bar is the difference between waiting and giving up.
    */
-  async open() {
+  async open(stored = null) {
     if (this.ready || this.loading) return;
     this.loading = true;
     this.error = null;
@@ -75,7 +113,10 @@ export class LocalDatabase {
     const started = performance.now();
 
     try {
-      const [SQL, response] = await Promise.all([sqlEngine(), fetch(this.url)]);
+      const [SQL, response] = await Promise.all([
+        sqlEngine(),
+        stored ?? fetchAndCache(this.url, this.#etag),
+      ]);
       if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
 
       const reader = response.body.getReader();
@@ -133,20 +174,43 @@ export class LocalDatabase {
 }
 
 /**
- * What the download will cost on the wire, from the server's own headers.
+ * What the file weighs on the wire, and which version it is.
  *
- * The browser advertises gzip, and GitHub Pages compresses this file, so this
- * reports the compressed size — the number that matters to someone on mobile
- * data. Returns null when the server does not say.
+ * The browser advertises gzip and GitHub Pages compresses this file, so the
+ * length is the compressed one — the number that matters to someone on mobile
+ * data. The ETag is what keeps a stored copy honest across deploys. Returns
+ * null when the server cannot be reached, which is survivable: a stored copy
+ * still opens.
  */
-export async function weigh(url) {
+async function describe(url) {
   try {
     const response = await fetch(url, { method: "HEAD" });
+    if (!response.ok) return null;
     const length = Number(response.headers.get("Content-Length"));
-    return Number.isFinite(length) && length > 0 ? length : null;
+    return {
+      bytes: Number.isFinite(length) && length > 0 ? length : null,
+      etag: response.headers.get("ETag"),
+    };
   } catch {
     return null;
   }
+}
+
+/**
+ * Fetch the database, handing a second copy of the response to the cache.
+ *
+ * The clone is what gets stored, so the bytes stream to disk while the caller
+ * reads the original for the progress bar. Buffering the whole file a second
+ * time here would double the peak memory of the one thing already large enough
+ * to matter.
+ */
+async function fetchAndCache(url, etag) {
+  const response = await fetch(url);
+  if (response.ok && etag) {
+    const copy = response.clone();
+    void openCache().then((cache) => keepOnly(cache, url, etag, copy));
+  }
+  return response;
 }
 
 export function formatBytes(n) {

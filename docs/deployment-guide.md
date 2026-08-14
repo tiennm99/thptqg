@@ -10,12 +10,17 @@ One-time setup: **Settings → Pages → Source: GitHub Actions**.
 1. Checkout, Go toolchain, Node 24, `npm ci` in `web/`
 2. Parser, crawler and assembler test suites, web lint, `govulncheck` over all three modules
 3. `go -C assembler run ./cmd/assemble` — the whole pipeline: compile the
-   parser, build and verify each database, compress it into `.build/public/db/`,
-   run the web build, assemble `_site/`
+   parser, build and verify each database into `.build/public/db/`, run the web
+   build, assemble `_site/`. The databases are restored from the Actions cache
+   when nothing that determines them has changed, and only the site is built
 4. `actions/upload-pages-artifact` + `actions/deploy-pages`
 
-The database build dominates the runtime: roughly 348 MB of Excel is parsed on
-every deploy.
+The database build dominates the runtime: roughly 348 MB of Excel to parse. It
+is cached in Actions, keyed on `data/**`, `parser/**` and `datasets.json`, so
+only a change to the sources, the parser or the registry pays for it — a web or
+docs change restores the databases instead. There are no `restore-keys`: a
+near-miss would publish databases built from inputs the commit does not
+describe.
 
 ## Resulting URLs
 
