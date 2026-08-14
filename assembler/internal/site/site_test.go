@@ -11,14 +11,17 @@ import (
 
 var datasets = []registry.Dataset{{ID: "2016"}, {ID: "2017"}}
 
-// fakeBuild stands in for a Vite build: an index.html, an asset, and whatever
-// databases the caller wants staged.
+// fakeBuild stands in for a web build: the prerendered hub and one page per
+// dataset, an asset, and whatever databases the caller wants staged.
 func fakeBuild(t *testing.T, dbs ...string) Paths {
 	t.Helper()
 	root := t.TempDir()
 	dist := filepath.Join(root, "web", "dist")
-	write(t, filepath.Join(dist, "index.html"), "<html>app</html>")
-	write(t, filepath.Join(dist, "assets", "index.js"), "console.log(1)")
+	write(t, filepath.Join(dist, "index.html"), "<html>hub</html>")
+	for _, d := range datasets {
+		write(t, filepath.Join(dist, d.ID, "index.html"), "<html>"+d.ID+"</html>")
+	}
+	write(t, filepath.Join(dist, "_app", "immutable", "entry.js"), "console.log(1)")
 	for _, name := range dbs {
 		write(t, filepath.Join(dist, "db", name), "gzipped-bytes")
 	}
@@ -45,12 +48,29 @@ func TestAssembleProducesAPageForEveryDataset(t *testing.T) {
 		"404.html",
 		filepath.Join("2016", "index.html"),
 		filepath.Join("2017", "index.html"),
-		filepath.Join("assets", "index.js"),
+		filepath.Join("_app", "immutable", "entry.js"),
 		filepath.Join("db", "2016.db.gz"),
 	} {
 		if _, err := os.Stat(filepath.Join(p.Site, want)); err != nil {
 			t.Errorf("missing from the artifact: %s", want)
 		}
+	}
+}
+
+// TestMissingDatasetPageFailsTheBuild: the pages come from the web build's
+// entry generator, which reads the same registry this does. If the two fall out
+// of step, that dataset's URL 404s — so the build stops instead.
+func TestMissingDatasetPageFailsTheBuild(t *testing.T) {
+	p := fakeBuild(t, "2016.db.gz", "2017.db.gz")
+	if err := os.RemoveAll(filepath.Join(p.Dist, "2017")); err != nil {
+		t.Fatal(err)
+	}
+	err := Assemble(p, datasets)
+	if err == nil {
+		t.Fatal("expected an error when a dataset page was not prerendered")
+	}
+	if !strings.Contains(err.Error(), "2017") {
+		t.Errorf("the error should name the missing page, got: %v", err)
 	}
 }
 
@@ -115,7 +135,7 @@ func TestAssembleRejectsAMissingBuild(t *testing.T) {
 	root := t.TempDir()
 	p := Paths{Web: root, Dist: filepath.Join(root, "dist"), Site: filepath.Join(root, "_site")}
 	if err := Assemble(p, datasets); err == nil {
-		t.Fatal("expected an error when there is no Vite build")
+		t.Fatal("expected an error when there is no web build")
 	}
 }
 

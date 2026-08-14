@@ -13,6 +13,7 @@ node_modules/
 
 ### Build output ###
 dist/
+web/.svelte-kit/
 
 ### Generated databases and Vite publicDir staging ###
 .build/

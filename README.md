@@ -25,7 +25,7 @@ pass between them.
 crawler/      Go   — re-fetches the source spreadsheets      → data/
 parser/       Go   — Excel to SQLite                          data/ → .db
 assembler/    Go   — verifies, compresses, builds, assembles  .db + web/ → _site/
-web/          npm  — the frontend, one Vite app for every dataset
+web/          npm  — the frontend, one SvelteKit app for every dataset
 data/<id>/         raw Excel files, one directory per dataset
 datasets.json      the registry: which datasets exist, and their expected size
 docs/              architecture, data pipeline, deployment
@@ -34,9 +34,9 @@ docs/              architecture, data pipeline, deployment
 Each stage runs on its own and hands its output to the next through the stores.
 `web/` is the only npm project; the three stages are independent Go modules.
 
-`datasets.json` is the contract between them. It is JSON because Go and the Vite
+`datasets.json` is the contract between them. It is JSON because Go and the web
 app both read it and neither needs a dependency to do so; presentation stays in
-`web/src/datasets.js`, keyed by id, which fails loudly if the two disagree.
+`web/src/lib/datasets.ts`, keyed by id, which fails loudly if the two disagree.
 
 The dataset id is one identifier end to end:
 
@@ -85,7 +85,7 @@ Pushing to `main` runs the same steps in
 2. Add `parser/configs/<id>.yml` — sheet mode, column indices, validation
    guards. No SQL; the schema is canonical.
 3. Add an entry to `datasets.json` with its expected row count and size
-4. Add the matching presentation to `CONTENT` in `web/src/datasets.js`
+4. Add the matching presentation to `CONTENT` in `web/src/lib/datasets.ts`
 
 Everything else follows: the assembler, the router and the hub all read the
 registry, and the UI adapts to whichever columns the dataset fills. Steps 3 and 4

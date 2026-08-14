@@ -1,15 +1,14 @@
 // Package site turns the web app and the staged databases into the directory
 // GitHub Pages publishes.
 //
-// The app resolves its dataset from the URL, so every page is the same
-// index.html. Because Vite's `base` is absolute (/thptqg/), that file references
-// /thptqg/assets/... no matter which directory it is served from — so copying it
-// to each dataset path produces a real static file at every URL.
+// SvelteKit prerenders one HTML file per route — the hub and one per dataset in
+// the registry — so every URL is already a real static file when this runs. All
+// that is left is the 404 document and the checks on what shipped.
 //
-// GitHub Pages serves those as directory indexes, which is why this needs no
-// SPA 404-fallback redirect. That matters beyond tidiness: the usual fallback
-// rewrites the URL and would interfere with the ?q= deep links the app relies
-// on.
+// GitHub Pages serves the prerendered files as directory indexes, which is why
+// this needs no SPA fallback redirect. That matters beyond tidiness: the usual
+// fallback rewrites the URL and would interfere with the ?q= deep links the app
+// relies on.
 package site
 
 import (
@@ -26,9 +25,9 @@ import (
 
 // Paths locates the pieces this package needs.
 type Paths struct {
-	// Web is the Vite project directory.
+	// Web is the SvelteKit project directory.
 	Web string
-	// Dist is where Vite emits, inside the web workspace.
+	// Dist is where the static adapter emits, inside the web workspace.
 	Dist string
 	// Site is the artifact the deploy action uploads, at the repository root.
 	Site string
@@ -44,17 +43,17 @@ func DefaultPaths(root string) Paths {
 	}
 }
 
-// BuildWeb runs the Vite build.
+// BuildWeb runs the web build.
 //
-// Shelling out to npm is not a wart: Vite is a Node tool, and web/ is the only
-// npm project in the repository. This stage owns the sequencing, not the
+// Shelling out to npm is not a wart: SvelteKit is a Node tool, and web/ is the
+// only npm project in the repository. This stage owns the sequencing, not the
 // bundling.
 func BuildWeb(p Paths) error {
 	cmd := exec.Command("npm", "run", "build")
 	cmd.Dir = p.Web
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("vite build: %w", err)
+		return fmt.Errorf("web build: %w", err)
 	}
 	return nil
 }
@@ -73,27 +72,20 @@ func Assemble(p Paths, datasets []registry.Dataset) error {
 		return err
 	}
 
-	// Base build: index.html, assets/, and the gzipped databases from publicDir.
+	// The prerendered pages, _app/ and the gzipped databases in one move.
 	if err := copyTree(p.Dist, p.Site); err != nil {
 		return err
 	}
 
-	// Unknown paths render the hub rather than the default Pages 404.
+	// Unknown paths render the hub rather than the default Pages 404. Asset URLs
+	// in that file are absolute, so it works at any depth.
 	if err := copyFile(index, filepath.Join(p.Site, "404.html")); err != nil {
 		return err
 	}
 
-	// One entry point per dataset.
-	for _, d := range datasets {
-		dir := filepath.Join(p.Site, d.ID)
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			return err
-		}
-		if err := copyFile(index, filepath.Join(dir, "index.html")); err != nil {
-			return err
-		}
+	if err := checkDatasetPages(p.Site, datasets); err != nil {
+		return err
 	}
-
 	if err := checkDatabasesPresent(p.Site, datasets); err != nil {
 		return err
 	}
@@ -105,6 +97,27 @@ func Assemble(p Paths, datasets []registry.Dataset) error {
 	fmt.Printf("  /thptqg/\n  /thptqg/404.html\n")
 	for _, d := range datasets {
 		fmt.Printf("  /thptqg/%s\n", d.ID)
+	}
+	return nil
+}
+
+// checkDatasetPages: every dataset must have prerendered an entry point.
+//
+// The pages come from the web build's entry generator reading the same
+// registry, so a missing one means the two fell out of step — a dataset URL
+// that 404s while the build stays green.
+func checkDatasetPages(siteDir string, datasets []registry.Dataset) error {
+	var missing []string
+	for _, d := range datasets {
+		if _, err := os.Stat(filepath.Join(siteDir, d.ID, "index.html")); err != nil {
+			missing = append(missing, d.ID+"/index.html")
+		}
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf(
+			"the web build prerendered no page for: %s\n"+
+				"Those URLs would 404. Check the entry generator in web/src/routes/[dataset]/+page.ts",
+			strings.Join(missing, ", "))
 	}
 	return nil
 }

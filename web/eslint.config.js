@@ -1,37 +1,30 @@
-import js from '@eslint/js'
-import globals from 'globals'
-import reactHooks from 'eslint-plugin-react-hooks'
-import reactRefresh from 'eslint-plugin-react-refresh'
-import { defineConfig, globalIgnores } from 'eslint/config'
+import js from "@eslint/js";
+import svelte from "eslint-plugin-svelte";
+import globals from "globals";
+import ts from "typescript-eslint";
+import svelteConfig from "./svelte.config.js";
 
-// Scoped to this workspace; every other stage in the repository is Go.
-export default defineConfig([
-  globalIgnores(['dist']),
+export default ts.config(
+  js.configs.recommended,
+  ...ts.configs.recommended,
+  ...svelte.configs.recommended,
   {
-    files: ['**/*.{js,jsx}'],
-    extends: [
-      js.configs.recommended,
-      reactHooks.configs.flat.recommended,
-      reactRefresh.configs.vite,
-    ],
     languageOptions: {
-      ecmaVersion: 2020,
-      globals: globals.browser,
+      globals: { ...globals.browser, ...globals.node },
+    },
+  },
+  {
+    // Svelte files and rune modules are parsed by svelte-eslint-parser, which
+    // needs the TypeScript parser handed to it for `lang="ts"` blocks.
+    files: ["**/*.svelte", "**/*.svelte.ts", "**/*.svelte.js"],
+    languageOptions: {
       parserOptions: {
-        ecmaVersion: 'latest',
-        ecmaFeatures: { jsx: true },
-        sourceType: 'module',
+        parser: ts.parser,
+        projectService: true,
+        extraFileExtensions: [".svelte"],
+        svelteConfig,
       },
     },
-    rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
-    },
   },
-  {
-    // The Vite config runs under Node, not in the browser.
-    files: ['vite.config.js'],
-    languageOptions: {
-      globals: { ...globals.node },
-    },
-  },
-])
+  { ignores: ["dist/", ".svelte-kit/", "node_modules/"] },
+);
