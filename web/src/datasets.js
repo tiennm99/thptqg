@@ -33,7 +33,7 @@ const CONTENT = {
     // ministry — hence the unexpected domain.
     source:
       "https://dtnt.bacninh.edu.vn/tin-tuc/tin-tuc-su-kien/cong-bo-diem-thi-thptqg-2016-toan-bo-120-cum-thi-da-co-diem.html",
-    examples: ["17006021", "Nguyễn Thị Hoa"],
+    examples: ["TKG002747", "Nguyễn Bửu Lộc"],
     presets: PRESETS_2016,
   },
   2017: {
