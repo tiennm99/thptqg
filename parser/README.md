@@ -13,9 +13,9 @@ xlsxread build --schema parser/configs/<id>.yml --input data/<id> --output <db>
 xlsxread audit --schema parser/configs/<id>.yml --input data/<id> --db <db>
 ```
 
-This stage only produces a database. Verifying it against the expected row
-count, compressing it and publishing it belong to `assembler/`, which compiles
-this binary and drives it per dataset:
+This stage only produces a database. Verifying it against the expected row count
+and size, and publishing it, belong to `assembler/`, which compiles this binary
+and drives it per dataset:
 
 ```bash
 go -C assembler run ./cmd/assemble db

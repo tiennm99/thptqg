@@ -1,10 +1,13 @@
 # System Architecture
 
 Static site, no backend. The browser downloads the whole SQLite file once and
-queries it in memory with `sql.js` (SQLite compiled to WebAssembly). A dataset
-costs about 31 MB to fetch and 142 MB of memory to hold; every query after that
-is local — an exam-number lookup is immediate, and a name search scans all
-877,460 rows in a few hundred milliseconds.
+queries it in memory with `sql.js` (SQLite compiled to WebAssembly). 2016 costs
+about 31 MB to fetch and 142 MB of memory to hold; 2017, 36 MB and 119 MB. Every
+query after that is local — an exam-number lookup is immediate, and a name
+search scans all 877,460 rows in a few hundred milliseconds.
+
+The download is kept on the device, so the transfer is paid once per device
+rather than once per visit.
 
 That is a reversal of the previous design, which read the file where it lay
 over HTTP range requests. See [Considered and not taken](#considered-and-not-taken).
@@ -34,7 +37,34 @@ data/<id>/*.xls(x)
         │
         ▼  browser
    download gate → whole file → sql.js in memory → queries never leave the tab
+                        ↕
+                 Cache Storage, keyed by ETag — a second visit skips the gate
 ```
+
+## The download, and keeping it
+
+`web/src/lib/database.svelte.js` owns the transfer; `web/src/lib/db-cache.js`
+owns what survives it. Opening a dataset page:
+
+1. A conditional request asks the server for the database's current ETag.
+2. If a copy of exactly that version is in Cache Storage, it opens without
+   asking — consent was given once and reuse costs no network.
+3. Otherwise the gate states the transfer and the memory cost, and downloads
+   only when the visitor accepts. The response is stored under
+   `<url>?v=<etag>`, and every other version of that database is dropped, so a
+   dataset never occupies the disk twice.
+4. If the server cannot be reached at all, any stored version is used. Slightly
+   old frozen exam results beat an error page, and this is what lets the site
+   answer offline.
+
+Cache Storage rather than IndexedDB: the thing being stored is an HTTP
+response, the browser can stream it to disk instead of holding it as one
+buffer, and eviction under storage pressure is the browser's business.
+
+Progress is measured against `dbSizeMb` from the registry, not
+`Content-Length`. The server sends the file gzipped, so `Content-Length` counts
+compressed bytes while the stream yields decompressed ones; the compressed
+figure is reported separately as the transfer size.
 
 ## The dataset id
 
@@ -84,17 +114,17 @@ CREATE TABLE student (
   lich_su, dia_ly, gdcd, khxh,
   tieng_anh, tieng_phap, tieng_nga, tieng_duc, tieng_nhat, tieng_trung   REAL
 );
-CREATE INDEX idx_ho_ten       ON student(ho_ten);
-CREATE INDEX idx_ho_ten_ascii ON student(ho_ten_ascii);
-CREATE INDEX idx_ten_cum_thi  ON student(ten_cum_thi) WHERE ten_cum_thi IS NOT NULL;
 ```
+
+One table and no secondary indexes. The primary key is the only one, and it
+comes free with the table. Everything else is a scan, which in memory costs a
+few hundred milliseconds — an index would buy that back at the price of
+megabytes on every visitor's network. `TestDDLIsFrozen` in `parser` holds an
+independent copy of this DDL, so changing the shape has to be deliberate.
 
 Every dataset gets all 22 columns; ones it has no data for are NULL, costing
 about a byte per row. `khtn`, `khxh` and `gdcd` are empty on 2016;
 `ten_cum_thi` and `gioi_tinh` are empty on 2017.
-
-`idx_ten_cum_thi` is partial, so it holds zero entries where the column is
-always NULL.
 
 ## Routing
 
@@ -176,6 +206,8 @@ total descending.
 | --- | --- | --- |
 | Storage | Static SQLite file, downloaded whole | No backend; the datasets are frozen, and one large transfer is something browsers and CDNs are both good at |
 | Download gate | Blocking, no dismiss | The page has no answers before the file arrives, and 31 MB of someone's mobile data should be asked for rather than spent silently |
+| Keeping the download | Cache Storage, versioned by ETag | The transfer is paid once per device instead of once per visit; the ETag is what stops a redeploy being answered with last week's data |
+| Searching | On submit, never while typing | A name search scans every row, so a keystroke-per-search would run hundreds of full scans to answer one question |
 | Compression | None published | The host gzips on the wire, so a `.gz` artifact would only be decompressed twice |
 | WASM hosting | Bundled with the app | `sql.js` ships its own build; one less third-party runtime dependency |
 | Diacritics search | Pre-computed `ho_ten_ascii` | `LOWER(REPLACE(...))` at query time is far slower over 877,460 rows than a column computed once at build |
@@ -214,9 +246,11 @@ total descending.
   WebAssembly memory for as long as the page is open: 142 MB for 2016, 119 MB
   for 2017. A low-memory phone may have the tab killed, which is why the gate
   states the figure before the download starts.
-- **The download is repeated every visit.** Nothing is persisted — a reload
-  fetches the file again. Caching it in IndexedDB or the Cache API would fix
-  that and has not been done.
+- **A deploy costs returning visitors the transfer again.** Every rebuild lays
+  SQLite pages out differently, so the file — and its ETag — changes even when
+  the data does not. The stored copy is then a stale version and is replaced.
+- **The stored copy can be evicted.** Cache Storage is subject to the browser's
+  own storage pressure, so a device short on disk falls back to downloading.
 - **A visitor who will not download cannot use the site.** That is the
   deliberate shape of the gate, and it makes the first impression a 31 MB ask.
 - **Hosted size.** 526 MB for both datasets against the 1 GB GitHub Pages

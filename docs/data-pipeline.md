@@ -1,6 +1,6 @@
 # Data Pipeline
 
-From raw Excel files to a compressed SQLite file the browser can load.
+From raw Excel files to the SQLite file the browser downloads and queries.
 
 One Go binary (`parser/`) builds every dataset. What differs per dataset is
 parse rules only — sheet strategy, column layout, validation guards — declared
@@ -182,9 +182,14 @@ silently drops 13,720 students** (Hanoi +7,275, HCM +6,445). That is what
 ## Expected row counts
 
 The databases are written with 4 KiB pages (`PRAGMA page_size` in
-`parser/internal/writer/writer.go`) because the browser fetches them a page per
-HTTP request, and those requests are serial. `CHUNK_BYTES` in
-`web/src/lib/sqlite.svelte.js` must match.
+`parser/internal/writer/writer.go`) — SQLite's own default, set explicitly so
+the published file does not change shape if that default ever moves. Nothing on
+the client depends on the figure any more. It did under the previous design,
+which read the file over HTTP a page at a time and had to be told the page
+size; the browser now downloads the file whole.
+
+The pragma runs before the DDL, because a page size cannot change once a table
+exists.
 
 | id | Source rows | Skipped | DB rows |
 | --- | --- | --- | --- |

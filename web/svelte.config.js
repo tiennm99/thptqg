@@ -11,7 +11,7 @@ import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
  * depth — GitHub Pages answers /thptqg/anything/at/all/ with that one file.
  *
  * `files.assets` points outside this workspace because the assembler stages the
- * gzipped databases there (assembler/internal/databases).
+ * built databases there (assembler/internal/databases).
  *
  * @type {import('@sveltejs/kit').Config}
  */

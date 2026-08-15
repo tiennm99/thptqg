@@ -73,10 +73,12 @@ func BuildParser(p Paths) (string, error) {
 	return bin, nil
 }
 
-// Build runs the parser for one dataset, verifies the result and compresses it.
+// Build runs the parser for one dataset and verifies the result.
 //
-// Only the .gz survives: shipping a 100+ MB uncompressed database is made
-// structurally impossible rather than left to a cleanup step.
+// Two guards, both refusing to publish rather than warning: the row count must
+// equal the registry's exactly, and the file must be at least minSizeRatio of
+// the size the registry records. A truncated or short database is the failure
+// that would otherwise reach the site with a green pipeline.
 func Build(p Paths, bin string, d registry.Dataset) error {
 	if err := os.MkdirAll(p.OutDir, 0o755); err != nil {
 		return err

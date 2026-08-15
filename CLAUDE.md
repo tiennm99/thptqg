@@ -2,7 +2,7 @@
 
 Exam-score lookup for Vietnam's national high school graduation exam. Four
 stages, each independent: `crawler/` (Go) fetches spreadsheets into `data/<id>/`,
-`parser/` (Go) turns them into `<id>.db`, `assembler/` (Go) verifies, compresses
+`parser/` (Go) turns them into `<id>.sqlite3`, `assembler/` (Go) verifies them
 and builds `_site/`, and `web/` (SvelteKit + Tailwind) serves every dataset from
 one app.
 

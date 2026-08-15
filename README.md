@@ -2,7 +2,7 @@
 
 Tra cứu điểm thi THPT Quốc gia — exam-score lookup for Vietnam's national high
 school graduation exam. Client-side SQL over a SQLite database the browser
-downloads once and queries in memory, built
+downloads once, keeps, and queries in memory, built
 from the published `.xls`/`.xlsx` score files by the Go `parser` module. Where
 those files come from: [data pipeline](./docs/data-pipeline.md#sources).
 
@@ -24,8 +24,8 @@ pass between them.
 
 ```
 crawler/      Go   — re-fetches the source spreadsheets      → data/
-parser/       Go   — Excel to SQLite                          data/ → .db
-assembler/    Go   — verifies, compresses, builds, assembles  .db + web/ → _site/
+parser/       Go   — Excel to SQLite                          data/ → .sqlite3
+assembler/    Go   — verifies, builds and assembles           .sqlite3 + web/ → _site/
 web/          npm  — the frontend, one SvelteKit app for every dataset
 data/<id>/         raw Excel files, one directory per dataset
 datasets.json      the registry: which datasets exist, and their expected size
@@ -54,7 +54,7 @@ npx serve _site
 ```
 
 That one command compiles the parser, builds and verifies each database against
-its registry row count, compresses it, builds the web app and assembles `_site` —
+its registry row count and size, builds the web app and assembles `_site` —
 refusing to continue if a database is short, an artifact looks truncated, or one
 is missing altogether. Sub-steps when iterating:
 

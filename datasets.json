@@ -13,8 +13,8 @@
     "               is also the memory figure the download gate shows, since the",
     "               browser holds the whole file while the tab is open.",
     "",
-    "Presentation (titles, labels, SQL presets) lives in web/src/datasets.js keyed",
-    "by id; that file throws at load if the two lists disagree."
+    "Presentation (titles, labels, SQL presets) lives in web/src/lib/datasets.js",
+    "keyed by id; that file throws at load if the two lists disagree."
   ],
   "datasets": [
     {
