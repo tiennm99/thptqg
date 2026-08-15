@@ -27,11 +27,16 @@ pull-request run cancel an in-flight `main` deploy while every check stayed
 green.
 
 The database build dominates the runtime: roughly 348 MB of Excel to parse. It
-is cached in Actions, keyed on `data/**`, `parser/**` and `datasets.json`, so
-only a change to the sources, the parser or the registry pays for it — a web or
-docs change restores the databases instead. There are no `restore-keys`: a
-near-miss would publish databases built from inputs the commit does not
-describe.
+is cached in Actions, keyed on `data/**`, `parser/**` and `datasets.json`, so a
+push that touches none of those — web code, `docs/`, the workflow — restores the
+databases instead of rebuilding them. There are no `restore-keys`: a near-miss
+would publish databases built from inputs the commit does not describe.
+
+The key is by path, not by what the change means, so it over-invalidates: a
+comment in `datasets.json` or a word in `parser/README.md` costs a full rebuild
+though neither can move a row. That is the safe direction to be wrong in, and
+narrowing the globs would mean remembering to extend them for every future path
+that *can* change a database. The cost is minutes on the occasional docs push.
 
 ## Resulting URLs
 

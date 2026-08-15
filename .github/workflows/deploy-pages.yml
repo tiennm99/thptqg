@@ -99,8 +99,13 @@ jobs:
       # Parsing 348 MB of spreadsheets is the slowest part of the job, and its
       # output is a pure function of the inputs in the key: the source files,
       # the parser (schema, transforms, configs) and the registry the row-count
-      # and size guards read. Anything else — web code, docs, workflow — cannot
-      # change a database, so those pushes restore one instead of rebuilding.
+      # and size guards read. A push touching none of them — web code, docs/,
+      # this workflow — restores a database instead of rebuilding one.
+      #
+      # The key is by path rather than by meaning, so it over-invalidates: a
+      # comment in datasets.json or a word in parser/README.md pays for a full
+      # rebuild. Narrowing the globs would trade minutes on a docs push for
+      # having to remember every future path that can change a database.
       #
       # Exact matches only, with no restore-keys: a near-miss here would mean
       # publishing a database built from different inputs than the commit says.
