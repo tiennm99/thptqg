@@ -12,9 +12,9 @@ import (
 func TestCleanRemovesOnlyDroppedDatasets(t *testing.T) {
 	dir := t.TempDir()
 	for _, name := range []string{
-		"2016.sqlite3", "2017.sqlite3",
-		"2017-old.sqlite3",  // dropped from the registry
-		"2017-old2.sqlite3", // dropped from the registry
+		"2016.sqlite30", "2017.sqlite30",
+		"2017-old.sqlite30",  // dropped from the registry
+		"2017-old2.sqlite30", // dropped from the registry
 		"2016.db-journal", // interrupted run
 	} {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte("x"), 0o644); err != nil {
@@ -38,7 +38,7 @@ func TestCleanRemovesOnlyDroppedDatasets(t *testing.T) {
 	}
 	slices.Sort(left)
 
-	want := []string{"2016.sqlite3", "2017.sqlite3"}
+	want := []string{"2016.sqlite30", "2017.sqlite30"}
 	if !slices.Equal(left, want) {
 		t.Errorf("left %v, want %v", left, want)
 	}
