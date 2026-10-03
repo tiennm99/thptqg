@@ -7,7 +7,9 @@
   import ScoreTable from "$lib/components/score-table.svelte";
   import SearchForm from "$lib/components/search-form.svelte";
   import StudentDetail from "$lib/components/student-detail.svelte";
-  import { dbSourceOf } from "$lib/datasets";
+  import { LocalDatabase, formatBytes } from "$lib/database.svelte";
+  import { forgetAll } from "$lib/db-cache";
+  import { dbOf } from "$lib/datasets";
   import { isExamId } from "$lib/query-mode";
   import { MAX_RESULTS, lookupExamId, searchByName } from "$lib/search";
 
@@ -31,7 +33,7 @@
   // Created in the browser only: $effect does not run while prerendering. The
   // download itself waits for the visitor to accept it.
   $effect(() => {
-    const opened = new RemoteDatabase(dbSourceOf(dataset, base), budget);
+    const opened = new LocalDatabase(dbOf(dataset, base), dataset.dbSizeMb * 1024 * 1024);
     db = opened;
     // Consults the cache, and opens a stored copy without asking: consent was
     // given the first time, and reusing it costs nothing.

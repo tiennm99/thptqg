@@ -135,7 +135,7 @@ func compareOne(id, dirA, dirB string) (Result, error) {
 	return res, nil
 }
 
-// open finds <id>.sqlite30 in dir and returns a read-only handle.
+// open finds <id>.sqlite3 in dir and returns a read-only handle.
 //
 // The older names are still accepted, and a gzipped database is expanded to a
 // temporary file rather than rejected: the two sides of a comparison are often
@@ -143,7 +143,7 @@ func compareOne(id, dirA, dirB string) (Result, error) {
 func open(dir, id string) (*sql.DB, func(), error) {
 	noop := func() {}
 
-	for _, name := range []string{id + ".sqlite30", id + ".sqlite3", id + ".db"} {
+	for _, name := range []string{id + ".sqlite3", id + ".sqlite30", id + ".db"} {
 		plain := filepath.Join(dir, name)
 		if _, err := os.Stat(plain); err == nil {
 			db, err := sql.Open(driverName, "file:"+plain+"?mode=ro")
@@ -154,7 +154,7 @@ func open(dir, id string) (*sql.DB, func(), error) {
 	gzPath := filepath.Join(dir, id+".db.gz")
 	f, err := os.Open(gzPath)
 	if err != nil {
-		return nil, noop, fmt.Errorf("no %s.sqlite30, %s.sqlite3, %s.db or %s.db.gz in %s", id, id, id, id, dir)
+		return nil, noop, fmt.Errorf("no %s.sqlite3, %s.sqlite30, %s.db or %s.db.gz in %s", id, id, id, id, dir)
 	}
 	defer f.Close()
 

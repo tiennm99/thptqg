@@ -147,11 +147,10 @@ func checkDatabasesPresent(siteDir string, datasets []registry.Dataset) error {
 	return nil
 }
 
-// strayArtifact matches what must never reach the output: a SQLite journal from
-// an interrupted run, a database under either older name — .db, or .sqlite3
-// without the chunk index the client asks for — or a gzipped database from
-// before the switch to range requests.
-var strayArtifact = regexp.MustCompile(`(\.db|\.sqlite30?)(-journal|-wal|-shm)$|\.db$|\.sqlite3$|\.gz$`)
+// strayArtifact matches what must never reach the output: a SQLite journal
+// from an interrupted run, a database under the old .db name, or one under the
+// .sqlite30 name a former range-request client asked for. Each is 100+ MB.
+var strayArtifact = regexp.MustCompile(`(\.db|\.sqlite30?)(-journal|-wal|-shm)$|\.db$|\.sqlite30$|\.gz$`)
 
 // checkNoStrayArtifacts rejects leftovers that would be published.
 //
